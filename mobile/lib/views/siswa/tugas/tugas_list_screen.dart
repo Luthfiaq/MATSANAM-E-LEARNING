@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/tugas_card.dart';
 import 'detail_tugas_page.dart';
-import '../data/tugas_data.dart';
 
 class ListTugasPage extends StatelessWidget {
   const ListTugasPage({super.key});
