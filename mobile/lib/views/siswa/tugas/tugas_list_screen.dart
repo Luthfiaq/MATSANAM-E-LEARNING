@@ -1,6 +1,28 @@
 import 'package:flutter/material.dart';
-import '../widgets/tugas_card.dart';
-import 'detail_tugas_page.dart';
+
+import '../../../widgets/cards/tugas_card.dart';
+import 'detail_tugas_screen.dart';
+
+final List<Map<String, dynamic>> daftarTugas = [
+  {
+    "mapel": "Matematika",
+    "guru": "Pak Imam Kholik",
+    "judul": "Soal Persamaan Linear (SPLDV)",
+    "deadline": "Batas: 10 Oktober 2026",
+    "prioritas": true,
+    "statusDeadline": "Deadline Mepet",
+    "statusColor": "merah",
+  },
+  {
+    "mapel": "Bahasa Inggris",
+    "guru": "Bu Nurul",
+    "judul": "Essay Writing My Daily Routine",
+    "deadline": "Sisa 1 Hari",
+    "prioritas": false,
+    "statusDeadline": "Sisa 1 Hari",
+    "statusColor": "orange",
+  },
+];
 
 class ListTugasPage extends StatelessWidget {
   const ListTugasPage({super.key});
@@ -346,61 +368,95 @@ class ListTugasPage extends StatelessWidget {
                 const SizedBox(height: 12),
                 ...daftarTugas.map((tugas) {
                   return TugasCard(
-                    mapel: tugas["mapel"],
-                    guru: tugas["guru"],
-                    judul: tugas["judul"],
-                    deadline: tugas["deadline"],
-                    prioritas: tugas["prioritas"],
+  mapel: tugas["mapel"],
+  guru: tugas["guru"],
+  judul: tugas["judul"],
+  deadline: tugas["deadline"],
 
-                    statusDeadline: tugas["statusDeadline"],
+  prioritas: tugas["prioritas"],
 
-                    statusColor: tugas["statusColor"] == "red"
-                        ? Colors.red
-                        : tugas["statusColor"] == "orange"
-                        ? Colors.orange
-                        : Colors.blue,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const DetailTugasPage(),
-                        ),
-                      );
-                    },
-                  );
+  deadlineMepet:
+      tugas["statusDeadline"] == "Deadline Mepet",
+
+  statusDeadline: tugas["statusDeadline"],
+
+  statusColor: tugas["statusColor"] == "merah"
+      ? Colors.red
+      : tugas["statusColor"] == "orange"
+          ? Colors.orange
+          : Colors.blue,
+
+  onTap: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const DetailTugasPage(),
+      ),
+    );
+  },
+);
                 }).toList(),
 
                 const SizedBox(height: 20),
 
                 // TIPS
                 Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Tips Belajar",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        "Jangan menunda pengumpulan tugas agar terhindar dari pemotongan nilai keterlambatan.",
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
+  padding: const EdgeInsets.all(20),
+  decoration: BoxDecoration(
+    color: const Color(0xFFF8FAFF),
+    borderRadius: BorderRadius.circular(20),
+    border: Border.all(
+      color: const Color(0xFFDCE7FF),
+    ),
+  ),
+  child: Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Container(
+        width: 52,
+        height: 52,
+        decoration: BoxDecoration(
+          color: const Color(0xFFE8F0FF),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Icon(
+          Icons.lightbulb_outline,
+          color: Color(0xFF2563EB),
         ),
       ),
+
+      const SizedBox(width: 16),
+
+      const Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Tips Belajar",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              "Jangan menunda pengumpulan tugas agar terhindar dari pemotongan nilai keterlambatan otomatis oleh sistem madrasah.",
+              style: TextStyle(
+                color: Color(0xFF475569),
+                height: 1.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ],
+  ),
+)
+              ],
+        ),
+      ),
+        )
+    )
     );
   }
 }
