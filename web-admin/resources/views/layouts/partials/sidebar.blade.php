@@ -26,12 +26,12 @@
         <div class="mb-4">
             <div class="mb-2 pl-2 text-slate-400 text-[11px] font-bold">MANAJEMEN GURU</div>
             <a href="{{ route('admin.penugasan.index') }}" 
-               class="flex items-center py-2 px-4 rounded-lg {{ request()->routeIs('admin.penugasan.*') ? 'bg-blue-600 text-white' : 'text-[#434655] hover:bg-gray-50' }}">
+               class="flex items-center py-2 px-4 rounded-lg {{ request()->routeIs('admin.penugasan.index', 'admin.penugasan.edit') ? 'bg-blue-600 text-white' : 'text-[#434655] hover:bg-gray-50' }}">
                 <span class="text-lg mr-2">👨‍🏫</span>
                 <span class="text-sm">List Penugasan Guru</span>
             </a>
             <a href="{{ route('admin.penugasan.create') }}" 
-               class="flex items-center py-2 px-4 rounded-lg text-[#434655] hover:bg-gray-50">
+               class="flex items-center py-2 px-4 rounded-lg {{ request()->routeIs('admin.penugasan.create') ? 'bg-blue-600 text-white' : 'text-[#434655] hover:bg-gray-50' }}">
                 <span class="text-lg mr-2">➕</span>
                 <span class="text-sm">Atur Penugasan Baru</span>
             </a>
