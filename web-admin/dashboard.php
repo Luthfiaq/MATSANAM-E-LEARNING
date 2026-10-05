@@ -192,7 +192,6 @@
                 <button
                   class="flex shrink-0 items-center bg-blue-50 text-left py-[5px] px-[9px] gap-1 rounded-lg border border-solid border-[#004AC633]"
                   onclick="alert('Pressed!')"
-                  }
                 >
                   <img
                     src="https://storage.googleapis.com/tagjs-prod.appspot.com/v1/X5CsluynKR/j300icsi_expires_30_days.png"
