@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\PenugasanController;
+use App\Http\Controllers\Admin\AbsensiController;
 use Illuminate\Support\Facades\Route;
 
 // Redirect root to login
@@ -26,4 +27,12 @@ Route::middleware(['auth', App\Http\Middleware\EnsureUserIsAdmin::class])->prefi
     Route::get('/penugasan/{id}/edit', [PenugasanController::class, 'edit'])->name('penugasan.edit');
     Route::put('/penugasan/{id}', [PenugasanController::class, 'update'])->name('penugasan.update');
     Route::delete('/penugasan/{id}', [PenugasanController::class, 'destroy'])->name('penugasan.destroy');
+
+    // Absensi routes
+    Route::get('/absensi/verifikasi', [AbsensiController::class, 'verifikasiSurat'])->name('absensi.verifikasi');
+    Route::get('/absensi/histori', [AbsensiController::class, 'historiSurat'])->name('absensi.histori');
+    Route::post('/absensi/surat/{id}/approve', [AbsensiController::class, 'approveSurat'])->name('absensi.surat.approve');
+    Route::post('/absensi/surat/{id}/reject', [AbsensiController::class, 'rejectSurat'])->name('absensi.surat.reject');
+    Route::get('/absensi/rekap', [AbsensiController::class, 'rekapPresensi'])->name('absensi.rekap');
+    Route::get('/absensi/export', [AbsensiController::class, 'exportPresensi'])->name('absensi.export');
 });
