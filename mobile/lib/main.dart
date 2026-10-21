@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'views/siswa/absensi/absensi_screen.dart';
 import 'views/siswa/absensi/upload_surat_screen.dart';
+import 'views/siswa/materi/pilih_mapel_materi_screen.dart';
+import 'views/siswa/nilai/pilih_mapel_nilai_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -21,7 +23,7 @@ class MyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const AbsensiScreen(),
+      home: const PilihMapelNilaiScreen(),
     );
   }
 }
