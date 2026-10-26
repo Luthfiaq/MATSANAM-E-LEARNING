@@ -40,7 +40,8 @@
         <!-- Verifikasi & Izin -->
         <div class="mb-4">
             <div class="mb-2 pl-2 text-slate-400 text-[11px] font-bold">VERIFIKASI & IZIN</div>
-            <a href="#" class="flex justify-between items-center py-2 px-4 rounded-lg text-[#434655] hover:bg-gray-50">
+            <a href="{{ route('admin.absensi.verifikasi') }}" 
+               class="flex justify-between items-center py-2 px-4 rounded-lg {{ request()->routeIs('admin.absensi.verifikasi') ? 'bg-blue-600 text-white' : 'text-[#434655] hover:bg-gray-50' }}">
                 <div class="flex items-center gap-2">
                     <span class="text-lg">✉️</span>
                     <span class="text-sm">Verifikasi Surat</span>
@@ -51,7 +52,8 @@
                 </span>
                 @endif
             </a>
-            <a href="#" class="flex items-center py-2 px-4 rounded-lg text-[#434655] hover:bg-gray-50">
+            <a href="{{ route('admin.absensi.histori') }}" 
+               class="flex items-center py-2 px-4 rounded-lg {{ request()->routeIs('admin.absensi.histori') ? 'bg-blue-600 text-white' : 'text-[#434655] hover:bg-gray-50' }}">
                 <span class="text-lg mr-2">📋</span>
                 <span class="text-sm">Histori Verifikasi</span>
             </a>
@@ -60,7 +62,8 @@
         <!-- Presensi & Laporan -->
         <div class="mb-4">
             <div class="mb-2 pl-2 text-slate-400 text-[11px] font-bold">PRESENSI & LAPORAN</div>
-            <a href="#" class="flex items-center py-2 px-4 rounded-lg text-[#434655] hover:bg-gray-50">
+            <a href="{{ route('admin.absensi.rekap') }}" 
+               class="flex items-center py-2 px-4 rounded-lg {{ request()->routeIs('admin.absensi.rekap') ? 'bg-blue-600 text-white' : 'text-[#434655] hover:bg-gray-50' }}">
                 <span class="text-lg mr-2">📊</span>
                 <span class="text-sm">Rekap Absensi Siswa</span>
             </a>
