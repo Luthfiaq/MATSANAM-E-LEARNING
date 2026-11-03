@@ -129,7 +129,7 @@ class _RekapPresensiGuruScreenState extends State<RekapPresensiGuruScreen> {
             ),
           ),
           const Icon(
-            Icons.chevron_down_rounded,
+            Icons.keyboard_arrow_down_rounded,
             color: AppColors.textSecondary,
             size: 20,
           ),
