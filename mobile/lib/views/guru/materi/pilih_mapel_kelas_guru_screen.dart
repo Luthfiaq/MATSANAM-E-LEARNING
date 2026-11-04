@@ -1,5 +1,5 @@
-
 import 'package:flutter/material.dart';
+import 'daftar_materi_guru_screen.dart';
 
 class PilihMapelKelasGuruScreen extends StatefulWidget {
   const PilihMapelKelasGuruScreen({super.key});
@@ -221,9 +221,18 @@ class _PilihMapelKelasGuruScreenState
                       color: secondaryText,
                     ),
                     onTap: () {
-                      Navigator.pop(sheetContext);
-                      showMessage('$kelas dipilih');
-                    },
+  Navigator.pop(sheetContext);
+
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => DaftarMateriGuruScreen(
+        mapel: subject['name'],
+        kelas: kelas,
+      ),
+    ),
+  );
+},
                   ),
                 ),
               ],
