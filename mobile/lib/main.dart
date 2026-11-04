@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'views/siswa/tugas/tugas_list_screen.dart';
+import 'views/siswa/absensi/absensi_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -10,10 +10,10 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Matsanam E-Learning',
-      home: const ListTugasPage(),
+      home: AbsensiScreen(),
     );
   }
 }

@@ -1,41 +1,38 @@
-import 'package:flutter/material.dart';
 
+import 'package:flutter/material.dart';
 import '../../../utils/constants.dart';
 
 class RekapAbsensiScreen extends StatefulWidget {
-  const RekapAbsensiScreen({
-    super.key,
-  });
+  const RekapAbsensiScreen({super.key});
 
   @override
   State<RekapAbsensiScreen> createState() =>
       _RekapAbsensiScreenState();
 }
 
-class _RekapAbsensiScreenState extends State<RekapAbsensiScreen> {
+class _RekapAbsensiScreenState
+    extends State<RekapAbsensiScreen> {
   String _selectedFilter = 'Semua';
+
+  // Data presensi akan diisi dari API ketika endpoint tersedia.
+  final List<Map<String, dynamic>> _attendanceData = [];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         elevation: 0,
         centerTitle: false,
-
         leading: IconButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          onPressed: () => Navigator.pop(context),
           icon: const Icon(
             Icons.arrow_back_ios_new_rounded,
             color: AppColors.textPrimary,
             size: 20,
           ),
         ),
-
         title: const Text(
           'Rekap Histori Presensi',
           style: TextStyle(
@@ -44,25 +41,19 @@ class _RekapAbsensiScreenState extends State<RekapAbsensiScreen> {
             fontWeight: FontWeight.w700,
           ),
         ),
-
         actions: [
           IconButton(
-            onPressed: () {
-              _showHelpDialog();
-            },
+            onPressed: _showHelpDialog,
             icon: const Icon(
               Icons.help_outline_rounded,
               color: AppColors.textSecondary,
               size: 22,
             ),
           ),
-
           Container(
             width: 36,
             height: 36,
-            margin: const EdgeInsets.only(
-              right: 16,
-            ),
+            margin: const EdgeInsets.only(right: 16),
             decoration: const BoxDecoration(
               color: AppColors.primary,
               shape: BoxShape.circle,
@@ -75,38 +66,22 @@ class _RekapAbsensiScreenState extends State<RekapAbsensiScreen> {
           ),
         ],
       ),
-
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(
-            24,
-            16,
-            24,
-            24,
-          ),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildPeriodSelector(),
-
-              const SizedBox(height: 16),
-
+              const SizedBox(height: 14),
               _buildAttendanceSummary(),
-
               const SizedBox(height: 16),
-
               _buildFilterTabs(),
-
-              const SizedBox(height: 16),
-
-              _buildAttendanceList(),
-
-              const SizedBox(height: 20),
-
-              _buildDownloadButton(),
-
               const SizedBox(height: 12),
-
+              _buildAttendanceList(),
+              const SizedBox(height: 20),
+              _buildDownloadButton(),
+              const SizedBox(height: 14),
               _buildSyncText(),
             ],
           ),
@@ -115,126 +90,102 @@ class _RekapAbsensiScreenState extends State<RekapAbsensiScreen> {
     );
   }
 
-  // ============================================================
-  // PERIOD SELECTOR
-  // ============================================================
-
+  // PILIH PERIODE
   Widget _buildPeriodSelector() {
+    final now = DateTime.now();
+    final monthNames = [
+      'Januari', 'Februari', 'Maret', 'April',
+      'Mei', 'Juni', 'Juli', 'Agustus',
+      'September', 'Oktober', 'November', 'Desember'
+    ];
+
     return Container(
       width: double.infinity,
-      height: 60,
       padding: const EdgeInsets.symmetric(
-        horizontal: 14,
+        horizontal: 12,
+        vertical: 13,
       ),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(9),
-        border: Border.all(
-          color: AppColors.border,
-        ),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
-          // Bulan
           Expanded(
             child: Row(
               children: [
                 const Icon(
                   Icons.calendar_month_outlined,
                   color: AppColors.primary,
-                  size: 17,
+                  size: 19,
                 ),
-
                 const SizedBox(width: 8),
-
-                const Column(
-                  mainAxisAlignment:
-                      MainAxisAlignment.center,
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Bulan',
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 10,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Bulan',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 10,
+                        ),
                       ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'September 2026',
-                      style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                      const SizedBox(height: 3),
+                      Text(
+                        '${monthNames[now.month - 1]} ${now.year}',
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-
-                const Spacer(),
-
-                const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: AppColors.textSecondary,
-                  size: 18,
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-
           Container(
             width: 1,
-            height: 36,
-            margin: const EdgeInsets.symmetric(
-              horizontal: 10,
-            ),
+            height: 34,
+            margin: const EdgeInsets.symmetric(horizontal: 10),
             color: AppColors.border,
           ),
-
-          // Semester
-          Expanded(
+          const Expanded(
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.school_outlined,
                   color: AppColors.success,
-                  size: 18,
+                  size: 19,
                 ),
-
-                const SizedBox(width: 8),
-
-                const Column(
-                  mainAxisAlignment:
-                      MainAxisAlignment.center,
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Semester',
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 10,
+                SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Semester',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 10,
+                        ),
                       ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Ganjil 26/27',
-                      style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                      SizedBox(height: 3),
+                      Text(
+                        'Belum dipilih',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-
-                const Spacer(),
-
-                const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: AppColors.textSecondary,
-                  size: 18,
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -244,267 +195,103 @@ class _RekapAbsensiScreenState extends State<RekapAbsensiScreen> {
     );
   }
 
-  // ============================================================
-  // ATTENDANCE SUMMARY
-  // ============================================================
-
+  // RINGKASAN KEHADIRAN
   Widget _buildAttendanceSummary() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(
-        16,
-        16,
-        16,
-        16,
-      ),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.border,
-        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          const Row(
             children: [
+              Icon(
+                Icons.analytics_outlined,
+                color: AppColors.success,
+                size: 17,
+              ),
+              SizedBox(width: 7),
               Expanded(
-                child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration:
-                              const BoxDecoration(
-                            color: AppColors.success,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-
-                        const SizedBox(width: 7),
-
-                        const Text(
-                          'TINGKAT KEHADIRAN',
-                          style: TextStyle(
-                            color:
-                                AppColors.textSecondary,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            letterSpacing: 0.4,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 3),
-
-                    Row(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.center,
-                      children: [
-                        const Text(
-                          '96.2%',
-                          style: TextStyle(
-                            color:
-                                AppColors.textPrimary,
-                            fontSize: 32,
-                            fontWeight: FontWeight.w800,
-                            height: 1,
-                          ),
-                        ),
-
-                        const SizedBox(width: 10),
-
-                        Container(
-                          padding:
-                              const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color:
-                                AppColors.successLight,
-                            borderRadius:
-                                BorderRadius.circular(6),
-                          ),
-                          child: const Text(
-                            'Sangat Baik',
-                            style: TextStyle(
-                              color:
-                                  AppColors.success,
-                              fontSize: 10,
-                              fontWeight:
-                                  FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                child: Text(
+                  'TINGKAT KEHADIRAN',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3,
+                  ),
                 ),
               ),
-
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 9,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.successLight,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.verified_rounded,
-                      color: AppColors.success,
-                      size: 14,
-                    ),
-                    SizedBox(width: 4),
-                    Text(
-                      'Predikat Disiplin',
-                      style: TextStyle(
-                        color: AppColors.success,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // Minimum requirement
-          Row(
-            children: [
-              const Text(
-                'Syarat Minimum (85%)',
+              Text(
+                'Menunggu data',
                 style: TextStyle(
                   color: AppColors.textSecondary,
-                  fontSize: 11,
-                ),
-              ),
-
-              const Spacer(),
-
-              const Icon(
-                Icons.check_circle_outline_rounded,
-                color: AppColors.success,
-                size: 15,
-              ),
-
-              const SizedBox(width: 4),
-
-              const Text(
-                'Aman',
-                style: TextStyle(
-                  color: AppColors.success,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 10,
                 ),
               ),
             ],
           ),
-
-          const SizedBox(height: 7),
-
-          // Progress
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: SizedBox(
-              height: 8,
-              child: Stack(
-                children: [
-                  Container(
-                    color: AppColors.primaryLight,
-                  ),
-
-                  FractionallySizedBox(
-                    widthFactor: 0.962,
-                    child: Container(
-                      color: AppColors.success,
-                    ),
-                  ),
-
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    child: Row(
-                      children: [
-                        const Spacer(
-                          flex: 85,
-                        ),
-                        Container(
-                          width: 2,
-                          height: 8,
-                          color: AppColors.textSecondary
-                              .withOpacity(0.45),
-                        ),
-                        const Spacer(
-                          flex: 15,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+          const SizedBox(height: 12),
+          const Text(
+            '—',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 34,
+              fontWeight: FontWeight.w800,
             ),
           ),
-
-          const SizedBox(height: 20),
-
-          // Statistics
+          const SizedBox(height: 4),
+          const Text(
+            'Persentase kehadiran akan dihitung dari data presensi.',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 11,
+            ),
+          ),
+          const SizedBox(height: 16),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              height: 8,
+              color: AppColors.primaryLight,
+            ),
+          ),
+          const SizedBox(height: 18),
           Row(
             children: [
               Expanded(
                 child: _buildStatisticCard(
                   title: 'Hadir',
-                  value: '25',
-                  subtitle: 'Hari',
+                  value: '—',
                   valueColor: AppColors.textPrimary,
                 ),
               ),
-
               const SizedBox(width: 8),
-
               Expanded(
                 child: _buildStatisticCard(
                   title: 'Sakit',
-                  value: '1',
-                  subtitle: 'Surat',
+                  value: '—',
                   valueColor: AppColors.warning,
                 ),
               ),
-
               const SizedBox(width: 8),
-
               Expanded(
                 child: _buildStatisticCard(
                   title: 'Izin',
-                  value: '0',
-                  subtitle: 'Hari',
+                  value: '—',
                   valueColor: AppColors.textPrimary,
                 ),
               ),
-
               const SizedBox(width: 8),
-
               Expanded(
                 child: _buildStatisticCard(
                   title: 'Alfa',
-                  value: '0',
-                  subtitle: 'Hari',
+                  value: '—',
                   valueColor: AppColors.error,
                 ),
               ),
@@ -515,18 +302,17 @@ class _RekapAbsensiScreenState extends State<RekapAbsensiScreen> {
     );
   }
 
-  // ============================================================
-  // STATISTIC CARD
-  // ============================================================
-
   Widget _buildStatisticCard({
     required String title,
     required String value,
-    required String subtitle,
     required Color valueColor,
   }) {
     return Container(
-      height: 80,
+      constraints: const BoxConstraints(minHeight: 76),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 4,
+        vertical: 10,
+      ),
       decoration: BoxDecoration(
         color: AppColors.background,
         borderRadius: BorderRadius.circular(9),
@@ -541,9 +327,7 @@ class _RekapAbsensiScreenState extends State<RekapAbsensiScreen> {
               fontSize: 10,
             ),
           ),
-
-          const SizedBox(height: 4),
-
+          const SizedBox(height: 5),
           Text(
             value,
             style: TextStyle(
@@ -552,45 +336,34 @@ class _RekapAbsensiScreenState extends State<RekapAbsensiScreen> {
               fontWeight: FontWeight.w800,
             ),
           ),
-
-          const SizedBox(height: 1),
-
-          Text(
-            subtitle,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 9,
-            ),
-          ),
         ],
       ),
     );
   }
-
-  // ============================================================
   // FILTER
-  // ============================================================
-
   Widget _buildFilterTabs() {
     return Row(
       children: [
-        _buildFilterButton(
-          label: 'Semua (26)',
-          value: 'Semua',
+        Expanded(
+          child: _buildFilterButton(
+            label: 'Semua',
+            value: 'Semua',
+          ),
         ),
-
-        const SizedBox(width: 8),
-
-        _buildFilterButton(
-          label: 'Hadir (25)',
-          value: 'Hadir',
+        const SizedBox(width: 7),
+        Expanded(
+          child: _buildFilterButton(
+            label: 'Hadir',
+            value: 'Hadir',
+          ),
         ),
-
-        const SizedBox(width: 8),
-
-        _buildFilterButton(
-          label: 'Sakit / Izin (1)',
-          value: 'Sakit / Izin',
+        const SizedBox(width: 7),
+        Expanded(
+          flex: 2,
+          child: _buildFilterButton(
+            label: 'Sakit / Izin',
+            value: 'Sakit / Izin',
+          ),
         ),
       ],
     );
@@ -600,415 +373,224 @@ class _RekapAbsensiScreenState extends State<RekapAbsensiScreen> {
     required String label,
     required String value,
   }) {
-    final bool selected =
-        _selectedFilter == value;
+    final selected = _selectedFilter == value;
 
-    return Expanded(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          setState(() {
-            _selectedFilter = value;
-          });
-        },
-        child: Container(
-          height: 32,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: selected
-                ? AppColors.primary
-                : AppColors.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: selected
-                ? null
-                : Border.all(
-                    color: AppColors.border,
-                  ),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: selected
-                  ? Colors.white
-                  : AppColors.textPrimary,
-              fontSize: 11,
-              fontWeight: selected
-                  ? FontWeight.w600
-                  : FontWeight.w500,
-            ),
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: () {
+        setState(() {
+          _selectedFilter = value;
+        });
+      },
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 36),
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 5),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary : AppColors.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: selected
+              ? null
+              : Border.all(color: AppColors.border),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: selected ? Colors.white : AppColors.textPrimary,
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
     );
   }
 
-  // ============================================================
-  // ATTENDANCE LIST
-  // ============================================================
-
+  // DAFTAR RIWAYAT
   Widget _buildAttendanceList() {
-    if (_selectedFilter == 'Hadir') {
-      return Column(
-        children: [
-          _buildAttendanceItem(
-            date: 'Sabtu, 20 Sep 2026',
-            subject: 'Upacara & Bimbingan',
-            time: '07:05 WIB',
-            status: 'Hadir',
-            isPresent: true,
-          ),
-          const SizedBox(height: 8),
-          _buildAttendanceItem(
-            date: 'Jumat, 19 Sep 2026',
-            subject: 'PAI & Fiqih',
-            time: '07:30 WIB',
-            status: 'Hadir',
-            isPresent: true,
-          ),
-          const SizedBox(height: 8),
-          _buildAttendanceItem(
-            date: 'Kamis, 18 Sep 2026',
-            subject: 'Bahasa Inggris',
-            time: '09:45 WIB',
-            status: 'Hadir',
-            isPresent: true,
-          ),
-          const SizedBox(height: 8),
-          _buildAttendanceItem(
-            date: 'Selasa, 16 Sep 2026',
-            subject: 'IPA Terpadu',
-            time: '08:00 WIB',
-            status: 'Hadir',
-            isPresent: true,
-          ),
-        ],
-      );
-    }
+    final filteredData = _attendanceData.where((item) {
+      if (_selectedFilter == 'Semua') return true;
+      if (_selectedFilter == 'Hadir') {
+        return item['status'] == 'Hadir';
+      }
+      return item['status'] == 'Sakit' ||
+          item['status'] == 'Izin';
+    }).toList();
 
-    if (_selectedFilter == 'Sakit / Izin') {
-      return _buildAttendanceItem(
-        date: 'Rabu, 17 Sep 2026',
-        subject: 'Matematika',
-        time: '',
-        status: 'Sakit',
-        isPresent: false,
-        showLetter: true,
+    if (filteredData.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 28,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: const Column(
+          children: [
+            Icon(
+              Icons.event_note_outlined,
+              size: 38,
+              color: AppColors.textSecondary,
+            ),
+            SizedBox(height: 10),
+            Text(
+              'Belum ada data presensi',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            SizedBox(height: 5),
+            Text(
+              'Riwayat kehadiran akan ditampilkan setelah data tersedia.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 11,
+                height: 1.5,
+              ),
+            ),
+          ],
+        ),
       );
     }
 
     return Column(
-      children: [
-        _buildAttendanceItem(
-          date: 'Sabtu, 20 Sep 2026',
-          subject: 'Upacara & Bimbingan',
-          time: '07:05 WIB',
-          status: 'Hadir',
-          isPresent: true,
-        ),
-
-        const SizedBox(height: 8),
-
-        _buildAttendanceItem(
-          date: 'Jumat, 19 Sep 2026',
-          subject: 'PAI & Fiqih',
-          time: '07:30 WIB',
-          status: 'Hadir',
-          isPresent: true,
-        ),
-
-        const SizedBox(height: 8),
-
-        _buildAttendanceItem(
-          date: 'Kamis, 18 Sep 2026',
-          subject: 'Bahasa Inggris',
-          time: '09:45 WIB',
-          status: 'Hadir',
-          isPresent: true,
-        ),
-
-        const SizedBox(height: 8),
-
-        _buildAttendanceItem(
-          date: 'Rabu, 17 Sep 2026',
-          subject: 'Matematika',
-          time: '',
-          status: 'Sakit',
-          isPresent: false,
-          showLetter: true,
-        ),
-
-        const SizedBox(height: 8),
-
-        _buildAttendanceItem(
-          date: 'Selasa, 16 Sep 2026',
-          subject: 'IPA Terpadu',
-          time: '08:00 WIB',
-          status: 'Hadir',
-          isPresent: true,
-        ),
-      ],
+      children: filteredData.map((item) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: _buildAttendanceItem(item),
+        );
+      }).toList(),
     );
   }
 
-  // ============================================================
-  // ATTENDANCE ITEM
-  // ============================================================
+  Widget _buildAttendanceItem(Map<String, dynamic> item) {
+    final status = item['status']?.toString() ?? '-';
+    final isPresent = status == 'Hadir';
 
-  Widget _buildAttendanceItem({
-    required String date,
-    required String subject,
-    required String time,
-    required String status,
-    required bool isPresent,
-    bool showLetter = false,
-  }) {
     return Container(
       width: double.infinity,
+      padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: AppColors.border,
-        ),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
       ),
-      child: Column(
+      child: Row(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              14,
-              14,
-              14,
-              12,
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: isPresent
+                  ? AppColors.successLight
+                  : AppColors.warningLight,
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Row(
+            child: Icon(
+              isPresent
+                  ? Icons.check_rounded
+                  : Icons.medical_services_outlined,
+              color: isPresent
+                  ? AppColors.success
+                  : AppColors.warning,
+              size: 19,
+            ),
+          ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: isPresent
-                        ? AppColors.successLight
-                        : AppColors.warningLight,
-                    borderRadius:
-                        BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    isPresent
-                        ? Icons.check_rounded
-                        : Icons.medical_services_outlined,
-                    color: isPresent
-                        ? AppColors.success
-                        : AppColors.warning,
-                    size: 19,
+                Text(
+                  item['tanggal']?.toString() ?? '-',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-
-                const SizedBox(width: 12),
-
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        date,
-                        style: const TextStyle(
-                          color:
-                              AppColors.textPrimary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-
-                      const SizedBox(height: 4),
-
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              subject,
-                              overflow:
-                                  TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: AppColors
-                                    .textSecondary,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ),
-
-                          if (isPresent) ...[
-                            const Padding(
-                              padding:
-                                  EdgeInsets.symmetric(
-                                horizontal: 5,
-                              ),
-                              child: Text(
-                                '•',
-                                style: TextStyle(
-                                  color: AppColors
-                                      .textSecondary,
-                                  fontSize: 10,
-                                ),
-                              ),
-                            ),
-
-                            const Icon(
-                              Icons.qr_code_2_rounded,
-                              color:
-                                  AppColors.textSecondary,
-                              size: 13,
-                            ),
-
-                            const SizedBox(width: 3),
-
-                            const Text(
-                              'QR Code',
-                              style: TextStyle(
-                                color: AppColors
-                                    .textSecondary,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ],
+                const SizedBox(height: 4),
+                Text(
+                  item['keterangan']?.toString() ?? '-',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 10,
                   ),
-                ),
-
-                Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.end,
-                  children: [
-                    Container(
-                      padding:
-                          const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isPresent
-                            ? AppColors.successLight
-                            : AppColors.warningLight,
-                        borderRadius:
-                            BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        status,
-                        style: TextStyle(
-                          color: isPresent
-                              ? AppColors.success
-                              : AppColors.warning,
-                          fontSize: 10,
-                          fontWeight:
-                              FontWeight.w600,
-                        ),
-                      ),
-                    ),
-
-                    if (time.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        time,
-                        style: const TextStyle(
-                          color:
-                              AppColors.textSecondary,
-                          fontSize: 9,
-                        ),
-                      ),
-                    ],
-                  ],
                 ),
               ],
             ),
           ),
-
-          if (showLetter)
-            Container(
-              width: double.infinity,
-              padding:
-                  const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 11,
-              ),
-              decoration: const BoxDecoration(
-                color: AppColors.primaryLight,
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(8),
-                  bottomRight: Radius.circular(8),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: isPresent
+                      ? AppColors.successLight
+                      : AppColors.warningLight,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  status,
+                  style: TextStyle(
+                    color: isPresent
+                        ? AppColors.success
+                        : AppColors.warning,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.description_outlined,
-                    color: AppColors.textSecondary,
-                    size: 16,
-                  ),
-
-                  const SizedBox(width: 6),
-
-                  const Expanded(
-                    child: Text(
-                      'Surat Dokter (Disetujui)',
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-
-                  InkWell(
-                    onTap: () {
-                      _showLetterDialog();
-                    },
-                    child: const Text(
-                      'Lihat Surat',
-                      style: TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
+              const SizedBox(height: 4),
+              Text(
+                item['waktu']?.toString() ?? '',
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 9,
+                ),
               ),
-            ),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  // ============================================================
-  // DOWNLOAD BUTTON
-  // ============================================================
-
+  // UNDUH PDF
   Widget _buildDownloadButton() {
     return SizedBox(
       width: double.infinity,
-      height: 50,
+      height: 46,
       child: ElevatedButton(
-        onPressed: () {
-          _showDownloadMessage();
-        },
+        onPressed: null,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
+          disabledBackgroundColor: AppColors.primary.withOpacity(0.4),
           foregroundColor: Colors.white,
-          elevation: 2,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(9),
           ),
         ),
         child: const Row(
-          mainAxisAlignment:
-              MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.download_outlined,
-              size: 19,
-            ),
+            Icon(Icons.download_outlined, size: 18),
             SizedBox(width: 8),
             Text(
               'Unduh Rekap Presensi PDF',
@@ -1023,111 +605,44 @@ class _RekapAbsensiScreenState extends State<RekapAbsensiScreen> {
     );
   }
 
-  // ============================================================
-  // SYNC TEXT
-  // ============================================================
-
+  // INFORMASI SINKRONISASI
   Widget _buildSyncText() {
     return const Center(
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.sync_rounded,
-            color: Color(0xFF94A3B8),
-            size: 14,
-          ),
-
-          SizedBox(width: 5),
-
-          Text(
-            'Tersinkronisasi dengan Sistem Absensi Digital Kemenag RI',
-            style: TextStyle(
-              color: Color(0xFF94A3B8),
-              fontSize: 9,
-            ),
-          ),
-        ],
+      child: Text(
+        'Data akan ditampilkan setelah terhubung dengan server.',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: Color(0xFF94A3B8),
+          fontSize: 10,
+        ),
       ),
     );
   }
 
-  // ============================================================
-  // DIALOGS
-  // ============================================================
-
+  // DIALOG
   void _showHelpDialog() {
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return AlertDialog(
           title: const Text(
             'Rekap Presensi',
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-            ),
+            style: TextStyle(fontWeight: FontWeight.w700),
           ),
           content: const Text(
-            'Halaman ini menampilkan riwayat kehadiran siswa berdasarkan bulan dan semester yang dipilih.',
+            'Halaman ini menampilkan ringkasan dan riwayat kehadiran siswa berdasarkan periode yang dipilih.',
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text(
                 'Mengerti',
-                style: TextStyle(
-                  color: AppColors.primary,
-                ),
+                style: TextStyle(color: AppColors.primary),
               ),
             ),
           ],
         );
       },
-    );
-  }
-
-  void _showLetterDialog() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text(
-            'Surat Dokter',
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          content: const Text(
-            'Surat dokter untuk ketidakhadiran pada Rabu, 17 September 2026 telah disetujui.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text(
-                'Tutup',
-                style: TextStyle(
-                  color: AppColors.primary,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showDownloadMessage() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Fitur unduh PDF akan dihubungkan ke API.',
-        ),
-        backgroundColor: AppColors.success,
-      ),
     );
   }
 }

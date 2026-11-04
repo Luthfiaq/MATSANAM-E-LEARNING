@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../utils/constants.dart';
 import 'rekap_absensi_screen.dart';
 import 'upload_surat_screen.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 class AbsensiScreen extends StatefulWidget {
   const AbsensiScreen({super.key});
@@ -12,8 +13,22 @@ class AbsensiScreen extends StatefulWidget {
 }
 
 class _AbsensiScreenState extends State<AbsensiScreen> {
-  bool _flashOn = false;
-  bool _autoMode = true;
+final MobileScannerController _scannerController =
+    MobileScannerController(
+  detectionSpeed: DetectionSpeed.noDuplicates,
+  facing: CameraFacing.back,
+  torchEnabled: false,
+);
+
+bool _flashOn = false;
+bool _autoMode = true;
+bool _isProcessing = false;
+
+@override
+  void dispose() {
+    _scannerController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -314,318 +329,227 @@ class _AbsensiScreenState extends State<AbsensiScreen> {
   // SCANNER
   // ===============================================================
 
-  Widget _buildScanner() {
-    return Container(
-      width: double.infinity,
-      height: 394,
-      decoration: BoxDecoration(
-        color: const Color(0xFF3D4446),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
-        children: [
-          // ---------------------------------------------------------
-          // CAMERA BACKGROUND
-          // ---------------------------------------------------------
+Future<void> _handleQrDetection(BarcodeCapture capture) async {
+  if (_isProcessing || capture.barcodes.isEmpty) return;
 
-          Container(
-            width: double.infinity,
-            height: double.infinity,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color(0xFF5E6667),
-                  Color(0xFF303536),
-                ],
-              ),
-            ),
-            child: Stack(
-              children: [
-                // Simulasi dinding
-                Positioned(
-                  top: 55,
-                  left: 20,
-                  right: 20,
-                  child: Container(
-                    height: 145,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFD4D2C9),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-                ),
+  final String? qrValue = capture.barcodes.first.rawValue;
 
-                // Simulasi papan/proyektor
-                Positioned(
-                  top: 75,
-                  right: 28,
-                  child: Container(
-                    width: 145,
-                    height: 105,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE8E8E5),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.qr_code_2_rounded,
-                        color: Color(0xFF20252A),
-                        size: 72,
-                      ),
-                    ),
-                  ),
-                ),
+  if (qrValue == null || qrValue.trim().isEmpty) return;
 
-                // Meja
-                Positioned(
-                  bottom: 80,
-                  left: 0,
-                  right: 0,
-                  child: Container(
-                    height: 30,
-                    color: const Color(0xFF6A4832),
-                  ),
-                ),
+  _isProcessing = true;
 
-                // Overlay kamera
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.08),
-                  ),
-                ),
-              ],
-            ),
+  await _scannerController.stop();
+
+  if (!mounted) return;
+
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) {
+      return AlertDialog(
+        title: const Text('QR Code Berhasil Dibaca'),
+        content: SelectableText(qrValue),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+            },
+            child: const Text('Tutup'),
           ),
+        ],
+      );
+    },
+  );
 
-          // ---------------------------------------------------------
-          // INSTRUCTION
-          // ---------------------------------------------------------
+  if (!mounted) return;
 
-          Positioned(
-            top: 16,
-            left: 16,
-            right: 16,
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 9,
-              ),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.65),
-                borderRadius: BorderRadius.circular(5),
-              ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.qr_code_scanner_rounded,
-                    color: Colors.white,
-                    size: 15,
-                  ),
+  _isProcessing = false;
+  await _scannerController.start();
+}
 
-                  SizedBox(width: 7),
+  Widget _buildScanner() {
+  return Container(
+    width: double.infinity,
+    height: 394,
+    decoration: BoxDecoration(
+      color: const Color(0xFF3D4446),
+      borderRadius: BorderRadius.circular(14),
+    ),
+    clipBehavior: Clip.antiAlias,
+    child: Stack(
+      children: [
+        // KAMERA ASLI
+        Positioned.fill(
+          child: MobileScanner(
+            controller: _scannerController,
+            onDetect: _handleQrDetection,
+            fit: BoxFit.cover,
+          ),
+        ),
 
-                  Text(
+        // INSTRUKSI
+        Positioned(
+          top: 16,
+          left: 16,
+          right: 16,
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 9,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.65),
+              borderRadius: BorderRadius.circular(5),
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.qr_code_scanner_rounded,
+                  color: Colors.white,
+                  size: 15,
+                ),
+                SizedBox(width: 7),
+                Flexible(
+                  child: Text(
                     'Arahkan kamera ke QR Code di layar proyektor',
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 10,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
+        ),
 
-          // ---------------------------------------------------------
-          // SCAN FRAME
-          // ---------------------------------------------------------
-
-          Center(
-            child: SizedBox(
-              width: 190,
-              height: 190,
-              child: Stack(
-                children: [
-                  // Top left
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    child: _buildCorner(
-                      top: true,
-                      left: true,
-                    ),
-                  ),
-
-                  // Top right
-                  Positioned(
-                    top: 0,
-                    right: 0,
-                    child: _buildCorner(
-                      top: true,
-                      left: false,
-                    ),
-                  ),
-
-                  // Bottom left
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    child: _buildCorner(
-                      top: false,
-                      left: true,
-                    ),
-                  ),
-
-                  // Bottom right
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: _buildCorner(
-                      top: false,
-                      left: false,
-                    ),
-                  ),
-
-                  // Scan line
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    top: 95,
-                    child: Container(
-                      height: 2,
-                      color: const Color(0xFF22D3EE),
-                    ),
-                  ),
-                ],
-              ),
+        // BINGKAI SCANNER
+        Center(
+          child: SizedBox(
+            width: 190,
+            height: 190,
+            child: Stack(
+              children: [
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  child: _buildCorner(top: true, left: true),
+                ),
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: _buildCorner(top: true, left: false),
+                ),
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  child: _buildCorner(top: false, left: true),
+                ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: _buildCorner(top: false, left: false),
+                ),
+              ],
             ),
           ),
+        ),
 
-          // ---------------------------------------------------------
-          // CAMERA CONTROLS
-          // ---------------------------------------------------------
-
-          Positioned(
-            left: 16,
-            right: 16,
-            bottom: 16,
-            child: Container(
-              height: 42,
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.75),
-                borderRadius: BorderRadius.circular(7),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: InkWell(
-                      onTap: () {
-                        setState(() {
-                          _flashOn = !_flashOn;
-                        });
-                      },
-                      child: Row(
-                        mainAxisAlignment:
-                            MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            _flashOn
-                                ? Icons.flash_on_rounded
-                                : Icons.flash_off_rounded,
-                            color: Colors.white,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 5),
-                          const Text(
-                            'Kilat',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                            ),
-                          ),
-                        ],
+        // TOMBOL KONTROL
+        Positioned(
+          bottom: 16,
+          left: 0,
+          right: 0,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // FLASH
+              InkWell(
+                onTap: () async {
+                  await _scannerController.toggleTorch();
+                  if (!mounted) return;
+                  setState(() {
+                    _flashOn = !_flashOn;
+                  });
+                },
+                borderRadius: BorderRadius.circular(30),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 9,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.65),
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _flashOn
+                            ? Icons.flash_on_rounded
+                            : Icons.flash_off_rounded,
+                        color: Colors.white,
+                        size: 17,
                       ),
-                    ),
-                  ),
-
-                  Container(
-                    width: 1,
-                    height: 22,
-                    color: Colors.white24,
-                  ),
-
-                  Expanded(
-                    child: InkWell(
-                      onTap: () {
-                        setState(() {
-                          _autoMode = !_autoMode;
-                        });
-                      },
-                      child: Row(
-                        mainAxisAlignment:
-                            MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.center_focus_strong_rounded,
-                            color: _autoMode
-                                ? const Color(0xFF22D3EE)
-                                : Colors.white,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 5),
-                          Text(
-                            'Auto',
-                            style: TextStyle(
-                              color: _autoMode
-                                  ? const Color(0xFF22D3EE)
-                                  : Colors.white,
-                              fontSize: 10,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  Container(
-                    width: 1,
-                    height: 22,
-                    color: Colors.white24,
-                  ),
-
-                  const Expanded(
-                    child: Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.photo_camera_outlined,
+                      const SizedBox(width: 6),
+                      const Text(
+                        'Flash',
+                        style: TextStyle(
                           color: Colors.white,
-                          size: 16,
+                          fontSize: 11,
                         ),
-                        SizedBox(width: 5),
-                        Text(
-                          'Kamera',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
+
+              const SizedBox(width: 12),
+
+              // MODE
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    _autoMode = !_autoMode;
+                  });
+                },
+                borderRadius: BorderRadius.circular(30),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 9,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.65),
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.center_focus_strong_rounded,
+                        color: Colors.white,
+                        size: 17,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _autoMode ? 'Auto' : 'Manual',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 
   // ===============================================================
   // SCAN FRAME CORNER
