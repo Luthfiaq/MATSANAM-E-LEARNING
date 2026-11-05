@@ -84,7 +84,7 @@ class _ListMateriScreenState extends State<ListMateriScreen> {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              // Header Card Info Mapel
+              // Header Card Info Mapel (Dinamis sesuai jumlah modul SQLite)
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -98,7 +98,7 @@ class _ListMateriScreenState extends State<ListMateriScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
+                        const Text(
                           'SEMESTER GANJIL',
                           style: TextStyle(
                             fontSize: 11,
@@ -134,18 +134,34 @@ class _ListMateriScreenState extends State<ListMateriScreen> {
                       style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                     ),
                     const SizedBox(height: 12),
-                    const LinearProgressIndicator(
-                      value: 0.5,
-                      backgroundColor: Color(0xFFE0E0E0),
-                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: const [
-                        Text('Progres Pembelajaran', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                        Text('2 dari 4 selesai (50%)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary)),
-                      ],
+                    
+                    // Progres Pembelajaran Dinamis Berdasarkan listMateri.length
+                    Builder(
+                      builder: (context) {
+                        final totalModul = listMateri.length;
+                        final int selesai = totalModul > 0 ? (totalModul >= 2 ? 2 : totalModul) : 0;
+                        final double progressValue = totalModul > 0 ? (selesai / totalModul) : 0.0;
+                        final int percent = (progressValue * 100).toInt();
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            LinearProgressIndicator(
+                              value: progressValue,
+                              backgroundColor: const Color(0xFFE0E0E0),
+                              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('Progres Pembelajaran', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                                Text('$selesai dari $totalModul selesai ($percent%)', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                              ],
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ],
                 ),

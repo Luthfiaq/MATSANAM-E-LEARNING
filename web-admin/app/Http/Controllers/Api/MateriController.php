@@ -30,13 +30,10 @@ class MateriController extends Controller
         ]);
     }
 
-    // 2. Mengambil daftar materi berdasarkan ID Mapel (untuk ListMateriScreen)
+    // 2. Mengambil daftar materi berdasarkan ID Mapel dari Database Asli (Tanpa Fallback)
     public function getByMapel($mapelId)
     {
-        $mapel = DB::table('mata_pelajaran')->where('id', $mapelId)->first();
-        $namaMapel = $mapel ? $mapel->nama : 'Mata Pelajaran';
-
-        // Mengambil dari tabel penugasan yang terhubung ke mapel
+        // Mengambil dari tabel penugasan yang terhubung ke mapel via jadwal
         $materi = DB::table('penugasan')
             ->join('jadwal_pelajaran', 'penugasan.jadwal_id', '=', 'jadwal_pelajaran.id')
             ->join('mata_pelajaran', 'jadwal_pelajaran.mapel_id', '=', 'mata_pelajaran.id')
@@ -69,24 +66,7 @@ class MateriController extends Controller
             ];
         });
 
-        // Fallback jika data di database belum ada
-        if ($formatted->isEmpty()) {
-            $formatted = [
-                [
-                    'id' => 1,
-                    'mapel_id' => (int)$mapelId,
-                    'mapel' => $namaMapel,
-                    'judul_materi' => 'Modul Utama ' . $namaMapel,
-                    'tipe_file' => 'pdf',
-                    'url' => null,
-                    'file_path' => null,
-                    'tanggal' => now()->toIso8601String(),
-                    'deskripsi' => 'Materi pembelajaran utama untuk mata pelajaran ' . $namaMapel,
-                    'nama_guru' => 'Guru Pengampu'
-                ]
-            ];
-        }
-
+        // Jika di database SQLite kosong, mengembalikan list kosong (tidak ada data tiruan)
         return response()->json([
             'success' => true,
             'message' => 'List materi berhasil diambil',
