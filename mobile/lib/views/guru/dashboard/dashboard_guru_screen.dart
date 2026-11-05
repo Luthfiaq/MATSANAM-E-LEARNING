@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 class DashboardGuruScreen extends StatelessWidget {
   const DashboardGuruScreen({super.key});
@@ -120,7 +120,7 @@ class DashboardGuruScreen extends StatelessWidget {
           ),
           SizedBox(height: 16),
           Text(
-            'Selamat Pagi, Imam 👋',
+            'Selamat Pagi, Imam ðŸ‘‹',
             style: TextStyle(
               color: Colors.white,
               fontSize: 16,
@@ -275,10 +275,7 @@ class DashboardGuruScreen extends StatelessWidget {
                 const Color(0xFF2563EB),
                 const Color(0xFFEFF6FF),
                 badge: '12',
-                onTap: () => _showMessage(
-                  context,
-                  'Halaman Tugas sedang disiapkan',
-                ),
+                onTap: () => Navigator.pushNamed(context, '/tugas'),
               ),
             ),
           ],
@@ -434,7 +431,7 @@ class DashboardGuruScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Matematika • Kelas 9A',
+                      'Matematika â€¢ Kelas 9A',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: colors.onSurfaceVariant,
                       ),
@@ -607,7 +604,7 @@ class DashboardGuruScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      'Kelas 9B • Matematika Peminatan',
+                      'Kelas 9B â€¢ Matematika Peminatan',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: colors.onSurfaceVariant,
                       ),
@@ -758,14 +755,16 @@ class DashboardGuruScreen extends StatelessWidget {
       selectedFontSize: 11,
       unselectedFontSize: 11,
       onTap: (index) {
-        if (index == 1) {
-          Navigator.pushReplacementNamed(context, '/materi');
-        } else if (index == 4) {
-          Navigator.pushNamed(context, '/pengaturan');
-        } else if (index != 0) {
-          _showMessage(context, 'Halaman sedang disiapkan');
-        }
-      },
+  if (index == 1) {
+    Navigator.pushReplacementNamed(context, '/materi');
+  } else if (index == 2) {
+    Navigator.pushNamed(context, '/tugas');
+  } else if (index == 4) {
+    Navigator.pushNamed(context, '/pengaturan');
+  } else if (index == 3) {
+    _showMessage(context, 'Halaman Absensi sedang disiapkan');
+  }
+},
       items: const [
         BottomNavigationBarItem(
           icon: Icon(Icons.grid_view_rounded),

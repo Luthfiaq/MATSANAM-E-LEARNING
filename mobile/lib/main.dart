@@ -1,7 +1,8 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import 'views/guru/dashboard/dashboard_guru_screen.dart';
 import 'views/guru/materi/pilih_mapel_kelas_guru_screen.dart';
+import 'views/guru/tugas/pilih_mapel_kelas_tugas_guru_screen.dart';
 import 'views/guru/pengaturan/pengaturan_guru_screen.dart';
 
 void main() {
@@ -138,6 +139,7 @@ class _MatsanamAppState extends State<MatsanamApp> {
       home: const DashboardGuruScreen(),
       routes: {
         '/materi': (context) => const PilihMapelKelasGuruScreen(),
+        '/tugas': (context) => const PilihMapelKelasTugasGuruScreen(),
         '/pengaturan': (context) => const PengaturanGuruScreen(),
       },
     );
