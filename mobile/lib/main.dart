@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'views/siswa/absensi/absensi_screen.dart';
-import 'views/siswa/absensi/upload_surat_screen.dart';
+import 'utils/constants.dart';
+import 'views/splash_gate.dart';
 
 void main() {
   runApp(const MyApp());
@@ -16,12 +16,11 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Matsanam E-Learning',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF2563EB),
-        ),
+        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary),
+        scaffoldBackgroundColor: AppColors.background,
         useMaterial3: true,
       ),
-      home: const AbsensiScreen(),
+      home: const SplashGate(),
     );
   }
 }
