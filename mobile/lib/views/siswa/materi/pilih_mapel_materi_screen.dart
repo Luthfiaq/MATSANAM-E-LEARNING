@@ -15,6 +15,7 @@ class _PilihMapelMateriScreenState extends State<PilihMapelMateriScreen> {
   final MateriService _materiService = MateriService();
   late Future<List<Map<String, dynamic>>> _futureMapel;
   String _searchKeyword = '';
+  String _selectedCategory = 'Semua'; // Variabel penampung kategori filter aktif
 
   @override
   void initState() {
@@ -55,9 +56,18 @@ class _PilihMapelMateriScreenState extends State<PilihMapelMateriScreen> {
           }
 
           final allMapel = snapshot.data ?? [];
+          
+          // Logika Filter Berdasarkan Search & Kategori Chip
           final filteredMapel = allMapel.where((mapel) {
             final nama = (mapel['nama'] ?? '').toLowerCase();
-            return nama.contains(_searchKeyword.toLowerCase());
+            final matchSearch = nama.contains(_searchKeyword.toLowerCase());
+
+            if (_selectedCategory == 'Kelas 9') {
+              return matchSearch && (nama.contains('matematika') || nama.contains('bahasa'));
+            } else if (_selectedCategory == 'Peminatan') {
+              return matchSearch && nama.contains('informatika');
+            }
+            return matchSearch; // Kategori 'Semua'
           }).toList();
 
           return ListView(
@@ -104,29 +114,14 @@ class _PilihMapelMateriScreenState extends State<PilihMapelMateriScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Filter Chips
+              // Filter Chips yang sudah berfungsi interaksinya
               Row(
                 children: [
-                  ActionChip(
-                    label: const Text('Semua Mapel'),
-                    backgroundColor: AppColors.primary,
-                    labelStyle: const TextStyle(color: Colors.white),
-                    onPressed: () {},
-                  ),
+                  _buildFilterChip('Semua Mapel', 'Semua'),
                   const SizedBox(width: 8),
-                  ActionChip(
-                    label: const Text('Kelas 9'),
-                    backgroundColor: Colors.white,
-                    labelStyle: const TextStyle(color: Colors.black87),
-                    onPressed: () {},
-                  ),
+                  _buildFilterChip('Kelas 9', 'Kelas 9'),
                   const SizedBox(width: 8),
-                  ActionChip(
-                    label: const Text('Peminatan'),
-                    backgroundColor: Colors.white,
-                    labelStyle: const TextStyle(color: Colors.black87),
-                    onPressed: () {},
-                  ),
+                  _buildFilterChip('Peminatan', 'Peminatan'),
                 ],
               ),
               const SizedBox(height: 20),
@@ -230,6 +225,21 @@ class _PilihMapelMateriScreenState extends State<PilihMapelMateriScreen> {
           );
         },
       ),
+    );
+  }
+
+  // Helper Widget untuk ActionChip interaktif
+  Widget _buildFilterChip(String label, String categoryValue) {
+    final isSelected = _selectedCategory == categoryValue;
+    return ActionChip(
+      label: Text(label),
+      backgroundColor: isSelected ? AppColors.primary : Colors.white,
+      labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black87),
+      onPressed: () {
+        setState(() {
+          _selectedCategory = categoryValue;
+        });
+      },
     );
   }
 }

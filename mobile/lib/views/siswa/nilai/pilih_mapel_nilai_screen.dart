@@ -15,6 +15,7 @@ class _PilihMapelNilaiScreenState extends State<PilihMapelNilaiScreen> {
   final NilaiService _nilaiService = NilaiService();
   late Future<List<Map<String, dynamic>>> _futureMapelNilai;
   String _searchKeyword = '';
+  String _selectedCategory = 'Semua'; // Variabel penampung kategori filter aktif
 
   @override
   void initState() {
@@ -55,9 +56,18 @@ class _PilihMapelNilaiScreenState extends State<PilihMapelNilaiScreen> {
           }
 
           final allMapel = snapshot.data ?? [];
+          
+          // Logika Filter Nilai
           final filteredMapel = allMapel.where((mapel) {
             final nama = (mapel['nama'] ?? '').toLowerCase();
-            return nama.contains(_searchKeyword.toLowerCase());
+            final matchSearch = nama.contains(_searchKeyword.toLowerCase());
+
+            if (_selectedCategory == 'Semester Ganjil') {
+              return matchSearch; 
+            } else if (_selectedCategory == 'Peminatan') {
+              return matchSearch && nama.contains('informatika');
+            }
+            return matchSearch; // Kategori 'Semua'
           }).toList();
 
           return SingleChildScrollView(
@@ -97,31 +107,16 @@ class _PilihMapelNilaiScreenState extends State<PilihMapelNilaiScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // Filter Chips
+                // Filter Chips yang sudah berfungsi interaksinya
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      ActionChip(
-                        label: const Text('Semua Mapel'),
-                        backgroundColor: AppColors.primary,
-                        labelStyle: const TextStyle(color: Colors.white),
-                        onPressed: () {},
-                      ),
+                      _buildFilterChip('Semua Mapel', 'Semua'),
                       const SizedBox(width: 8),
-                      ActionChip(
-                        label: const Text('Semester Ganjil'),
-                        backgroundColor: Colors.white,
-                        labelStyle: const TextStyle(color: Colors.black87),
-                        onPressed: () {},
-                      ),
+                      _buildFilterChip('Semester Ganjil', 'Semester Ganjil'),
                       const SizedBox(width: 8),
-                      ActionChip(
-                        label: const Text('Peminatan'),
-                        backgroundColor: Colors.white,
-                        labelStyle: const TextStyle(color: Colors.black87),
-                        onPressed: () {},
-                      ),
+                      _buildFilterChip('Peminatan', 'Peminatan'),
                     ],
                   ),
                 ),
@@ -158,7 +153,7 @@ class _PilihMapelNilaiScreenState extends State<PilihMapelNilaiScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // Grid Mapel Cards (menggunakan shrinkWrap agar aman di dalam SingleChildScrollView)
+                // Grid Mapel Cards
                 GridView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
@@ -197,7 +192,7 @@ class _PilihMapelNilaiScreenState extends State<PilihMapelNilaiScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Banner Unduh Rapor / Rekap Nilai Semester
+                // Banner Unduh Rapor
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -249,12 +244,27 @@ class _PilihMapelNilaiScreenState extends State<PilihMapelNilaiScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 20), // Spasi ekstra di bagian bawah agar tidak mentok
+                const SizedBox(height: 20),
               ],
             ),
           );
         },
       ),
+    );
+  }
+
+  // Helper Widget untuk ActionChip interaktif
+  Widget _buildFilterChip(String label, String categoryValue) {
+    final isSelected = _selectedCategory == categoryValue;
+    return ActionChip(
+      label: Text(label),
+      backgroundColor: isSelected ? AppColors.primary : Colors.white,
+      labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black87),
+      onPressed: () {
+        setState(() {
+          _selectedCategory = categoryValue;
+        });
+      },
     );
   }
 }
