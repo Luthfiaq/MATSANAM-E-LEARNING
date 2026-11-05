@@ -12,13 +12,15 @@ use Carbon\Carbon;
 
 class AbsensiController extends Controller
 {
-    public function verifikasiSurat(Request $request)
+public function verifikasiSurat(Request $request)
     {
-        $query = SuratAbsensi::with(['siswa.kelas', 'verifikator'])
+        // Memuat relasi lengkap ke siswa, kelas, wali kelas, dan verifikator tanpa batasan ketat
+        $query = SuratAbsensi::with(['siswa.kelas.waliKelas', 'verifikator'])
             ->orderBy('created_at', 'desc');
 
-        if ($request->filled('status')) {
-            $query->where('status_verifikasi', $request->status);
+        // Jika user klik filter status tertentu (selain 'semua')
+        if ($request->filled('status') && $request->status !== 'semua') {
+            $query->whereRaw('LOWER(status_verifikasi) = ?', [strtolower($request->status)]);
         }
 
         if ($request->filled('siswa')) {
@@ -28,14 +30,14 @@ class AbsensiController extends Controller
             });
         }
 
-        $surats = $query->paginate(15);
+        $suratAbsensi = $query->get();
 
-        $totalPending = SuratAbsensi::where('status_verifikasi', 'pending')->count();
-        $totalDisetujui = SuratAbsensi::where('status_verifikasi', 'disetujui')->count();
-        $totalDitolak = SuratAbsensi::where('status_verifikasi', 'ditolak')->count();
+        $totalPending = SuratAbsensi::whereRaw('LOWER(status_verifikasi) = ?', ['pending'])->count();
+        $totalDisetujui = SuratAbsensi::whereRaw('LOWER(status_verifikasi) = ?', ['disetujui'])->count();
+        $totalDitolak = SuratAbsensi::whereRaw('LOWER(status_verifikasi) = ?', ['ditolak'])->count();
 
         return view('admin.absensi.verifikasi', compact(
-            'surats', 
+            'suratAbsensi', 
             'totalPending', 
             'totalDisetujui', 
             'totalDitolak'
@@ -131,9 +133,9 @@ class AbsensiController extends Controller
 
         $surats = $query->paginate(15);
 
-        $totalPending = SuratAbsensi::where('status_verifikasi', 'pending')->count();
-        $totalDisetujui = SuratAbsensi::where('status_verifikasi', 'disetujui')->count();
-        $totalDitolak = SuratAbsensi::where('status_verifikasi', 'ditolak')->count();
+        $totalPending = SuratAbsensi::whereRaw('LOWER(status_verifikasi) = ?', ['pending'])->count();
+        $totalDisetujui = SuratAbsensi::whereRaw('LOWER(status_verifikasi) = ?', ['disetujui'])->count();
+        $totalDitolak = SuratAbsensi::whereRaw('LOWER(status_verifikasi) = ?', ['ditolak'])->count();
 
         return view('admin.absensi.histori', compact(
             'surats', 

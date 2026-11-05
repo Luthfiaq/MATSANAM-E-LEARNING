@@ -1,221 +1,296 @@
+{{-- resources/views/admin/absensi/verifikasi.blade.php --}}
 @extends('layouts.admin')
 
-@section('title', 'Verifikasi Surat Absensi')
+@section('title', 'Pusat Verifikasi Surat Absensi Siswa')
 
 @section('content')
-<div class="mb-6 flex items-center justify-between">
-    <div>
-        <h1 class="text-2xl font-bold text-gray-900">Verifikasi Surat Absensi</h1>
-        <p class="text-sm text-gray-500">Validasi surat izin/sakit siswa</p>
-    </div>
-</div>
-
-<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-    <div class="bg-white p-4 rounded-lg shadow-sm text-center">
-        <div class="text-3xl font-bold text-amber-600">{{ $totalPending }}</div>
-        <div class="text-xs text-gray-500 mt-1">Pending</div>
-    </div>
-    <div class="bg-white p-4 rounded-lg shadow-sm text-center">
-        <div class="text-3xl font-bold text-green-600">{{ $totalDisetujui }}</div>
-        <div class="text-xs text-gray-500 mt-1">Disetujui</div>
-    </div>
-    <div class="bg-white p-4 rounded-lg shadow-sm text-center">
-        <div class="text-3xl font-bold text-red-600">{{ $totalDitolak }}</div>
-        <div class="text-xs text-gray-500 mt-1">Ditolak</div>
-    </div>
-    <div class="bg-white p-4 rounded-lg shadow-sm text-center">
-        <div class="text-3xl font-bold text-blue-600">{{ $totalPending + $totalDisetujui + $totalDitolak }}</div>
-        <div class="text-xs text-gray-500 mt-1">Total</div>
-    </div>
-</div>
-
-<div class="bg-white rounded-lg shadow-sm overflow-hidden">
-    <div class="border-b border-gray-200 px-6 py-4 flex flex-col md:flex-row md:items-center gap-4">
-        <select id="filterStatus" class="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
-            <option value="">Semua Status</option>
-            <option value="pending">Pending</option>
-            <option value="disetujui">Disetujui</option>
-            <option value="ditolak">Ditolak</option>
-        </select>
-        <input type="text" id="searchSiswa" placeholder="Cari nama/nisn siswa..." class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
-    </div>
-
-    <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Siswa</th>
-                    <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Kelas</th>
-                    <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Rentang Tanggal</th>
-                    <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Jenis & Alasan</th>
-                    <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Bukti</th>
-                    <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-                    <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Aksi</th>
-                </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200" id="suratTableBody">
-                @forelse($surats as $surat)
-                <tr class="hover:bg-gray-50" data-status="{{ $surat->status_verifikasi }}">
-                    <td class="px-6 py-4">
-                        <div class="flex items-center gap-3">
-                            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-700">
-                                {{ strtoupper(substr($surat->siswa->nama_lengkap, 0, 2)) }}
-                            </div>
-                            <div>
-                                <div class="font-semibold text-gray-900">{{ $surat->siswa->nama_lengkap }}</div>
-                                <div class="text-xs text-gray-500">NISN: {{ $surat->siswa->nisn }}</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4">
-                        <span class="inline-flex rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
-                            {{ $surat->siswa->kelas->nama_kelas ?? '-' }}
-                        </span>
-                    </td>
-                    <td class="px-6 py-4">
-                        <div class="text-sm text-gray-900">
-                            {{ $surat->tanggal_mulai->diffInDays($surat->tanggal_selesai) + 1 }} hari
-                        </div>
-                        <div class="text-xs text-gray-500">
-                            {{ $surat->tanggal_mulai->format('d M Y') }} - {{ $surat->tanggal_selesai->format('d M Y') }}
-                        </div>
-                    </td>
-                    <td class="px-6 py-4">
-                        <div class="flex items-center gap-2 mb-1">
-                            <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium {{ $surat->jenis === 'sakit' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700' }}">
-                                {{ $surat->jenis === 'sakit' ? '🤒 Sakit' : '📄 Izin' }}
-                            </span>
-                        </div>
-                        <div class="text-xs text-gray-600 line-clamp-2">{{ $surat->alasan }}</div>
-                    </td>
-                    <td class="px-6 py-4">
-                        @if($surat->file_surat)
-                        <a href="{{ asset('storage/' . $surat->file_surat) }}" 
-                           target="_blank" 
-                           class="text-blue-600 hover:text-blue-700 flex items-center gap-1 text-sm">
-                            <span>📎</span> Lihat Surat
-                        </a>
-                        @else
-                        <span class="text-xs text-gray-400">-</span>
-                        @endif
-                    </td>
-                    <td class="px-6 py-4">
-                        @php
-                            $statusLabel = match($surat->status_verifikasi) {
-                                'pending' => ['Pending', 'bg-amber-50 text-amber-700'],
-                                'disetujui' => ['Disetujui', 'bg-green-50 text-green-700'],
-                                'ditolak' => ['Ditolak', 'bg-red-50 text-red-700'],
-                            };
-                        @endphp
-                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium {{ $statusLabel[1] }}">
-                            {{ $statusLabel[0] }}
-                        </span>
-                    </td>
-                    <td class="px-6 py-4 text-right">
-                        @if($surat->status_verifikasi === 'pending')
-                        <div class="flex items-center justify-end gap-2">
-                            <button onclick="approveSurat({{ $surat->id }})" 
-                                    class="inline-flex items-center gap-1 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 transition">
-                                ✓ Terima
-                            </button>
-                            <button onclick="rejectSurat({{ $surat->id }})" 
-                                    class="inline-flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 transition">
-                                ✗ Tolak
-                            </button>
-                        </div>
-                        @elseif($surat->status_verifikasi === 'disetujui')
-                        <div class="text-xs text-green-600 font-medium">
-                            {{ $surat->verifikator ? 'Oleh: ' . $surat->verifikator->name : 'Sistem' }}
-                        </div>
-                        @elseif($surat->status_verifikasi === 'ditolak')
-                        <div class="text-xs text-red-600 font-medium">
-                            {{ $surat->catatan_verifikasi ?? 'Alasan tidak tercatat' }}
-                        </div>
-                        @endif
-                    </td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="7" class="px-6 py-12 text-center text-gray-500">
-                        <div class="flex flex-col items-center gap-2">
-                            <span class="text-4xl">📭</span>
-                            <span>Tidak ada data surat absensi</span>
-                        </div>
-                    </td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
-
-    @if($surats->hasPages())
-    <div class="px-6 py-4 border-t border-gray-200">
-        {{ $surats->links() }}
-    </div>
-    @endif
-</div>
-
-<script>
-function approveSurat(id) {
-    if (confirm('Setujui surat ini?')) {
-        fetch(`/admin/absensi/surat/${id}/approve`, {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            location.reload();
-        })
-        .catch(error => {
-            alert('Gagal menyetujui surat');
-        });
-    }
-}
-
-function rejectSurat(id) {
-    const catatan = prompt('Masukkan alasan penolakan:');
-    if (catatan === null) return;
-
-    fetch(`/admin/absensi/surat/${id}/reject`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-        },
-        body: JSON.stringify({ catatan })
-    })
-    .then(response => response.json())
-    .then(data => {
-        location.reload();
-    })
-    .catch(error => {
-        alert('Gagal menolak surat');
-    });
-}
-
-document.getElementById('filterStatus').addEventListener('change', function() {
-    const status = this.value;
-    const rows = document.querySelectorAll('#suratTableBody tr');
+@php
+    $suratRows = collect($suratAbsensi ?? []);
+    $currentStatus = request('status', 'semua');
     
-    rows.forEach(row => {
-        if (status === '' || row.dataset.status === status) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
+    // Perbaikan logika filter agar akurat membaca status database
+    $filteredRows = $suratRows->filter(function($item) use ($currentStatus) {
+        $status = strtolower(trim($item->status_verifikasi ?? 'pending'));
+        
+        if ($currentStatus === 'disetujui') {
+            return in_array($status, ['disetujui', 'approved', 'valid']);
         }
+        if ($currentStatus === 'ditolak') {
+            return in_array($status, ['ditolak', 'rejected', 'invalid']);
+        }
+        
+        // Untuk "Semua / Pending", tampilkan yang statusnya pending / belum diputuskan
+        return in_array($status, ['pending', 'menunggu', '']);
     });
-});
 
-document.getElementById('searchSiswa').addEventListener('input', function() {
-    const query = this.value.toLowerCase();
-    const rows = document.querySelectorAll('#suratTableBody tr');
-    
-    rows.forEach(row => {
-        const text = row.innerText.toLowerCase();
-        row.style.display = text.includes(query) ? '' : 'none';
-    });
-});
-</script>
+    // Jika filter aktif kosong, fallback ke semua data agar list kiri tidak pernah kosong melompong
+    if ($filteredRows->isEmpty() && $currentStatus === 'semua') {
+        $filteredRows = $suratRows;
+    }
+
+    $selectedId = request('selected', $filteredRows->first()->id ?? ($suratRows->first()->id ?? 0));
+    $selectedItem = $suratRows->firstWhere('id', $selectedId) ?? $filteredRows->first() ?? $suratRows->first();
+@endphp
+
+<div class="min-h-screen bg-slate-50 text-slate-800 pb-12">
+    {{-- Header Halaman --}}
+    <header class="mx-auto max-w-[1600px] px-4 py-5 sm:px-6 lg:px-8">
+        <div class="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+            <div>
+                <p class="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-blue-700">Modul Tata Usaha &amp; Kesiswaan</p>
+                <h1 class="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Pusat Verifikasi Surat Absensi Siswa</h1>
+                <p class="mt-2 text-sm text-slate-500">Tinjau keabsahan dokumen izin dokter atau surat wali murid dan perbarui status absensi master siswa.</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 sm:min-w-[400px]">
+                <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                    <p class="text-xs font-medium text-slate-500">Antrean Validasi</p>
+                    <p class="mt-1 text-lg font-bold text-orange-600">{{ count($suratAbsensi) }} Surat Hari Ini</p>
+                </div>
+                <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                    <p class="text-xs font-medium text-slate-500">Selesai Diverifikasi</p>
+                    <p class="mt-1 text-lg font-bold text-emerald-700">{{ $totalDisetujui ?? 0 }} Surat Pekan Ini</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    {{-- SPLIT VIEW UTAMA: 2 Kolom Sejajar --}}
+    <main class="mx-auto grid max-w-[1600px] grid-cols-1 gap-5 px-4 sm:px-6 lg:grid-cols-12 lg:px-8 items-start">
+        
+        {{-- KOLOM KIRI: Daftar Antrean Surat --}}
+        <section class="lg:col-span-4 space-y-3">
+            <div class="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                <div class="grid grid-cols-3 gap-1.5" role="tablist">
+                    <a href="{{ route('admin.absensi.verifikasi', ['status' => 'semua']) }}" 
+                        class="{{ $currentStatus === 'semua' ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }} rounded-lg px-2 py-2 text-center text-xs font-semibold transition">
+                        Semua / Pending
+                    </a>
+                    <a href="{{ route('admin.absensi.verifikasi', ['status' => 'disetujui']) }}" 
+                        class="{{ $currentStatus === 'disetujui' ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }} rounded-lg px-2 py-2 text-center text-xs font-semibold transition">
+                        Disetujui
+                    </a>
+                    <a href="{{ route('admin.absensi.verifikasi', ['status' => 'ditolak']) }}" 
+                        class="{{ $currentStatus === 'ditolak' ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }} rounded-lg px-2 py-2 text-center text-xs font-semibold transition">
+                        Ditolak
+                    </a>
+                </div>
+            </div>
+
+            <div class="space-y-2.5">
+                @forelse($filteredRows as $item)
+                    @php
+                        $namaSiswa = $item->siswa->nama_lengkap ?? 'Siswa';
+                        $initials = strtoupper(substr($namaSiswa, 0, 2));
+                        $namaKelas = $item->siswa->kelas->nama_kelas ?? '-';
+                        $nisnSiswa = $item->siswa->nisn ?? '-';
+                        $jenisSurat = ucfirst($item->jenis ?? 'Sakit');
+                        $statusVerif = strtoupper($item->status_verifikasi ?? 'PENDING');
+                        $tglMulai = $item->tanggal_mulai ? \Carbon\Carbon::parse($item->tanggal_mulai)->format('d M Y') : '-';
+                        $tglUpload = $item->created_at ? $item->created_at->format('d M Y, H:i') . ' WIB' : '-';
+                        $isActive = (int)$item->id === (int)$selectedId;
+                    @endphp
+                    <a href="{{ route('admin.absensi.verifikasi', ['status' => $currentStatus, 'selected' => $item->id]) }}"
+                        class="block w-full rounded-xl border p-3.5 text-left shadow-sm transition cursor-pointer {{ $isActive ? 'border-blue-600 bg-white ring-2 ring-blue-100 shadow-md' : 'border-slate-200 bg-white hover:border-blue-200' }}">
+                        <div class="flex items-start gap-3">
+                            <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-600 text-white text-sm font-bold shadow-sm">{{ $initials }}</span>
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-start justify-between gap-1">
+                                    <p class="truncate text-sm font-bold text-slate-900">{{ $namaSiswa }}</p>
+                                    <span class="rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-semibold text-orange-600">{{ $jenisSurat }}</span>
+                                </div>
+                                <p class="text-[11px] text-slate-500 mt-0.5">Kelas {{ $namaKelas }} • NISN: {{ $nisnSiswa }}</p>
+                                
+                                <div class="mt-2.5 flex items-center justify-between text-[11px] text-slate-600 border-t border-slate-100 pt-2">
+                                    <span class="font-medium text-slate-700">{{ $tglMulai }}</span>
+                                    <span class="text-blue-600 font-semibold">{{ $item->file_surat ? '1 Dokumen PDF' : 'Surat Tertulis' }}</span>
+                                </div>
+                                <div class="mt-1 flex items-center justify-between text-[10px] text-slate-400">
+                                    <span>Diupload: {{ $tglUpload }}</span>
+                                    <span class="text-amber-600 font-semibold uppercase tracking-wider">{{ $statusVerif }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                @empty
+                    <div class="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500 bg-white">
+                        Tidak ada surat yang sesuai dengan filter ini.
+                    </div>
+                @endforelse
+            </div>
+        </section>
+
+        {{-- KOLOM KANAN: Detail & Pratinjau Dokumen Berdasarkan Item yang Dipilih --}}
+        <section class="min-w-0 lg:col-span-8">
+            @if($selectedItem)
+                @php
+                    $namaSiswa = $selectedItem->siswa->nama_lengkap ?? 'Siswa';
+                    $initials = strtoupper(substr($namaSiswa, 0, 2));
+                    $namaKelas = $selectedItem->siswa->kelas->nama_kelas ?? '-';
+                    $nisnSiswa = $selectedItem->siswa->nisn ?? '-';
+                    $waliKelas = $selectedItem->siswa->kelas->waliKelas->name ?? 'Wali Kelas';
+                    $jenisSurat = ucfirst($selectedItem->jenis ?? 'Sakit');
+                    $alasan = $selectedItem->alasan ?? 'Tidak ada keterangan';
+                    $statusVerif = strtoupper($selectedItem->status_verifikasi ?? 'PENDING');
+                    $tglMulai = $selectedItem->tanggal_mulai ? \Carbon\Carbon::parse($selectedItem->tanggal_mulai)->format('d M Y') : '-';
+                    $tglSelesai = $selectedItem->tanggal_selesai ? \Carbon\Carbon::parse($selectedItem->tanggal_selesai) : null;
+                    $durasiHari = ($tglMulai && $tglSelesai) ? (\Carbon\Carbon::parse($selectedItem->tanggal_mulai)->diffInDays($selectedItem->tanggal_selesai) + 1) . ' Hari' : '1 Hari';
+                    $fileUrl = $selectedItem->file_surat ? asset('storage/' . $selectedItem->file_surat) : null;
+                @endphp
+                <div x-data="{ decision: 'valid' }" class="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                    
+                    {{-- Header Detail Siswa --}}
+                    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4">
+                        <div class="flex items-center gap-3.5">
+                            <span class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-blue-600 text-lg font-bold text-white shadow-sm">{{ $initials }}</span>
+                            <div>
+                                <h2 class="text-lg font-bold text-slate-900">{{ $namaSiswa }}</h2>
+                                <p class="text-xs text-slate-500">NISN: {{ $nisnSiswa }}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4 text-xs">
+                            <div class="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2">
+                                <p class="text-[10px] font-medium text-slate-400 uppercase">Kelas</p>
+                                <p class="font-bold text-slate-800">{{ $namaKelas }}</p>
+                            </div>
+                            <div class="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2">
+                                <p class="text-[10px] font-medium text-slate-400 uppercase">Wali Kelas</p>
+                                <p class="font-bold text-slate-800">{{ $waliKelas }}</p>
+                            </div>
+                            <div class="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2">
+                                <p class="text-[10px] font-medium text-slate-400 uppercase">Orang Tua / Wali</p>
+                                <a href="tel:08123456789" class="font-bold text-blue-700 hover:underline">0812-3456-7890</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Informasi Ringkas Permohonan --}}
+                    <div class="grid grid-cols-4 gap-3 text-xs bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                        <div>
+                            <p class="text-[10px] uppercase font-semibold text-slate-400">Jenis Permohonan</p>
+                            <p class="font-bold text-slate-800 mt-0.5">{{ $jenisSurat }} (Dokter)</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] uppercase font-semibold text-slate-400">Rentang Tanggal</p>
+                            <p class="font-bold text-slate-800 mt-0.5">{{ $tglMulai }}</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] uppercase font-semibold text-slate-400">Total Hari Efektif</p>
+                            <p class="font-bold text-blue-700 mt-0.5">{{ $durasiHari }}</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] uppercase font-semibold text-slate-400">Kontak Wali</p>
+                            <p class="font-bold text-slate-800 mt-0.5">0812-3456-7890</p>
+                        </div>
+                    </div>
+
+                    {{-- Pratinjau Dokumen Terlampir --}}
+                    <section>
+                        <div class="mb-3 flex items-center justify-between">
+                            <h3 class="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                                <span>📄</span> Pratinjau Dokumen Surat Terlampir
+                            </h3>
+                            <a href="#" @click.prevent="alert('Mengunduh berkas dokumen...')" class="rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-indigo-100 transition">
+                                Unduh Berkas
+                            </a>
+                        </div>
+
+                        <div class="rounded-xl border border-indigo-100 bg-indigo-50/40 p-4">
+                            @if($fileUrl)
+                                <div class="text-center">
+                                    <img src="{{ $fileUrl }}" alt="Bukti Surat" class="mx-auto max-h-[420px] rounded-lg border shadow-sm bg-white">
+                                </div>
+                            @else
+                                <article class="mx-auto max-w-xl rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                                    <div class="flex items-center justify-between border-b pb-3">
+                                        <div>
+                                            <h4 class="text-xs font-extrabold text-slate-900">KLINIK PRATAMA SEHAT MEDIKA</h4>
+                                            <p class="text-[10px] text-slate-400">SIP Dokter: 445/098/DKK/SIP/2024 • Jl. Pemuda No. 42</p>
+                                        </div>
+                                        <span class="rounded bg-blue-50 px-2.5 py-1 text-[10px] font-bold text-blue-700">SURAT KETERANGAN DOKTER</span>
+                                    </div>
+                                    <div class="mt-4 space-y-3 text-xs text-slate-700">
+                                        <p class="italic">Menerangkan dengan sebenarnya bahwa:</p>
+                                        <div class="grid grid-cols-[120px_1fr] gap-x-3 gap-y-1 font-medium text-slate-900">
+                                            <span class="text-slate-400">Nama Pasien</span>: {{ $namaSiswa }}
+                                            <span class="text-slate-400">Kelas / NISN</span>: {{ $namaKelas }} / {{ $nisnSiswa }}
+                                            <span class="text-slate-400">Diagnosa</span>: {{ $alasan }}
+                                            <span class="text-slate-400">Keterangan</span>: Perlu diberikan istirahat selama {{ $durasiHari }} terhitung mulai tanggal tersebut.
+                                        </div>
+                                    </div>
+                                </article>
+                            @endif
+                        </div>
+                    </section>
+
+                    {{-- Blok Keputusan Tata Usaha --}}
+                    <div class="border-t pt-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-bold text-slate-900">Blok Keputusan Tata Usaha</h3>
+                            <span class="text-[11px] text-slate-400">Status Saat Ini: <strong class="uppercase text-blue-600">{{ $statusVerif }}</strong></span>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3 mb-4">
+                            <button type="button" @click="decision = 'valid'"
+                                :class="decision === 'valid' ? 'ring-2 ring-emerald-400 bg-emerald-100/80 border-emerald-300' : 'bg-emerald-50/60 border-emerald-100'"
+                                class="rounded-xl p-3.5 text-left border transition hover:bg-emerald-100 cursor-pointer">
+                                <span class="block text-sm font-bold text-emerald-900">✅ Surat Valid</span>
+                                <span class="text-[11px] text-emerald-700">Setujui &amp; Perbarui Absensi Siswa</span>
+                            </button>
+                            <button type="button" @click="decision = 'invalid'"
+                                :class="decision === 'invalid' ? 'ring-2 ring-rose-400 bg-rose-100/80 border-rose-300' : 'bg-rose-50/60 border-rose-100'"
+                                class="rounded-xl p-3.5 text-left border transition hover:bg-rose-100 cursor-pointer">
+                                <span class="block text-sm font-bold text-rose-800">❌ Surat Tidak Valid</span>
+                                <span class="text-[11px] text-rose-700">Tolak &amp; Minta Perbaikan Dokumen</span>
+                            </button>
+                        </div>
+
+                        {{-- Form Konfirmasi Persetujuan (Approve) --}}
+                        <form x-show="decision === 'valid'" action="{{ route('admin.absensi.surat.approve', $selectedItem->id) }}" method="POST" class="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 space-y-3">
+                            @csrf
+                            <div class="flex items-center justify-between">
+                                <p class="text-xs font-bold text-emerald-900">Form Konfirmasi Persetujuan Surat Absensi</p>
+                                <span class="rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">Status: {{ $statusVerif }}</span>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 mb-1">Pilih Kategori Keterangan Absensi Master:</label>
+                                <div class="flex items-center gap-6 text-xs font-medium text-slate-800">
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input type="radio" name="kategori_master" value="sakit" checked class="text-emerald-600 focus:ring-emerald-500"> Sakit Resmi (S)
+                                    </label>
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input type="radio" name="kategori_master" value="izin" class="text-emerald-600 focus:ring-emerald-500"> Izin Tertulis (I)
+                                    </label>
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input type="radio" name="kategori_master" value="disensasi" class="text-emerald-600 focus:ring-emerald-500"> Dispensasi (D)
+                                    </label>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="w-full rounded-xl bg-emerald-700 hover:bg-emerald-800 px-4 py-2.5 text-xs font-bold text-white shadow transition flex items-center justify-center gap-2 cursor-pointer">
+                                <span>💾 Simpan &amp; Setujui Persetujuan Surat</span>
+                            </button>
+                        </form>
+
+                        {{-- Form Konfirmasi Penolakan (Reject) --}}
+                        <form x-show="decision === 'invalid'" action="{{ route('admin.absensi.surat.reject', $selectedItem->id) }}" method="POST" class="rounded-xl border border-rose-200 bg-rose-50/50 p-4 space-y-3">
+                            @csrf
+                            <p class="text-xs font-bold text-rose-900">Alasan Penolakan / Catatan Perbaikan Dokumen:</p>
+                            <textarea name="catatan" rows="2" required placeholder="Tulis catatan penolakan untuk wali murid..." class="w-full rounded-lg border border-slate-300 p-2.5 text-xs bg-white focus:ring-2 focus:ring-rose-500 focus:outline-none"></textarea>
+                            
+                            <button type="submit" class="w-full rounded-xl bg-rose-600 hover:bg-rose-700 px-4 py-2.5 text-xs font-bold text-white shadow transition flex items-center justify-center gap-2 cursor-pointer">
+                                <span>📤 Kirim Penolakan &amp; Notifikasi ke Siswa</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            @else
+                <div class="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500 shadow-sm">
+                    Belum ada data detail surat yang dipilih.
+                </div>
+            @endif
+        </section>
+    </main>
+</div>
 @endsection

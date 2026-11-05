@@ -28,7 +28,7 @@ Route::middleware(['auth', App\Http\Middleware\EnsureUserIsAdmin::class])->prefi
     Route::put('/penugasan/{id}', [PenugasanController::class, 'update'])->name('penugasan.update');
     Route::delete('/penugasan/{id}', [PenugasanController::class, 'destroy'])->name('penugasan.destroy');
 
-    // Absensi routes
+    // Absensi routes (Tetap menggunakan verifikasiSurat sesuai controller aslimu)
     Route::get('/absensi/verifikasi', [AbsensiController::class, 'verifikasiSurat'])->name('absensi.verifikasi');
     Route::get('/absensi/histori', [AbsensiController::class, 'historiSurat'])->name('absensi.histori');
     Route::post('/absensi/surat/{id}/approve', [AbsensiController::class, 'approveSurat'])->name('absensi.surat.approve');
