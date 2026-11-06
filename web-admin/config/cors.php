@@ -25,10 +25,11 @@ return [
 
     'allowed_headers' => ['*'],
 
-    'exposed_headers' => [],
+    'exposed_headers' => ['Authorization', 'Content-Type'],
 
-    'max_age' => 0,
+    'max_age' => 3600,
 
+    // API authentication uses Bearer tokens, not cross-origin session cookies.
     'supports_credentials' => false,
 
 ];

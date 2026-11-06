@@ -4,6 +4,9 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\PenugasanController;
 use App\Http\Controllers\Admin\AbsensiController;
+use App\Http\Controllers\Admin\MateriController;
+use App\Http\Controllers\Admin\TugasController;
+use App\Http\Controllers\Admin\NilaiController;
 use Illuminate\Support\Facades\Route;
 
 // Redirect root to login
@@ -27,6 +30,28 @@ Route::middleware(['auth', App\Http\Middleware\EnsureUserIsAdmin::class])->prefi
     Route::get('/penugasan/{id}/edit', [PenugasanController::class, 'edit'])->name('penugasan.edit');
     Route::put('/penugasan/{id}', [PenugasanController::class, 'update'])->name('penugasan.update');
     Route::delete('/penugasan/{id}', [PenugasanController::class, 'destroy'])->name('penugasan.destroy');
+
+    // Materi routes
+    Route::get('/materi', [MateriController::class, 'index'])->name('materi.index');
+    Route::get('/materi/create', [MateriController::class, 'create'])->name('materi.create');
+    Route::post('/materi', [MateriController::class, 'store'])->name('materi.store');
+    Route::get('/materi/{id}/edit', [MateriController::class, 'edit'])->name('materi.edit');
+    Route::put('/materi/{id}', [MateriController::class, 'update'])->name('materi.update');
+    Route::delete('/materi/{id}', [MateriController::class, 'destroy'])->name('materi.destroy');
+
+    // Tugas routes
+    Route::get('/tugas', [TugasController::class, 'index'])->name('tugas.index');
+    Route::get('/tugas/create', [TugasController::class, 'create'])->name('tugas.create');
+    Route::post('/tugas', [TugasController::class, 'store'])->name('tugas.store');
+    Route::get('/tugas/{id}', [TugasController::class, 'show'])->name('tugas.show');
+    Route::get('/tugas/{id}/edit', [TugasController::class, 'edit'])->name('tugas.edit');
+    Route::put('/tugas/{id}', [TugasController::class, 'update'])->name('tugas.update');
+    Route::delete('/tugas/{id}', [TugasController::class, 'destroy'])->name('tugas.destroy');
+
+    // Nilai routes
+    Route::get('/nilai', [NilaiController::class, 'index'])->name('nilai.index');
+    Route::get('/nilai/{tugas_id}', [NilaiController::class, 'detail'])->name('nilai.detail');
+    Route::post('/nilai', [NilaiController::class, 'store'])->name('nilai.store');
 
     // Absensi routes
     Route::get('/absensi/verifikasi', [AbsensiController::class, 'verifikasiSurat'])->name('absensi.verifikasi');

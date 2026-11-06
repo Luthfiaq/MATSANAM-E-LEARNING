@@ -82,65 +82,7 @@ class _DashboardSiswaPageState extends State<DashboardSiswaPage> {
   }
 
   void _profil() {
-    final d = _data;
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircleAvatar(
-                radius: 30,
-                backgroundColor: AppColors.primary,
-                child: Icon(Icons.person, size: 32, color: Colors.white),
-              ),
-              const SizedBox(height: 12),
-              Text(d?.nama ?? 'Siswa',
-                  style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary)),
-              const SizedBox(height: 2),
-              if (d != null)
-                Text('NIS ${d.nis} • Kelas ${d.kelas}',
-                    style: const TextStyle(
-                        fontSize: 13, color: AppColors.textSecondary)),
-              const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    Navigator.pop(ctx);
-                    await AuthService().logout();
-                    if (!mounted) return;
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (_) => const LoginScreen()),
-                      (_) => false,
-                    );
-                  },
-                  icon: const Icon(Icons.logout_rounded, size: 20),
-                  label: const Text('Keluar',
-                      style: TextStyle(fontWeight: FontWeight.w700)),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.error,
-                    side: const BorderSide(color: AppColors.errorLight),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    Navigator.of(context).pushNamed('/siswa/profil');
   }
 
   @override

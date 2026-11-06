@@ -1,45 +1,34 @@
 import 'package:http/http.dart' as http;
 
+import '../config/api_config.dart';
 import '../models/absensi_model.dart';
+import '../utils/session.dart';
 
 class AbsensiService {
-  // GANTI dengan URL API Laravel milik kalian.
-  static const String baseUrl = 'https://domain-kalian.com/api';
-
-  // Endpoint pengajuan izin/sakit
-  static const String endpoint = '$baseUrl/pengajuan-izin';
-
   Future<http.StreamedResponse> kirimPengajuanIzin(
     PengajuanIzinModel data,
   ) async {
-    final uri = Uri.parse(endpoint);
+    final token = await Session.getToken();
+    if (token == null || token.isEmpty) {
+      throw StateError('Sesi login tidak ditemukan. Silakan masuk kembali.');
+    }
 
     final request = http.MultipartRequest(
       'POST',
-      uri,
+      Uri.parse(ApiConfig.siswaPengajuanIzin),
     );
-
-    // Field data form
     request.fields.addAll(data.toFields());
-
-    // Upload file
     if (data.fileBytes != null && data.fileName != null) {
-      request.files.add(
-        http.MultipartFile.fromBytes(
-          'dokumen',
-          data.fileBytes!,
-          filename: data.fileName!,
-        ),
-      );
+      request.files.add(http.MultipartFile.fromBytes(
+        'dokumen',
+        data.fileBytes!,
+        filename: data.fileName!,
+      ));
     }
-
-    // Kalau API Laravel kalian membutuhkan token,
-    // bisa ditambahkan seperti ini:
-    //
-    // request.headers['Authorization'] = 'Bearer TOKEN_KALIAN';
-
-    request.headers['Accept'] = 'application/json';
-
-    return await request.send();
+    request.headers.addAll({
+      'Accept': 'application/json',
+      'Authorization': 'Bearer $token',
+    });
+    return request.send().timeout(ApiConfig.timeout);
   }
 }

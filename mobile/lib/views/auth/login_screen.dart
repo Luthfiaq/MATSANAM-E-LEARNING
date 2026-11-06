@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../services/api_exception.dart';
 import '../../services/auth_service.dart';
 import '../../utils/constants.dart';
 import '../../widgets/common/school_logo.dart';
 import '../siswa/dashboard/dashboard_siswa_page.dart';
+import '../guru/dashboard_guru_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -41,18 +41,35 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      await _auth.login(
+      final result = await _auth.login(
         email: _emailC.text.trim(),
         password: _passC.text,
         remember: _remember,
       );
       if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const DashboardSiswaPage()),
-        (_) => false,
-      );
-    } on ApiException catch (e) {
-      if (mounted) setState(() => _error = e.message);
+
+      if (result['success'] == true) {
+        final data = result['data'] as Map<String, dynamic>;
+        final user = data['user'] as Map<String, dynamic>;
+        final role = user['role']?.toString();
+        final Widget tujuan;
+        if (role == 'guru') {
+          tujuan = const DashboardGuruScreen();
+        } else if (role == 'siswa') {
+          tujuan = const DashboardSiswaPage();
+        } else {
+          await _auth.logout();
+          setState(() => _error = 'Role akun tidak dikenali untuk aplikasi mobile.');
+          return;
+        }
+
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => tujuan),
+          (_) => false,
+        );
+      } else {
+        setState(() => _error = result['message']?.toString() ?? 'Login gagal.');
+      }
     } catch (_) {
       if (mounted) setState(() => _error = 'Terjadi kesalahan. Coba lagi.');
     } finally {
