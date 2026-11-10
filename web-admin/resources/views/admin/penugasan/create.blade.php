@@ -145,40 +145,68 @@
             </div>
 
             <!-- Jam Mulai -->
-            <div>
-                <label for="jam_mulai" class="block text-sm font-medium text-gray-700 mb-2">
-                    Jam Mulai <span class="text-red-500">*</span>
-                </label>
-                <input 
-                    type="time" 
-                    id="jam_mulai" 
-                    name="jam_mulai" 
-                    value="{{ old('jam_mulai', '07:30') }}"
-                    required
-                    class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                />
-                @error('jam_mulai')
-                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                @enderror
-            </div>
+<div>
+    <label for="jam_mulai_ke" class="block text-sm font-medium text-gray-700 mb-2">
+        Jam Mulai <span class="text-red-500">*</span>
+    </label>
+    <select
+        id="jam_mulai_ke"
+        name="jam_mulai_ke"
+        required
+        class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+    >
+        <option value="">Pilih Jam Mulai</option>
+        @foreach ([
+            1 => '07.15 - 07.55',
+            2 => '07.55 - 08.35',
+            3 => '08.35 - 09.15',
+            4 => '09.15 - 09.55',
+            5 => '10.30 - 11.10',
+            6 => '11.10 - 11.50',
+            7 => '11.50 - 12.30',
+            8 => '12.30 - 13.10',
+        ] as $jam => $waktu)
+            <option value="{{ $jam }}" {{ old('jam_mulai_ke') == $jam ? 'selected' : '' }}>
+                Jam ke-{{ $jam }} ({{ $waktu }})
+            </option>
+        @endforeach
+    </select>
+    @error('jam_mulai_ke')
+    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+    @enderror
+</div>
 
-            <!-- Jam Selesai -->
-            <div>
-                <label for="jam_selesai" class="block text-sm font-medium text-gray-700 mb-2">
-                    Jam Selesai <span class="text-red-500">*</span>
-                </label>
-                <input 
-                    type="time" 
-                    id="jam_selesai" 
-                    name="jam_selesai" 
-                    value="{{ old('jam_selesai', '09:00') }}"
-                    required
-                    class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                />
-                @error('jam_selesai')
-                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                @enderror
-            </div>
+<!-- Jam Selesai -->
+<div>
+    <label for="jam_selesai_ke" class="block text-sm font-medium text-gray-700 mb-2">
+        Jam Selesai <span class="text-red-500">*</span>
+    </label>
+    <select
+        id="jam_selesai_ke"
+        name="jam_selesai_ke"
+        required
+        class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+    >
+        <option value="">Pilih Jam Selesai</option>
+        @foreach ([
+            1 => '07.15 - 07.55',
+            2 => '07.55 - 08.35',
+            3 => '08.35 - 09.15',
+            4 => '09.15 - 09.55',
+            5 => '10.30 - 11.10',
+            6 => '11.10 - 11.50',
+            7 => '11.50 - 12.30',
+            8 => '12.30 - 13.10',
+        ] as $jam => $waktu)
+            <option value="{{ $jam }}" {{ old('jam_selesai_ke') == $jam ? 'selected' : '' }}>
+                Jam ke-{{ $jam }} ({{ $waktu }})
+            </option>
+        @endforeach
+    </select>
+    @error('jam_selesai_ke')
+    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+    @enderror
+</div>
         </div>
 
         <!-- Action Buttons -->
