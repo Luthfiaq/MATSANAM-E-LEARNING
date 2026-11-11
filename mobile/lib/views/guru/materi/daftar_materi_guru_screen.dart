@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-
+import 'tambah_materi_guru_screen.dart';
+import 'edit_materi_guru_screen.dart';
 
 class DaftarMateriGuruScreen extends StatefulWidget {
   final String mapel;
@@ -94,6 +95,32 @@ class _DaftarMateriGuruScreenState
     Map<String, String>? material,
     int? index,
   }) async {
+        if (material == null)
+        
+         {
+      final hasil = await Navigator.push<Map<String, String>>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const TambahMateriGuruScreen(),
+        ),
+      );
+      if (hasil == null || !mounted) return;
+      setState(() => materials.insert(0, hasil));
+      showMessage('Materi berhasil ditambahkan');
+      return;
+    }
+        final hasilEdit = await Navigator.push<Map<String, String>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditMateriGuruScreen(material: material),
+      ),
+    );
+    if (hasilEdit == null || !mounted) return;
+    if (index != null) {
+      setState(() => materials[index] = hasilEdit);
+    }
+    showMessage('Materi berhasil diperbarui');
+    return;
     final titleController = TextEditingController(
       text: material?['title'] ?? '',
     );

@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import '../../../utils/constants.dart';
 import 'daftar_tugas_guru_screen.dart';
 
 class PilihMapelKelasTugasGuruScreen extends StatefulWidget {
@@ -16,40 +17,39 @@ class _PilihMapelKelasTugasGuruScreenState
   String selectedFilter = 'Semua';
   String searchQuery = '';
 
-  final Color primary = const Color(0xFF0349C9);
+  final Color primary = AppColors.primary;
 
-  bool get isDark =>
-      Theme.of(context).brightness == Brightness.dark;
+  bool get isDark => Theme.of(context).brightness == Brightness.dark;
 
   Color get pageBackground =>
-      isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC);
+      isDark ? const Color(0xFF111827) : AppColors.background;
 
   Color get cardBackground =>
-      isDark ? const Color(0xFF1F2937) : Colors.white;
+      isDark ? const Color(0xFF1F2937) : AppColors.surface;
 
   Color get primaryText =>
-      isDark ? const Color(0xFFF1F5F9) : const Color(0xFF172033);
+      isDark ? const Color(0xFFF1F5F9) : AppColors.textPrimary;
 
   Color get secondaryText =>
-      isDark ? const Color(0xFF9CA3AF) : const Color(0xFF94A3B8);
+      isDark ? const Color(0xFF9CA3AF) : AppColors.textSecondary;
 
   Color get borderColor =>
       isDark ? const Color(0xFF374151) : const Color(0xFFF0F2F5);
 
   Color get softBackground =>
-      isDark ? const Color(0xFF273449) : const Color(0xFFF7F8FD);
+      isDark ? const Color(0xFF273449) : const Color(0xFFF5F7FF);
 
   Color get searchBackground =>
-      isDark ? const Color(0xFF1F2937) : Colors.white;
+      isDark ? const Color(0xFF273449) : const Color(0xFFF1F5F9);
 
   Color get chipBackground =>
       isDark ? const Color(0xFF273449) : Colors.white;
 
   Color get academicBackground =>
-      isDark ? const Color(0xFF252F49) : const Color(0xFFF0F2FF);
+      isDark ? const Color(0xFF252F49) : Colors.white;
 
   Color get iconBackground =>
-      isDark ? const Color(0xFF273449) : const Color(0xFFEFF6FF);
+      isDark ? const Color(0xFF273449) : AppColors.primaryLight;
 
   final List<Map<String, dynamic>> subjects = [
     {
@@ -68,29 +68,29 @@ class _PilihMapelKelasTugasGuruScreenState
       'status': 'Lab Aktif',
       'classes': ['Kelas 8A', 'Kelas 8B'],
       'students': 64,
-      'tasks': 6,
+      'tasks': 5,
       'icon': Icons.biotech_outlined,
       'color': const Color(0xFF059669),
-      'light': const Color(0xFF7CF2C5),
-      'badge': const Color(0xFFD1FAE5),
+      'light': const Color(0xFFCFF7E6),
+      'badge': const Color(0xFF86EFC5),
     },
     {
       'name': 'Informatika',
       'status': 'Praktikum',
       'classes': ['Kelas 7B', 'Kelas 8C'],
       'students': 62,
-      'tasks': 10,
+      'tasks': 7,
       'icon': Icons.terminal_rounded,
       'color': const Color(0xFFB45309),
       'light': const Color(0xFFFFD8CB),
-      'badge': const Color(0xFFFFE0D5),
+      'badge': const Color(0xFFFFD9CC),
     },
     {
       'name': 'Bahasa Indonesia',
       'status': 'Wajib',
       'classes': ['Kelas 7A', 'Kelas 7B', 'Kelas 7C'],
       'students': 96,
-      'tasks': 5,
+      'tasks': 4,
       'icon': Icons.menu_book_rounded,
       'color': const Color(0xFF2454E8),
       'light': const Color(0xFFDDE4FF),
@@ -101,7 +101,7 @@ class _PilihMapelKelasTugasGuruScreenState
       'status': 'Wajib',
       'classes': ['Kelas 8A', 'Kelas 9A'],
       'students': 60,
-      'tasks': 7,
+      'tasks': 6,
       'icon': Icons.public_rounded,
       'color': const Color(0xFF7C3AED),
       'light': const Color(0xFFE9D5FF),
@@ -109,12 +109,7 @@ class _PilihMapelKelasTugasGuruScreenState
     },
   ];
 
-  final List<String> filters = [
-    'Semua',
-    'Kelas 7',
-    'Kelas 8',
-    'Kelas 9',
-  ];
+  final List<String> filters = ['Semua', 'Kelas 7', 'Kelas 8', 'Kelas 9'];
 
   @override
   void dispose() {
@@ -125,14 +120,11 @@ class _PilihMapelKelasTugasGuruScreenState
   List<Map<String, dynamic>> get filteredSubjects {
     return subjects.where((subject) {
       final name = subject['name'].toString().toLowerCase();
-
       final classes =
           (subject['classes'] as List<String>).join(' ').toLowerCase();
-
       final query = searchQuery.toLowerCase();
 
-      final matchesSearch =
-          name.contains(query) || classes.contains(query);
+      final matchesSearch = name.contains(query) || classes.contains(query);
 
       final matchesClass = selectedFilter == 'Semua' ||
           (subject['classes'] as List<String>)
@@ -142,14 +134,22 @@ class _PilihMapelKelasTugasGuruScreenState
     }).toList();
   }
 
+  // Contoh: ['Kelas 9A','Kelas 9B'] -> "Kelas 9A, 9B"
+  // Contoh beda tingkat: ['Kelas 7B','Kelas 8C'] -> "Kelas 7B & 8C"
+  String formatClasses(List<String> classes) {
+    final short = classes.map((k) => k.replaceFirst('Kelas ', '')).toList();
+    final grades = short.map((k) => k.substring(0, 1)).toSet();
+    final separator = grades.length > 1 ? ' & ' : ', ';
+    return 'Kelas ${short.join(separator)}';
+  }
+
   void showMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: isDark
-            ? const Color(0xFF374151)
-            : const Color(0xFF172033),
+        backgroundColor:
+            isDark ? const Color(0xFF374151) : const Color(0xFF172033),
       ),
     );
   }
@@ -162,9 +162,7 @@ class _PilihMapelKelasTugasGuruScreenState
       backgroundColor: cardBackground,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(22),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
       builder: (sheetContext) {
         return SafeArea(
@@ -204,10 +202,7 @@ class _PilihMapelKelasTugasGuruScreenState
                     contentPadding: EdgeInsets.zero,
                     leading: CircleAvatar(
                       backgroundColor: iconBackground,
-                      child: Icon(
-                        Icons.school_outlined,
-                        color: primary,
-                      ),
+                      child: Icon(Icons.school_outlined, color: primary),
                     ),
                     title: Text(
                       kelas,
@@ -216,23 +211,19 @@ class _PilihMapelKelasTugasGuruScreenState
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    trailing: Icon(
-                      Icons.chevron_right,
-                      color: secondaryText,
-                    ),
+                    trailing: Icon(Icons.chevron_right, color: secondaryText),
                     onTap: () {
-  Navigator.pop(sheetContext);
-
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => DaftarTugasGuruScreen(
-        mapel: subject['name'],
-        kelas: kelas,
-      ),
-    ),
-  );
-},
+                      Navigator.pop(sheetContext);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => DaftarTugasGuruScreen(
+                            mapel: subject['name'],
+                            kelas: kelas,
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ],
@@ -252,14 +243,11 @@ class _PilihMapelKelasTugasGuruScreenState
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back,
-            color: primaryText,
-          ),
+          icon: Icon(Icons.arrow_back, color: primaryText),
           onPressed: () => Navigator.maybePop(context),
         ),
         title: Text(
-          'Tugas',
+          'Pilih Mapel Tugas',
           style: TextStyle(
             color: primaryText,
             fontSize: 18,
@@ -269,9 +257,23 @@ class _PilihMapelKelasTugasGuruScreenState
         actions: [
           IconButton(
             onPressed: () => showMessage('Belum ada notifikasi baru'),
-            icon: Icon(
-              Icons.notifications_none_rounded,
-              color: primaryText,
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(Icons.notifications_none_rounded, color: primaryText),
+                Positioned(
+                  right: 1,
+                  top: 1,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFEF4444),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           Padding(
@@ -289,6 +291,7 @@ class _PilihMapelKelasTugasGuruScreenState
                 child: const Icon(
                   Icons.person_outline_rounded,
                   color: Colors.white,
+                  size: 20,
                 ),
               ),
             ),
@@ -296,21 +299,18 @@ class _PilihMapelKelasTugasGuruScreenState
         ],
       ),
       body: SafeArea(
-        top: false,
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 650),
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildTeacherInfo(),
-                  const SizedBox(height: 12),
-                  _buildSearch(),
-                  const SizedBox(height: 12),
+                  _buildTeacherCard(),
+                  const SizedBox(height: 14),
                   _buildFilters(),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 18),
                   _buildSectionHeader(),
                   const SizedBox(height: 12),
                   if (filteredSubjects.isEmpty)
@@ -318,11 +318,11 @@ class _PilihMapelKelasTugasGuruScreenState
                   else
                     ...filteredSubjects.map(
                       (subject) => Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.only(bottom: 12),
                         child: _buildSubjectCard(subject),
                       ),
                     ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 6),
                   _buildAcademicInfo(),
                 ],
               ),
@@ -330,87 +330,103 @@ class _PilihMapelKelasTugasGuruScreenState
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNavigation(),
     );
   }
 
-  Widget _buildTeacherInfo() {
+  // Kartu guru + kolom pencarian (satu kartu, sesuai desain)
+  Widget _buildTeacherCard() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
         children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: iconBackground,
-              borderRadius: BorderRadius.circular(13),
-            ),
-            child: Icon(
-              Icons.school_outlined,
-              color: primary,
-              size: 25,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'GURU PENGAMPU',
-                  style: TextStyle(
-                    color: secondaryText,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.7,
+          Row(
+            children: [
+              // Thumbnail guru (placeholder; ganti Image.asset jika ada fotonya)
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: iconBackground,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.person_rounded, color: primary, size: 30),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? const Color(0xFF064E3B)
+                            : const Color(0xFF86EFC5),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.circle,
+                            size: 7,
+                            color: Color(0xFF059669),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            'Aktif Mengajar',
+                            style: TextStyle(
+                              color: isDark
+                                  ? const Color(0xFFA7F3D0)
+                                  : const Color(0xFF065F46),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      'Pak Imam Kholik, S.Pd',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: primaryText,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () => showMessage('Filter lanjutan belum tersedia'),
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF30365A)
+                        : const Color(0xFFE8EAFE),
+                    borderRadius: BorderRadius.circular(12),
                   ),
+                  child: Icon(Icons.tune_rounded, color: primary, size: 20),
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  'Pak Imam Kholik, S.Pd',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: primaryText,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 7,
-            ),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? const Color(0xFF30365A)
-                  : const Color(0xFFE8EAFE),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.circle,
-                  size: 8,
-                  color: Color(0xFF059669),
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  'Aktif Mengajar',
-                  style: TextStyle(
-                    color: primaryText,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          const SizedBox(height: 12),
+          _buildSearch(),
         ],
       ),
     );
@@ -422,49 +438,32 @@ class _PilihMapelKelasTugasGuruScreenState
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: searchBackground,
-        borderRadius: BorderRadius.circular(13),
-        border: Border.all(color: borderColor),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.search,
-            color: secondaryText,
-            size: 21,
-          ),
+          Icon(Icons.search, color: secondaryText, size: 21),
           const SizedBox(width: 9),
           Expanded(
             child: TextField(
               controller: searchController,
-              onChanged: (value) {
-                setState(() => searchQuery = value);
-              },
-              style: TextStyle(
-                color: primaryText,
-                fontSize: 13,
-              ),
+              onChanged: (value) => setState(() => searchQuery = value),
+              style: TextStyle(color: primaryText, fontSize: 13),
               decoration: InputDecoration(
                 hintText: 'Cari mata pelajaran atau kelas...',
-                hintStyle: TextStyle(
-                  color: secondaryText,
-                  fontSize: 13,
-                ),
+                hintStyle: TextStyle(color: secondaryText, fontSize: 13),
                 border: InputBorder.none,
                 isDense: true,
               ),
             ),
           ),
           if (searchQuery.isNotEmpty)
-            IconButton(
-              onPressed: () {
+            GestureDetector(
+              onTap: () {
                 searchController.clear();
                 setState(() => searchQuery = '');
               },
-              icon: Icon(
-                Icons.close,
-                size: 18,
-                color: secondaryText,
-              ),
+              child: Icon(Icons.close, size: 18, color: secondaryText),
             ),
         ],
       ),
@@ -482,32 +481,23 @@ class _PilihMapelKelasTugasGuruScreenState
             padding: const EdgeInsets.only(right: 8),
             child: ChoiceChip(
               label: Text(
-                filter == 'Semua' ? 'Semua (5)' : filter,
+                filter == 'Semua' ? 'Semua (${subjects.length})' : filter,
                 style: TextStyle(
-                  color: selected
-                      ? Colors.white
-                      : primaryText,
+                  color: selected ? Colors.white : primaryText,
                   fontSize: 12,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               selected: selected,
               showCheckmark: false,
-              onSelected: (_) {
-                setState(() => selectedFilter = filter);
-              },
+              onSelected: (_) => setState(() => selectedFilter = filter),
               backgroundColor: chipBackground,
               selectedColor: primary,
-              side: BorderSide(
-                color: selected ? primary : borderColor,
-              ),
+              side: BorderSide(color: selected ? primary : borderColor),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 7,
-                vertical: 2,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             ),
           );
         }).toList(),
@@ -529,31 +519,18 @@ class _PilihMapelKelasTugasGuruScreenState
           ),
         ),
         Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 8,
-            vertical: 4,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
-            color: isDark
-                ? const Color(0xFF263A60)
-                : const Color(0xFFEFF6FF),
-            borderRadius: BorderRadius.circular(20),
+            color: isDark ? const Color(0xFF273449) : const Color(0xFFE8ECF4),
+            borderRadius: BorderRadius.circular(10),
           ),
           child: Text(
             '${filteredSubjects.length} Mapel',
             style: TextStyle(
-              color: isDark ? const Color(0xFF93B4FF) : primary,
+              color: secondaryText,
               fontSize: 10,
               fontWeight: FontWeight.w700,
             ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Text(
-          'Tap untuk kelola',
-          style: TextStyle(
-            color: secondaryText,
-            fontSize: 10,
           ),
         ),
       ],
@@ -563,22 +540,23 @@ class _PilihMapelKelasTugasGuruScreenState
   Widget _buildSubjectCard(Map<String, dynamic> subject) {
     final Color color = subject['color'];
     final Color light = subject['light'];
+    final Color accent = isDark ? Color.lerp(color, Colors.white, 0.3)! : color;
+    final classes = subject['classes'] as List<String>;
 
     return Material(
       color: cardBackground,
-      borderRadius: BorderRadius.circular(15),
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: borderColor),
+      ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(15),
         onTap: () => showClassOptions(subject),
-        child: Container(
-          padding: const EdgeInsets.all(15),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(15),
-            border: Border.all(color: borderColor),
-          ),
-          child: Column(
-            children: [
-              Row(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
                 children: [
                   Container(
                     width: 48,
@@ -587,11 +565,7 @@ class _PilihMapelKelasTugasGuruScreenState
                       color: light,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(
-                      subject['icon'],
-                      color: color,
-                      size: 26,
-                    ),
+                    child: Icon(subject['icon'], color: color, size: 26),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -620,44 +594,37 @@ class _PilihMapelKelasTugasGuruScreenState
                                 color: isDark
                                     ? color.withOpacity(0.18)
                                     : subject['badge'],
-                                borderRadius: BorderRadius.circular(4),
+                                borderRadius: BorderRadius.circular(5),
                               ),
                               child: Text(
                                 subject['status'],
                                 style: TextStyle(
-                                  color: isDark
-                                      ? Color.lerp(color, Colors.white, 0.3)
-                                      : color,
+                                  color: accent,
                                   fontSize: 10,
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 7),
-                        Wrap(
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          spacing: 5,
+                        Row(
                           children: [
                             Icon(
                               Icons.groups_rounded,
-                              color: color,
-                              size: 15,
+                              color: secondaryText,
+                              size: 16,
                             ),
-                            Text(
-                              (subject['classes'] as List<String>).join(', '),
-                              style: TextStyle(
-                                color: primaryText,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            Text(
-                              'â€¢ ${subject['students']} Siswa',
-                              style: TextStyle(
-                                color: secondaryText,
-                                fontSize: 11,
+                            const SizedBox(width: 5),
+                            Expanded(
+                              child: Text(
+                                '${formatClasses(classes)} \u2022 ${subject['students']} Siswa',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: secondaryText,
+                                  fontSize: 11.5,
+                                ),
                               ),
                             ),
                           ],
@@ -665,80 +632,46 @@ class _PilihMapelKelasTugasGuruScreenState
                       ],
                     ),
                   ),
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0xFF30365A)
-                          : const Color(0xFFEEF0FF),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.chevron_right_rounded,
-                      color: secondaryText,
-                    ),
-                  ),
                 ],
               ),
-              const SizedBox(height: 12),
-
-              // Tombol Pilih Kelas tetap terlihat.
-              // Fungsinya belum diaktifkan.
-              InkWell(
-                borderRadius: BorderRadius.circular(9),
-                onTap: () {},
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 9,
+            ),
+            // Footer: jumlah tugas + "Buka Tugas"
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              color: softBackground,
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.assignment_outlined,
+                    color: secondaryText,
+                    size: 16,
                   ),
-                  decoration: BoxDecoration(
-                    color: softBackground,
-                    borderRadius: BorderRadius.circular(9),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      '${subject['tasks']} Tugas Aktif & Terjadwal',
+                      style: TextStyle(
+                        color: secondaryText,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.menu_book_outlined,
-                        color: Color(0xFF047857),
-                        size: 16,
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          '${subject['tasks']} Tugas Aktif',
-                          style: TextStyle(
-                            color: primaryText,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        'Pilih Kelas',
-                        style: TextStyle(
-                          color: isDark
-                              ? Color.lerp(color, Colors.white, 0.3)
-                              : color,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(width: 3),
-                      Icon(
-                        Icons.arrow_forward,
-                        color: isDark
-                            ? Color.lerp(color, Colors.white, 0.3)
-                            : color,
-                        size: 15,
-                      ),
-                    ],
+                  Text(
+                    'Buka Tugas',
+                    style: TextStyle(
+                      color: primary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 3),
+                  Icon(Icons.arrow_forward, color: primary, size: 15),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -755,11 +688,7 @@ class _PilihMapelKelasTugasGuruScreenState
       ),
       child: Column(
         children: [
-          Icon(
-            Icons.search_off_rounded,
-            size: 38,
-            color: secondaryText,
-          ),
+          Icon(Icons.search_off_rounded, size: 38, color: secondaryText),
           const SizedBox(height: 10),
           Text(
             'Mata pelajaran tidak ditemukan',
@@ -771,10 +700,7 @@ class _PilihMapelKelasTugasGuruScreenState
           const SizedBox(height: 5),
           Text(
             'Coba kata kunci atau filter kelas lainnya.',
-            style: TextStyle(
-              color: secondaryText,
-              fontSize: 12,
-            ),
+            style: TextStyle(color: secondaryText, fontSize: 12),
           ),
         ],
       ),
@@ -783,23 +709,26 @@ class _PilihMapelKelasTugasGuruScreenState
 
   Widget _buildAcademicInfo() {
     return Container(
-      padding: const EdgeInsets.all(13),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: academicBackground,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor),
       ),
       child: Row(
         children: [
           Container(
-            width: 34,
-            height: 34,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
-              color: cardBackground,
-              borderRadius: BorderRadius.circular(8),
+              color: isDark
+                  ? const Color(0xFF064E3B)
+                  : const Color(0xFFD1FAE5),
+              shape: BoxShape.circle,
             ),
-            child: Icon(
+            child: const Icon(
               Icons.verified_outlined,
-              color: primary,
+              color: Color(0xFF059669),
               size: 20,
             ),
           ),
@@ -809,77 +738,44 @@ class _PilihMapelKelasTugasGuruScreenState
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Tahun Ajaran & Kurikulum',
+                  'TAHUN AJARAN & KURIKULUM',
                   style: TextStyle(
                     color: secondaryText,
-                    fontSize: 10,
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
                   ),
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  'T.A 2026/2027 Ganjil â€¢ Kurikulum Merdeka',
-                  style: TextStyle(
-                    color: primaryText,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.circle,
+                      color: Color(0xFF047857),
+                      size: 8,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'T.A 2026/2027 Ganjil \u2022 Kurikulum Merdeka',
+                        style: TextStyle(
+                          color: primaryText,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-          const Icon(
-            Icons.circle,
-            color: Color(0xFF047857),
-            size: 9,
+          InkWell(
+            onTap: () => showMessage('T.A 2026/2027 Ganjil \u2022 Kurikulum Merdeka'),
+            child: Icon(Icons.info_outline, color: secondaryText, size: 18),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildBottomNavigation() {
-    return BottomNavigationBar(
-      currentIndex: 2,
-      type: BottomNavigationBarType.fixed,
-      selectedItemColor: primary,
-      unselectedItemColor: secondaryText,
-      selectedFontSize: 11,
-      unselectedFontSize: 11,
-      backgroundColor: cardBackground,
-      elevation: 8,
-      onTap: (index) {
-        if (index == 0) {
-          Navigator.pushReplacementNamed(context, '/');
-        } else if (index == 1) {
-          Navigator.pushNamed(context, '/materi');
-        } else if (index == 4) {
-          Navigator.pushNamed(context, '/pengaturan');
-        } else if (index != 2) {
-          showMessage('Halaman sedang disiapkan');
-        }
-      },
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.grid_view_rounded),
-          label: 'Home',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.menu_book_rounded),
-          label: 'Materi',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.assignment_outlined),
-          label: 'Tugas',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.fact_check_outlined),
-          label: 'Absensi',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.person_outline_rounded),
-          label: 'Profil',
-        ),
-      ],
     );
   }
 }
