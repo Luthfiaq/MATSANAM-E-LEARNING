@@ -4,7 +4,7 @@
 <div class="p-6">
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-gray-800">Data Guru</h1>
-        <a href="{{ route('admin.guru.create') }}" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+        <a href="{{ route('admin.master-data.guru.create') }}" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
             ➕ Tambah Guru
         </a>
     </div>
@@ -36,8 +36,8 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm">{{ $item->jenis_kelamin == 'L' ? 'Laki-laki' : 'Perempuan' }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm">{{ $item->telepon ?? '-' }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm">
-                        <a href="{{ route('admin.guru.edit', $item->id) }}" class="text-blue-600 hover:text-blue-900 mr-3">✏️ Edit</a>
-                        <form action="{{ route('admin.guru.destroy', $item->id) }}" method="POST" class="inline" onsubmit="return confirm('Yakin ingin menghapus?')">
+                        <a href="{{ route('admin.master-data.guru.edit', $item->id) }}" class="text-blue-600 hover:text-blue-900 mr-3">✏️ Edit</a>
+                        <form action="{{ route('admin.master-data.guru.destroy', $item->id) }}" method="POST" class="inline" onsubmit="return confirm('Yakin ingin menghapus?')">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="text-red-600 hover:text-red-900">🗑️ Hapus</button>

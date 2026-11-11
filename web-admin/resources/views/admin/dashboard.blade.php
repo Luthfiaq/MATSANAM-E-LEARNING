@@ -49,11 +49,11 @@
                     <span class="text-slate-600 text-xs mt-6">Guru</span>
                 </div>
             </div>
-            <img src="https://storage.googleapis.com/tagjs-prod.appspot.com/v1/X5CsluynKR/gpqi4lun_expires_30_days.png"
+            <img src="{{ asset('assets/icons/teacher.svg') }}"
                  class="w-[41px] h-11 rounded-lg object-fill" />
         </div>
         <div class="flex items-center gap-1 mt-4">
-            <img src="https://storage.googleapis.com/tagjs-prod.appspot.com/v1/X5CsluynKR/ufqi5jqr_expires_30_days.png"
+            <img src="{{ asset('assets/icons/check-circle.svg') }}"
                  class="w-[13px] h-[13px] object-fill" />
             <span class="text-[#006C4A] text-[11px] font-bold">142 Penugasan Kelas</span>
             <span class="text-slate-400 text-[11px] font-bold ml-1">Rasio 100% Terisi</span>
@@ -70,12 +70,12 @@
                     <span class="text-slate-600 text-xs mt-6">Menunggu Approval</span>
                 </div>
             </div>
-            <img src="https://storage.googleapis.com/tagjs-prod.appspot.com/v1/X5CsluynKR/pauqay7x_expires_30_days.png"
+            <img src="{{ asset('assets/icons/file-check.svg') }}"
                  class="w-11 h-11 rounded-lg object-fill" />
         </div>
         <div class="flex items-center gap-1 mt-4">
             <div class="flex items-center bg-[#F59E0B26] py-0.5 px-2 gap-1 rounded-xl flex-1">
-                <img src="https://storage.googleapis.com/tagjs-prod.appspot.com/v1/X5CsluynKR/0r7qeuou_expires_30_days.png"
+                <img src="{{ asset('assets/icons/clock.svg') }}"
                      class="w-2.5 h-3 rounded-xl object-fill" />
                 <span class="text-[#F59E0B] text-[11px] font-bold">Waspada Batas Jam 12:00</span>
             </div>
@@ -90,7 +90,7 @@
                 <div class="text-slate-400 text-xs">Kehadiran Siswa Hari Ini</div>
                 <div class="text-[#006C4A] text-4xl font-bold mt-1">{{ $persentaseKehadiran }}%</div>
             </div>
-            <img src="https://storage.googleapis.com/tagjs-prod.appspot.com/v1/X5CsluynKR/9qwwvat9_expires_30_days.png"
+            <img src="{{ asset('assets/icons/users-check.svg') }}"
                  class="w-[35px] h-11 rounded-lg object-fill" />
         </div>
         <div class="mt-4">
@@ -106,7 +106,7 @@
                 <div class="text-slate-900 text-4xl font-bold mt-1">24</div>
                 <span class="text-slate-600 text-xs absolute bottom-0 right-0">Rombongan Belajar</span>
             </div>
-            <img src="https://storage.googleapis.com/tagjs-prod.appspot.com/v1/X5CsluynKR/o1247a6g_expires_30_days.png"
+            <img src="{{ asset('assets/icons/school.svg') }}"
                  class="w-[41px] h-11 rounded-lg object-fill" />
         </div>
         <div class="flex items-center justify-between mt-4">
@@ -120,7 +120,7 @@
 <div class="mb-6">
     <div class="flex justify-between items-center mb-4">
         <div class="flex items-center gap-1">
-            <img src="https://storage.googleapis.com/tagjs-prod.appspot.com/v1/X5CsluynKR/g49fpzoy_expires_30_days.png"
+            <img src="{{ asset('assets/icons/bolt.svg') }}"
                  class="w-3.5 h-[18px] object-fill" />
             <span class="text-slate-900 text-lg font-bold">Aksi Cepat & Alur Kerja Utama</span>
         </div>
@@ -132,7 +132,7 @@
         <div class="bg-white p-6 rounded-lg shadow-sm relative overflow-hidden">
             <div class="bg-[#EFF6FF99] w-24 h-32 absolute bottom-3 right-[-24px] rounded-bl-xl"></div>
             <div class="relative">
-                <img src="https://storage.googleapis.com/tagjs-prod.appspot.com/v1/X5CsluynKR/r1a3daeg_expires_30_days.png"
+                <img src="{{ asset('assets/icons/clipboard-list.svg') }}"
                      class="w-12 h-12 rounded-lg object-fill mb-2" />
                 <h3 class="text-slate-900 text-base font-bold mb-1">Atur Penugasan Guru</h3>
                 <p class="text-slate-600 text-xs mb-4">
@@ -140,14 +140,14 @@
                 </p>
                 <div class="flex items-start gap-2">
                     <div class="flex items-center gap-1">
-                        <img src="https://storage.googleapis.com/tagjs-prod.appspot.com/v1/X5CsluynKR/nxchmwyl_expires_30_days.png"
+                        <img src="{{ asset('assets/icons/clock.svg') }}"
                              class="w-[13px] h-[13px] object-fill" />
                         <span class="text-slate-400 text-[11px] font-bold">Update Kemarin</span>
                     </div>
                     <a href="{{ route('admin.penugasan.create') }}" 
                        class="flex-1 flex justify-between items-center bg-[#004AC6] py-1.5 px-4 rounded-lg">
                         <span class="text-white text-xs font-bold">Buka Kelola Penugasan</span>
-                        <img src="https://storage.googleapis.com/tagjs-prod.appspot.com/v1/X5CsluynKR/g66qobqo_expires_30_days.png"
+                        <img src="{{ asset('assets/icons/arrow-up-right.svg') }}"
                              class="w-3 h-3 rounded-lg object-fill" />
                     </a>
                 </div>
@@ -158,24 +158,24 @@
         <div class="bg-white p-6 rounded-lg shadow-sm relative overflow-hidden">
             <div class="bg-[#F59E0B1A] w-24 h-32 absolute bottom-3 right-[-24px] rounded-bl-xl"></div>
             <div class="relative">
-                <img src="https://storage.googleapis.com/tagjs-prod.appspot.com/v1/X5CsluynKR/anyalo3j_expires_30_days.png"
+                <img src="{{ asset('assets/icons/file-warning.svg') }}"
                      class="w-12 h-12 rounded-lg object-fill mb-2" />
                 <div class="flex items-center gap-2 mb-1">
                     <h3 class="text-slate-900 text-base font-bold">Verifikasi Surat Izin/Sakit</h3>
-                    <span class="bg-[#F59E0B33] text-[#F59E0B] text-[11px] font-bold py-0.5 px-2 rounded-xl">7 Baru</span>
+                    <span class="bg-[#F59E0B33] text-[#F59E0B] text-[11px] font-bold py-0.5 px-2 rounded-xl">{{ $suratPending }} Pending</span>
                 </div>
                 <p class="text-slate-600 text-xs mb-4">
                     Validasi dokumen PDF/foto dokter dari orang tua/wali siswa. Setujui atau tolak izin disertai
                 </p>
                 <div class="flex items-start gap-2">
                     <div class="flex items-center gap-1">
-                        <img src="https://storage.googleapis.com/tagjs-prod.appspot.com/v1/X5CsluynKR/9f96e97p_expires_30_days.png"
+                        <img src="{{ asset('assets/icons/alert-circle.svg') }}"
                              class="w-[13px] h-[13px] object-fill" />
                         <span class="text-[#F59E0B] text-[11px] font-bold">Butuh aksi segera</span>
                     </div>
-                    <a href="#" class="flex-1 flex justify-between items-center bg-[#004AC6] py-1.5 px-4 rounded-lg">
-                        <span class="text-white text-xs font-bold">Tinjau 7 Surat Pending</span>
-                        <img src="https://storage.googleapis.com/tagjs-prod.appspot.com/v1/X5CsluynKR/rnfapdko_expires_30_days.png"
+                    <a href="{{ route('admin.absensi.verifikasi', ['status' => 'semua']) }}" class="flex-1 flex justify-between items-center bg-[#004AC6] py-1.5 px-4 rounded-lg">
+                        <span class="text-white text-xs font-bold">Tinjau {{ $suratPending }} Surat Pending</span>
+                        <img src="{{ asset('assets/icons/arrow-right.svg') }}"
                              class="w-3 h-3 rounded-lg object-fill" />
                     </a>
                 </div>
@@ -194,13 +194,13 @@
                 </p>
                 <div class="flex items-start gap-2">
                     <div class="flex items-center gap-1">
-                        <img src="https://storage.googleapis.com/tagjs-prod.appspot.com/v1/X5CsluynKR/iuh66k5c_expires_30_days.png"
+                        <img src="{{ asset('assets/icons/download.svg') }}"
                              class="w-[13px] h-[13px] object-fill" />
                         <span class="text-slate-400 text-[11px] font-bold">Format Tersedia Madrasah</span>
                     </div>
-                    <a href="#" class="flex-1 flex justify-between items-center bg-[#004AC6] py-1.5 px-4 rounded-lg">
+                    <a href="{{ route('admin.absensi.rekap') }}" class="flex-1 flex justify-between items-center bg-[#004AC6] py-1.5 px-4 rounded-lg">
                         <span class="text-white text-xs font-bold">Buka Menu Rekap</span>
-                        <img src="https://storage.googleapis.com/tagjs-prod.appspot.com/v1/X5CsluynKR/gj35d6qa_expires_30_days.png"
+                        <img src="{{ asset('assets/icons/arrow-right.svg') }}"
                              class="w-3 h-3 rounded-lg object-fill" />
                     </a>
                 </div>
@@ -218,7 +218,7 @@
         </h2>
         <div class="flex items-center gap-3">
             <button class="text-sm text-gray-500 hover:text-gray-700">🔍 Filter Status</button>
-            <a href="#" class="text-sm font-medium text-blue-600 hover:text-blue-700">
+            <a href="{{ route('admin.absensi.verifikasi', ['status' => 'semua']) }}" class="text-sm font-medium text-blue-600 hover:text-blue-700">
                 Lihat Semua ({{ $pendingSurat->count() }}) →
             </a>
         </div>
@@ -276,12 +276,9 @@
                     </td>
                     <td class="px-6 py-4">
                         <div class="flex items-center justify-center gap-2">
-                            <button class="inline-flex items-center gap-1 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 transition">
-                                ✓ Terima
-                            </button>
-                            <button class="inline-flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 transition">
-                                ✗ Tolak
-                            </button>
+                            <a href="{{ route('admin.absensi.verifikasi', ['status' => 'semua', 'selected' => $surat->id]) }}" class="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 transition">
+                                Tinjau Surat
+                            </a>
                         </div>
                     </td>
                 </tr>
@@ -302,7 +299,7 @@
     @if($pendingSurat->count() > 0)
     <div class="border-t border-gray-100 px-6 py-3 text-center">
         <span class="text-sm text-gray-500">Menampilkan {{ $pendingSurat->count() }} surat pending</span>
-        <a href="#" class="ml-2 text-sm font-medium text-blue-600 hover:text-blue-700">
+        <a href="{{ route('admin.absensi.verifikasi', ['status' => 'semua']) }}" class="ml-2 text-sm font-medium text-blue-600 hover:text-blue-700">
             Buka Halaman Verifikasi Penuh →
         </a>
     </div>

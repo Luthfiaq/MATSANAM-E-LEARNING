@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Guru;
 use App\Models\Siswa;
 use App\Models\User;
+use App\Models\UserAccountLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -34,6 +35,7 @@ class AuthController extends Controller
             ], 403);
         }
 
+        $user->forceFill(['last_login_at' => now()])->save();
         $token = $user->createToken($request->device_name ?? 'mobile-app')->plainTextToken;
 
         // Determine role and get profile data
@@ -77,10 +79,44 @@ class AuthController extends Controller
                     'name' => $user->name,
                     'email' => $user->email,
                     'role' => $role,
+                    'must_change_password' => (bool) $user->must_change_password,
                 ],
                 'profile' => $profile,
                 'profile_id' => $profileId,
             ],
+        ]);
+    }
+
+    public function changePassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:10', 'confirmed'],
+        ]);
+
+        $user = $request->user();
+        if (! Hash::check($request->current_password, $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Password saat ini tidak sesuai.',
+            ], 422);
+        }
+
+        $user->update([
+            'password' => $request->password,
+            'must_change_password' => false,
+            'last_password_reset_at' => now(),
+        ]);
+        UserAccountLog::create([
+            'actor_id' => $user->id,
+            'target_user_id' => $user->id,
+            'action' => 'password_changed',
+            'description' => 'Pengguna mengganti password melalui aplikasi.',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password berhasil diperbarui.',
         ]);
     }
 
@@ -135,6 +171,7 @@ class AuthController extends Controller
                     'name' => $user->name,
                     'email' => $user->email,
                     'role' => $role,
+                    'must_change_password' => (bool) $user->must_change_password,
                 ],
                 'profile' => $profile,
                 'profile_id' => $profileId,

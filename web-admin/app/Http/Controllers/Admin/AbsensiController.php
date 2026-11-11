@@ -3,108 +3,226 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Siswa;
-use App\Models\SuratAbsensi;
 use App\Models\AbsensiHarian;
 use App\Models\JadwalPelajaran;
-use Illuminate\Http\Request;
+use App\Models\Kelas;
+use App\Models\SuratAbsensi;
 use Carbon\Carbon;
+use Carbon\CarbonPeriod;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+use Illuminate\View\View;
 
 class AbsensiController extends Controller
 {
-    public function verifikasiSurat(Request $request)
+    public function verifikasiSurat(Request $request): View
     {
-        $query = SuratAbsensi::with(['siswa.kelas', 'verifikator'])
-            ->orderBy('created_at', 'desc');
+        $query = SuratAbsensi::with(['siswa.kelas.waliKelas', 'verifikator'])
+            ->latest();
 
-        if ($request->filled('status')) {
-            $query->where('status_verifikasi', $request->status);
+        $status = strtolower((string) $request->query('status', 'semua'));
+        if ($status !== '' && $status !== 'semua') {
+            $query->whereRaw('LOWER(status_verifikasi) = ?', [$status]);
         }
 
         if ($request->filled('siswa')) {
-            $query->whereHas('siswa', function($q) use ($request) {
-                $q->where('nama_lengkap', 'like', '%' . $request->siswa . '%')
-                  ->orWhere('nisn', 'like', '%' . $request->siswa . '%');
+            $search = trim((string) $request->input('siswa'));
+            $query->whereHas('siswa', function ($studentQuery) use ($search) {
+                $studentQuery->where('nama_lengkap', 'like', '%' . $search . '%')
+                    ->orWhere('nisn', 'like', '%' . $search . '%')
+                    ->orWhere('nis', 'like', '%' . $search . '%');
             });
         }
 
-        $surats = $query->paginate(15);
+        // View verifikasi memakai collection untuk daftar kiri dan pemilihan detail di panel kanan.
+        $suratAbsensi = $query->get();
 
-        $totalPending = SuratAbsensi::where('status_verifikasi', 'pending')->count();
-        $totalDisetujui = SuratAbsensi::where('status_verifikasi', 'disetujui')->count();
-        $totalDitolak = SuratAbsensi::where('status_verifikasi', 'ditolak')->count();
+        $totalPending = SuratAbsensi::whereRaw('LOWER(status_verifikasi) = ?', ['pending'])->count();
+        $totalDisetujui = SuratAbsensi::whereRaw('LOWER(status_verifikasi) = ?', ['disetujui'])->count();
+        $totalDitolak = SuratAbsensi::whereRaw('LOWER(status_verifikasi) = ?', ['ditolak'])->count();
 
         return view('admin.absensi.verifikasi', compact(
-            'surats', 
-            'totalPending', 
-            'totalDisetujui', 
+            'suratAbsensi',
+            'totalPending',
+            'totalDisetujui',
             'totalDitolak'
         ));
     }
 
-    public function approveSurat($id)
+    public function fileSurat(int $id, Request $request)
     {
         $surat = SuratAbsensi::findOrFail($id);
-        $surat->update([
-            'status_verifikasi' => 'disetujui',
-            'verifikator_id' => auth()->id(),
-            'tanggal_verifikasi' => now(),
-        ]);
+        $path = $surat->file_surat;
 
-        return redirect()->back()->with('success', 'Surat berhasil disetujui');
+        abort_if(blank($path) || ! Storage::disk('public')->exists($path), 404, 'Dokumen surat tidak ditemukan.');
+
+        if ($request->boolean('download')) {
+            return Storage::disk('public')->download($path, basename($path));
+        }
+
+        return Storage::disk('public')->response($path, basename($path));
     }
 
-    public function rejectSurat(Request $request, $id)
+    public function approveSurat(Request $request, int $id): RedirectResponse
     {
-        $request->validate([
-            'catatan' => 'required|string|max:500',
+        $validated = $request->validate([
+            'kategori_master' => ['nullable', Rule::in(['sakit', 'izin'])],
+        ]);
+
+        $surat = SuratAbsensi::with('siswa')->findOrFail($id);
+        if (strtolower((string) $surat->status_verifikasi) !== 'pending') {
+            return back()->with('error', 'Surat ini sudah diproses sebelumnya. Muat ulang halaman untuk melihat status terbaru.');
+        }
+
+        $kategori = $validated['kategori_master'] ?? $surat->jenis;
+        if (! in_array($kategori, ['sakit', 'izin'], true)) {
+            return back()->with('error', 'Kategori absensi tidak valid.');
+        }
+
+        $attendanceRows = 0;
+
+        DB::transaction(function () use ($surat, $kategori, &$attendanceRows) {
+            $surat->update([
+                'status_verifikasi' => 'disetujui',
+                'verifikator_id' => auth()->id(),
+                'tanggal_verifikasi' => now(),
+                'catatan_verifikasi' => null,
+            ]);
+
+            $student = $surat->siswa;
+            if (! $student || ! $student->kelas_id) {
+                return;
+            }
+
+            $schedulesByDay = JadwalPelajaran::where('kelas_id', $student->kelas_id)
+                ->whereHas('periode', function ($periodQuery) use ($surat) {
+                    $periodQuery->whereDate('tanggal_mulai', '<=', $surat->tanggal_selesai)
+                        ->whereDate('tanggal_selesai', '>=', $surat->tanggal_mulai);
+                })
+                ->get()
+                ->groupBy('hari');
+
+            $dayNames = [
+                1 => 'Senin',
+                2 => 'Selasa',
+                3 => 'Rabu',
+                4 => 'Kamis',
+                5 => 'Jumat',
+                6 => 'Sabtu',
+            ];
+
+            $period = CarbonPeriod::create(
+                Carbon::parse($surat->tanggal_mulai)->startOfDay(),
+                Carbon::parse($surat->tanggal_selesai)->startOfDay()
+            );
+
+            foreach ($period as $date) {
+                $dayName = $dayNames[$date->dayOfWeekIso] ?? null;
+                if (! $dayName) {
+                    continue;
+                }
+
+                foreach ($schedulesByDay->get($dayName, collect()) as $schedule) {
+                    AbsensiHarian::updateOrCreate(
+                        [
+                            'siswa_id' => $student->id,
+                            'jadwal_id' => $schedule->id,
+                            'tanggal' => $date->toDateString(),
+                        ],
+                        [
+                            'status' => $kategori,
+                            'waktu_absen' => null,
+                            'metode' => 'manual',
+                            'keterangan' => 'Surat absensi #' . $surat->id . ' telah disetujui oleh Admin.',
+                        ]
+                    );
+                    $attendanceRows++;
+                }
+            }
+        });
+
+        return redirect()->route('admin.absensi.verifikasi', [
+            'status' => 'disetujui',
+            'selected' => $surat->id,
+        ])->with(
+            'success',
+            'Surat berhasil disetujui. ' . $attendanceRows . ' catatan presensi sesuai jadwal siswa telah diperbarui.'
+        );
+    }
+
+    public function rejectSurat(Request $request, int $id): RedirectResponse
+    {
+        $validated = $request->validate([
+            'catatan' => ['required', 'string', 'max:500'],
         ]);
 
         $surat = SuratAbsensi::findOrFail($id);
+        if (strtolower((string) $surat->status_verifikasi) !== 'pending') {
+            return back()->with('error', 'Surat ini sudah diproses sebelumnya. Muat ulang halaman untuk melihat status terbaru.');
+        }
+
         $surat->update([
             'status_verifikasi' => 'ditolak',
             'verifikator_id' => auth()->id(),
             'tanggal_verifikasi' => now(),
-            'catatan_verifikasi' => $request->catatan,
+            'catatan_verifikasi' => $validated['catatan'],
         ]);
 
-        return redirect()->back()->with('error', 'Surat ditolak. Notifikasi dikirim ke siswa.');
+        return redirect()->route('admin.absensi.verifikasi', [
+            'status' => 'ditolak',
+            'selected' => $surat->id,
+        ])->with('success', 'Surat ditolak dan catatan penolakan berhasil disimpan.');
     }
 
-    public function rekapPresensi(Request $request)
+    public function rekapPresensi(Request $request): View
     {
-        $query = AbsensiHarian::with(['siswa', 'jadwal.guru', 'jadwal.mataPelajaran', 'jadwal.kelas']);
+        $validated = $request->validate([
+            'periode' => ['nullable', 'date_format:Y-m'],
+            'kelas' => ['nullable', 'integer', 'exists:kelas,id'],
+            'status' => ['nullable', Rule::in(['hadir', 'izin', 'sakit', 'alpa'])],
+        ]);
 
-        if ($request->filled('periode')) {
-            $query->whereDate('tanggal', '>=', Carbon::parse($request->periode)->startOfMonth())
-                  ->whereDate('tanggal', '<=', Carbon::parse($request->periode)->endOfMonth());
-        }
+        $periode = $validated['periode'] ?? now()->format('Y-m');
+        $periodDate = Carbon::createFromFormat('Y-m', $periode);
 
-        if ($request->filled('kelas')) {
-            $query->whereHas('jadwal', function($q) use ($request) {
-                $q->where('kelas_id', $request->kelas);
+        $baseQuery = AbsensiHarian::query()
+            ->with(['siswa.kelas', 'jadwal.guru', 'jadwal.mataPelajaran', 'jadwal.kelas'])
+            ->whereBetween('tanggal', [
+                $periodDate->copy()->startOfMonth()->toDateString(),
+                $periodDate->copy()->endOfMonth()->toDateString(),
+            ]);
+
+        if (! empty($validated['kelas'])) {
+            $baseQuery->whereHas('jadwal', function ($query) use ($validated) {
+                $query->where('kelas_id', $validated['kelas']);
             });
         }
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        $absensis = $query->orderBy('tanggal', 'desc')->paginate(20);
-
-        $summary = AbsensiHarian::select('status', \DB::raw('count(*) as total'))
+        // Kartu ringkasan mengikuti filter periode dan kelas, namun tidak terpengaruh filter status tabel.
+        $summary = (clone $baseQuery)
+            ->selectRaw('status, COUNT(*) as total')
             ->groupBy('status')
             ->pluck('total', 'status')
             ->toArray();
 
-        $totalHadir = $summary['hadir'] ?? 0;
-        $totalIzin = $summary['izin'] ?? 0;
-        $totalSakit = $summary['sakit'] ?? 0;
-        $totalAlpa = $summary['alpa'] ?? 0;
+        $totalHadir = (int) ($summary['hadir'] ?? 0);
+        $totalIzin = (int) ($summary['izin'] ?? 0);
+        $totalSakit = (int) ($summary['sakit'] ?? 0);
+        $totalAlpa = (int) ($summary['alpa'] ?? 0);
         $total = $totalHadir + $totalIzin + $totalSakit + $totalAlpa;
         $persentaseHadir = $total > 0 ? round(($totalHadir / $total) * 100, 2) : 0;
 
-        $kelasList = \App\Models\Kelas::all();
+        $listQuery = clone $baseQuery;
+        if (! empty($validated['status'])) {
+            $listQuery->where('status', $validated['status']);
+        }
+
+        $absensis = $listQuery->orderByDesc('tanggal')->paginate(20)->withQueryString();
+        $kelasList = Kelas::orderBy('tingkat')->orderBy('nama_kelas')->get();
 
         return view('admin.absensi.rekap', compact(
             'absensis',
@@ -120,56 +238,216 @@ class AbsensiController extends Controller
         ));
     }
 
-    public function historiSurat(Request $request)
+    public function historiSurat(Request $request): View
     {
-        $query = SuratAbsensi::with(['siswa.kelas', 'verifikator'])
-            ->orderBy('created_at', 'desc');
+        $query = SuratAbsensi::with(['siswa.kelas', 'verifikator'])->latest();
 
-        if ($request->filled('status')) {
-            $query->where('status_verifikasi', $request->status);
+        if ($request->filled('status') && strtolower((string) $request->status) !== 'semua') {
+            $query->whereRaw('LOWER(status_verifikasi) = ?', [strtolower((string) $request->status)]);
         }
 
-        $surats = $query->paginate(15);
-
-        $totalPending = SuratAbsensi::where('status_verifikasi', 'pending')->count();
-        $totalDisetujui = SuratAbsensi::where('status_verifikasi', 'disetujui')->count();
-        $totalDitolak = SuratAbsensi::where('status_verifikasi', 'ditolak')->count();
+        $surats = $query->paginate(15)->withQueryString();
+        $totalPending = SuratAbsensi::whereRaw('LOWER(status_verifikasi) = ?', ['pending'])->count();
+        $totalDisetujui = SuratAbsensi::whereRaw('LOWER(status_verifikasi) = ?', ['disetujui'])->count();
+        $totalDitolak = SuratAbsensi::whereRaw('LOWER(status_verifikasi) = ?', ['ditolak'])->count();
 
         return view('admin.absensi.histori', compact(
-            'surats', 
-            'totalPending', 
-            'totalDisetujui', 
+            'surats',
+            'totalPending',
+            'totalDisetujui',
             'totalDitolak'
         ));
     }
 
     public function exportPresensi(Request $request)
     {
-        $request->validate([
-            'format' => 'required|in:pdf,excel',
-            'periode' => 'required',
+        $validated = $request->validate([
+            'format' => ['required', Rule::in(['excel', 'csv', 'pdf'])],
+            'periode' => ['required', 'date_format:Y-m'],
+            'kelas' => ['nullable', 'integer', 'exists:kelas,id'],
         ]);
 
+        $periodDate = Carbon::createFromFormat('Y-m', $validated['periode']);
         $query = AbsensiHarian::with(['siswa', 'jadwal.guru', 'jadwal.mataPelajaran', 'jadwal.kelas'])
-            ->whereDate('tanggal', '>=', Carbon::parse($request->periode)->startOfMonth())
-            ->whereDate('tanggal', '<=', Carbon::parse($request->periode)->endOfMonth());
+            ->whereBetween('tanggal', [
+                $periodDate->copy()->startOfMonth()->toDateString(),
+                $periodDate->copy()->endOfMonth()->toDateString(),
+            ]);
 
-        if ($request->filled('kelas')) {
-            $query->whereHas('jadwal', function($q) use ($request) {
-                $q->where('kelas_id', $request->kelas);
+        if (! empty($validated['kelas'])) {
+            $query->whereHas('jadwal', function ($builder) use ($validated) {
+                $builder->where('kelas_id', $validated['kelas']);
             });
         }
 
-        $absensis = $query->get();
+        $absensis = $query->orderBy('tanggal')->get();
 
-        if ($request->format === 'excel') {
-            return \Maatwebsite\Excel\Facades\Excel::download(
-                new \App\Exports\AbsensiExport($absensis),
-                'rekap_absensi_' . $request->periode . '.xlsx'
-            );
+        if ($validated['format'] === 'excel') {
+            $fileName = 'rekap_presensi_' . $validated['periode'] . '.xls';
+            $kelas = ! empty($validated['kelas']) ? Kelas::find($validated['kelas']) : null;
+            $headers = [
+                'No', 'Nama Siswa', 'NISN', 'Kelas', 'Mata Pelajaran', 'Guru',
+                'Tanggal', 'Status', 'Metode Absen', 'Waktu Absen', 'Keterangan',
+            ];
+
+            $xmlEscape = static function ($value): string {
+                $value = (string) ($value ?? '-');
+                // Buang karakter kontrol yang tidak diperbolehkan dalam XML 1.0.
+                $value = preg_replace('/[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]/', '', $value) ?? '';
+                return htmlspecialchars($value, ENT_QUOTES | ENT_XML1, 'UTF-8');
+            };
+
+            $makeCell = static function ($value, string $style = 'Cell', string $type = 'String') use ($xmlEscape): string {
+                return '<Cell ss:StyleID="' . $style . '"><Data ss:Type="' . $type . '">' . $xmlEscape($value) . '</Data></Cell>';
+            };
+
+            $periodLabel = $periodDate->translatedFormat('F Y');
+            $classLabel = $kelas?->nama_kelas ?? 'Semua Kelas';
+            $lastRow = 4 + $absensis->count() + 1;
+            $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n"
+                . '<?mso-application progid="Excel.Sheet"?>' . "\n"
+                . '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" '
+                . 'xmlns:o="urn:schemas-microsoft-com:office:office" '
+                . 'xmlns:x="urn:schemas-microsoft-com:office:excel" '
+                . 'xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" '
+                . 'xmlns:html="http://www.w3.org/TR/REC-html40">'
+                . '<DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">'
+                . '<Title>Rekap Presensi Siswa MTsN 6 Nganjuk</Title>'
+                . '<Subject>Rekap kehadiran siswa</Subject><Author>MAT SANAM Admin</Author>'
+                . '</DocumentProperties>'
+                . '<Styles>'
+                . '<Style ss:ID="Default" ss:Name="Normal"><Alignment ss:Vertical="Center"/>'
+                . '<Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/></Borders>'
+                . '<Font ss:FontName="Arial" ss:Size="10" ss:Color="#1F2937"/></Style>'
+                . '<Style ss:ID="Title"><Alignment ss:Vertical="Center" ss:Horizontal="Left"/>'
+                . '<Font ss:FontName="Arial" ss:Size="16" ss:Bold="1" ss:Color="#FFFFFF"/>'
+                . '<Interior ss:Color="#1E3A8A" ss:Pattern="Solid"/></Style>'
+                . '<Style ss:ID="Subtitle"><Alignment ss:Vertical="Center"/>'
+                . '<Font ss:FontName="Arial" ss:Size="10" ss:Italic="1" ss:Color="#334155"/>'
+                . '<Interior ss:Color="#EFF6FF" ss:Pattern="Solid"/></Style>'
+                . '<Style ss:ID="Header"><Alignment ss:Vertical="Center" ss:Horizontal="Center" ss:WrapText="1"/>'
+                . '<Font ss:FontName="Arial" ss:Size="10" ss:Bold="1" ss:Color="#FFFFFF"/>'
+                . '<Interior ss:Color="#2563EB" ss:Pattern="Solid"/>'
+                . '<Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#1D4ED8"/></Borders></Style>'
+                . '<Style ss:ID="Cell"><Alignment ss:Vertical="Center"/></Style>'
+                . '<Style ss:ID="CellAlt"><Alignment ss:Vertical="Center"/><Interior ss:Color="#F8FAFC" ss:Pattern="Solid"/></Style>'
+                . '<Style ss:ID="Number"><Alignment ss:Vertical="Center" ss:Horizontal="Center"/></Style>'
+                . '<Style ss:ID="StatusHadir"><Font ss:Bold="1" ss:Color="#166534"/><Interior ss:Color="#DCFCE7" ss:Pattern="Solid"/></Style>'
+                . '<Style ss:ID="StatusSakit"><Font ss:Bold="1" ss:Color="#991B1B"/><Interior ss:Color="#FEE2E2" ss:Pattern="Solid"/></Style>'
+                . '<Style ss:ID="StatusIzin"><Font ss:Bold="1" ss:Color="#92400E"/><Interior ss:Color="#FEF3C7" ss:Pattern="Solid"/></Style>'
+                . '<Style ss:ID="StatusAlpa"><Font ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#991B1B" ss:Pattern="Solid"/></Style>'
+                . '<Style ss:ID="Footer"><Font ss:Bold="1" ss:Color="#1E3A8A"/><Interior ss:Color="#DBEAFE" ss:Pattern="Solid"/></Style>'
+                . '</Styles>'
+                . '<Worksheet ss:Name="Rekap Presensi"><Table ss:ExpandedColumnCount="11" ss:ExpandedRowCount="' . $lastRow . '" x:FullColumns="1" x:FullRows="1">';
+
+            $columnWidths = [38, 155, 105, 82, 145, 155, 92, 82, 105, 100, 190];
+            foreach ($columnWidths as $width) {
+                $xml .= '<Column ss:Width="' . $width . '"/>';
+            }
+
+            $xml .= '<Row ss:Height="32"><Cell ss:StyleID="Title" ss:MergeAcross="10"><Data ss:Type="String">REKAP PRESENSI SISWA</Data></Cell></Row>';
+            $xml .= '<Row ss:Height="24"><Cell ss:StyleID="Subtitle" ss:MergeAcross="10"><Data ss:Type="String">MTsN 6 Nganjuk | Periode: '
+                . $xmlEscape($periodLabel) . ' | Kelas: ' . $xmlEscape($classLabel)
+                . ' | Total: ' . $absensis->count() . ' data</Data></Cell></Row>';
+            $xml .= '<Row ss:Height="8"/>';
+            $xml .= '<Row ss:Height="32">';
+            foreach ($headers as $header) {
+                $xml .= $makeCell($header, 'Header');
+            }
+            $xml .= '</Row>';
+
+            foreach ($absensis as $index => $absen) {
+                $status = strtolower((string) ($absen->status ?? ''));
+                $statusStyle = match ($status) {
+                    'hadir' => 'StatusHadir',
+                    'sakit' => 'StatusSakit',
+                    'izin' => 'StatusIzin',
+                    'alpa' => 'StatusAlpa',
+                    default => ($index % 2 === 0 ? 'Cell' : 'CellAlt'),
+                };
+                $baseStyle = $index % 2 === 0 ? 'Cell' : 'CellAlt';
+                $values = [
+                    [$index + 1, 'Number', 'Number'],
+                    [$absen->siswa->nama_lengkap ?? '-', 'String', $baseStyle],
+                    [$absen->siswa->nisn ?? '-', 'String', $baseStyle],
+                    [$absen->jadwal->kelas->nama_kelas ?? '-', 'String', $baseStyle],
+                    [$absen->jadwal->mataPelajaran->nama ?? '-', 'String', $baseStyle],
+                    [$absen->jadwal->guru->nama_lengkap ?? '-', 'String', $baseStyle],
+                    [optional($absen->tanggal)->format('d-m-Y') ?? '-', 'String', $baseStyle],
+                    [ucfirst($status ?: '-'), 'String', $statusStyle],
+                    [strtoupper($absen->metode ?? '-'), 'String', $baseStyle],
+                    [$absen->waktu_absen ?? '-', 'String', $baseStyle],
+                    [$absen->keterangan ?? '-', 'String', $baseStyle],
+                ];
+
+                $xml .= '<Row ss:Height="22">';
+                foreach ($values as [$value, $type, $style]) {
+                    $xml .= $makeCell($value, $style, $type);
+                }
+                $xml .= '</Row>';
+            }
+
+            $xml .= '<Row ss:Height="25"><Cell ss:StyleID="Footer" ss:MergeAcross="10"><Data ss:Type="String">Jumlah data presensi: '
+                . $absensis->count() . ' | Dokumen dibuat otomatis oleh MATSANAM E-Learning</Data></Cell></Row>';
+            $xml .= '</Table><WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">'
+                . '<FreezePanes/><FrozenNoSplit/><SplitHorizontal>4</SplitHorizontal>'
+                . '<TopRowBottomPane>4</TopRowBottomPane><ActivePane>2</ActivePane>'
+                . '</WorksheetOptions></Worksheet></Workbook>';
+
+            return response($xml, 200, [
+                'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+                'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+                'Cache-Control' => 'no-store, no-cache, must-revalidate',
+                'Pragma' => 'no-cache',
+            ]);
         }
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.absensi.export', compact('absensis', 'request'));
-        return $pdf->download('rekap_absensi_' . $request->periode . '.pdf');
+        if ($validated['format'] === 'csv') {
+            $fileName = 'rekap_presensi_' . $validated['periode'] . '.csv';
+
+            return new StreamedResponse(function () use ($absensis) {
+                $output = fopen('php://output', 'wb');
+                fwrite($output, "\xEF\xBB\xBF");
+                // Pemisah titik koma lebih kompatibel dengan Excel regional Indonesia.
+                fputcsv($output, [
+                    'No', 'Nama Siswa', 'NISN', 'Kelas', 'Mata Pelajaran', 'Guru',
+                    'Tanggal', 'Status', 'Metode Absen', 'Waktu Absen', 'Keterangan',
+                ], ';', '"', '\\');
+
+                foreach ($absensis as $index => $absen) {
+                    $values = [
+                        $index + 1,
+                        $absen->siswa->nama_lengkap ?? '-',
+                        $absen->siswa->nisn ?? '-',
+                        $absen->jadwal->kelas->nama_kelas ?? '-',
+                        $absen->jadwal->mataPelajaran->nama ?? '-',
+                        $absen->jadwal->guru->nama_lengkap ?? '-',
+                        optional($absen->tanggal)->format('d-m-Y') ?? '-',
+                        ucfirst($absen->status ?? '-'),
+                        strtoupper($absen->metode ?? '-'),
+                        $absen->waktu_absen ?? '-',
+                        $absen->keterangan ?? '-',
+                    ];
+                    $values = array_map(static function ($value) {
+                        $value = (string) $value;
+                        return preg_match('/^[=+@\\-\\t\\r]/', $value) ? "'" . $value : $value;
+                    }, $values);
+                    fputcsv($output, $values, ';', '"', '\\');
+                }
+
+                fclose($output);
+            }, 200, [
+                'Content-Type' => 'text/csv; charset=UTF-8',
+                'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+                'Cache-Control' => 'no-store, no-cache',
+            ]);
+        }
+
+        // Tanpa package PDF pihak ketiga, sediakan halaman print-ready agar Admin bisa Save as PDF dari browser.
+        return response()->view('admin.absensi.print', [
+            'absensis' => $absensis,
+            'periode' => $validated['periode'],
+            'kelas' => ! empty($validated['kelas']) ? Kelas::find($validated['kelas']) : null,
+        ]);
     }
 }

@@ -26,6 +26,7 @@ class LoginController extends Controller
 
         if (Auth::attempt($credentials, $request->filled('remember'))) {
             $request->session()->regenerate();
+            Auth::user()->forceFill(['last_login_at' => now()])->save();
             
             // Check if user is admin
             if (Auth::user()->role !== 'admin') {

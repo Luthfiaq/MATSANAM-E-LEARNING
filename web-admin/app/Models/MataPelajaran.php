@@ -9,4 +9,9 @@ class MataPelajaran extends Model
     protected $table = 'mata_pelajaran';
 
     protected $fillable = ['kode', 'nama', 'deskripsi', 'kkm'];
+
+    public function jadwalPelajaran()
+    {
+        return $this->hasMany(JadwalPelajaran::class, 'mapel_id');
+    }
 }

@@ -7,7 +7,7 @@
     </div>
 
     <div class="bg-white rounded-lg shadow p-6">
-        <form action="{{ route('admin.guru.update', $guru->id) }}" method="POST">
+        <form action="{{ route('admin.master-data.guru.update', $guru->id) }}" method="POST">
             @csrf
             @method('PUT')
             
@@ -62,7 +62,7 @@
             </div>
 
             <div class="flex justify-end gap-3 mt-6">
-                <a href="{{ route('admin.guru.index') }}" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Batal</a>
+                <a href="{{ route('admin.master-data.guru.index') }}" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Batal</a>
                 <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Update</button>
             </div>
         </form>

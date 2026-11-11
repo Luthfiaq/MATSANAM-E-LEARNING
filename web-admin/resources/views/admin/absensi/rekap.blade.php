@@ -24,11 +24,11 @@
         </button>
         <a href="{{ route('admin.absensi.export', ['format' => 'excel', 'periode' => $request->periode ?? date('Y-m'), 'kelas' => $request->kelas]) }}" 
            class="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700">
-            📊 Excel
+            📊 Unduh Excel (.xls)
         </a>
         <a href="{{ route('admin.absensi.export', ['format' => 'pdf', 'periode' => $request->periode ?? date('Y-m'), 'kelas' => $request->kelas]) }}" 
            class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700">
-            📄 PDF
+            🖨️ Cetak / PDF
         </a>
     </form>
 </div>
