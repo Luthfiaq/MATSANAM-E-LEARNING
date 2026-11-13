@@ -4,10 +4,17 @@ import '../../../models/dashboard_model.dart';
 import '../../../services/api_exception.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/dashboard_service.dart';
+import '../../../services/notification_service.dart';
 import '../../../utils/constants.dart';
+import '../../../widgets/common/siswa_bottom_navigation.dart';
 import '../../auth/login_screen.dart';
 import '../absensi/absensi_screen.dart';
-import '../tugas/tugas_list_screen.dart';
+import '../jadwal/siswa_jadwal_screen.dart';
+import '../materi/siswa_materi_screen.dart';
+import '../nilai/siswa_nilai_screen.dart';
+import '../notifikasi/siswa_notifikasi_screen.dart';
+import '../pengaturan/profil_siswa_screen.dart';
+import '../tugas/siswa_tugas_screen.dart';
 
 class DashboardSiswaPage extends StatefulWidget {
   const DashboardSiswaPage({super.key});
@@ -22,11 +29,13 @@ class _DashboardSiswaPageState extends State<DashboardSiswaPage> {
   DashboardSiswa? _data;
   String? _error;
   bool _loading = true;
+  int _unreadCount = 0;
 
   @override
   void initState() {
     super.initState();
     _muat();
+    _muatUnreadCount();
   }
 
   Future<void> _muat({bool dariRefresh = false}) async {
@@ -63,21 +72,73 @@ class _DashboardSiswaPageState extends State<DashboardSiswaPage> {
     }
   }
 
-  void _segera(String fitur) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
-        content: Text('$fitur segera hadir'),
-        behavior: SnackBarBehavior.floating,
-      ));
+  void _bukaTugas() => Navigator.of(
+    context,
+  ).push(MaterialPageRoute(builder: (_) => const SiswaTugasScreen()));
+
+  void _bukaMateri() => Navigator.of(
+    context,
+  ).push(MaterialPageRoute(builder: (_) => const SiswaMateriScreen()));
+
+  void _bukaNilai() => Navigator.of(
+    context,
+  ).push(MaterialPageRoute(builder: (_) => const SiswaNilaiScreen()));
+
+  Future<void> _muatUnreadCount() async {
+    try {
+      final count = await NotificationService().unreadCount();
+      if (mounted) setState(() => _unreadCount = count);
+    } catch (_) {
+      // The notification badge must not block the dashboard when the API is offline.
+    }
   }
 
-  void _bukaTugas() => Navigator.of(context)
-      .push(MaterialPageRoute(builder: (_) => const ListTugasPage()));
+  Future<void> _bukaNotifikasi() async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const SiswaNotifikasiScreen()));
+    if (mounted) _muatUnreadCount();
+  }
+
+  void _bukaBantuan() {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Bantuan Siswa'),
+        content: const Text(
+          'Untuk bantuan akun, materi, tugas, atau presensi, hubungi Admin/Tata Usaha MTsN 6 Nganjuk.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Tutup'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _bukaJadwal() => Navigator.of(
+    context,
+  ).push(MaterialPageRoute(builder: (_) => const SiswaJadwalScreen()));
+
+  void _tab(int index) {
+    final Widget page = switch (index) {
+      0 => const DashboardSiswaPage(),
+      1 => const SiswaMateriScreen(),
+      2 => const SiswaTugasScreen(),
+      3 => const SiswaNilaiScreen(),
+      _ => const ProfilSiswaScreen(),
+    };
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => page));
+  }
 
   Future<void> _bukaAbsensi() async {
-    await Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => const AbsensiScreen()));
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const AbsensiScreen()));
     if (mounted) _muat(dariRefresh: true);
   }
 
@@ -90,28 +151,14 @@ class _DashboardSiswaPageState extends State<DashboardSiswaPage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: _AppBar(
-        adaNotifikasi: _data?.adaNotifikasi ?? false,
-        onLonceng: () => _segera('Notifikasi'),
+        jumlahNotifikasi: _unreadCount,
+        onLonceng: _bukaNotifikasi,
         onProfil: _profil,
       ),
       body: _buildBody(),
-      bottomNavigationBar: _BottomNav(
-        onTap: (i) {
-          switch (i) {
-            case 1:
-              _segera('Materi belajar');
-              break;
-            case 2:
-              _bukaTugas();
-              break;
-            case 3:
-              _segera('Nilai');
-              break;
-            case 4:
-              _profil();
-              break;
-          }
-        },
+      bottomNavigationBar: SiswaBottomNavigationBar(
+        currentIndex: 0,
+        onTap: _tab,
       ),
     );
   }
@@ -125,8 +172,9 @@ class _DashboardSiswaPageState extends State<DashboardSiswaPage> {
     }
     final d = _data!;
     final now = DateTime.now();
-    final jadwalAktif =
-        d.jadwal.where((j) => j.faseSekarang(now) != JadwalFase.selesai).toList();
+    final jadwalAktif = d.jadwal
+        .where((j) => j.faseSekarang(now) != JadwalFase.selesai)
+        .toList();
 
     return RefreshIndicator(
       onRefresh: () => _muat(dariRefresh: true),
@@ -140,34 +188,48 @@ class _DashboardSiswaPageState extends State<DashboardSiswaPage> {
           const SizedBox(height: 16),
           _AksesCepat(
             onScan: _bukaAbsensi,
-            onMateri: () => _segera('Materi belajar'),
+            onMateri: _bukaMateri,
             onKumpul: _bukaTugas,
-            onNilai: () => _segera('Cek nilai'),
-            onBantuan: () => _segera('Bantuan siswa'),
+            onNilai: _bukaNilai,
+            onBantuan: _bukaBantuan,
           ),
           const SizedBox(height: 22),
           _SectionHeader(
             color: AppColors.success,
             title: 'Jadwal & Presensi Hari Ini',
-            trailing: Text(_labelTanggal(d.hariIni, now),
+            trailing: GestureDetector(
+              onTap: _bukaJadwal,
+              child: Text(
+                'Lihat Semua',
                 style: const TextStyle(
-                    fontSize: 12.5, color: AppColors.textSecondary)),
+                  fontSize: 12.5,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 10),
           if (d.jadwal.isEmpty)
             const _EmptyCard(
-                icon: Icons.event_available_outlined,
-                text: 'Tidak ada jadwal pelajaran hari ini')
+              icon: Icons.event_available_outlined,
+              text: 'Tidak ada jadwal pelajaran hari ini',
+            )
           else if (jadwalAktif.isEmpty)
             const _EmptyCard(
-                icon: Icons.task_alt_rounded,
-                text: 'Semua pelajaran hari ini sudah selesai')
+              icon: Icons.task_alt_rounded,
+              text: 'Semua pelajaran hari ini sudah selesai',
+            )
           else
-            ...jadwalAktif.take(3).map(
+            ...jadwalAktif
+                .take(3)
+                .map(
                   (j) => Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: _JadwalCard(
-                        jadwal: j, now: now, onScan: _bukaAbsensi),
+                      jadwal: j,
+                      now: now,
+                      onScan: _bukaAbsensi,
+                    ),
                   ),
                 ),
           const SizedBox(height: 10),
@@ -176,18 +238,22 @@ class _DashboardSiswaPageState extends State<DashboardSiswaPage> {
             title: 'Deadline Tugas',
             trailing: GestureDetector(
               onTap: _bukaTugas,
-              child: Text('Semua (${d.deadlineTotal})',
-                  style: const TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primary)),
+              child: Text(
+                'Semua (${d.deadlineTotal})',
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 10),
           if (d.deadline.isEmpty)
             const _EmptyCard(
-                icon: Icons.celebration_outlined,
-                text: 'Tidak ada tugas aktif. Mantap!')
+              icon: Icons.celebration_outlined,
+              text: 'Tidak ada tugas aktif. Mantap!',
+            )
           else
             ...d.deadline.map(
               (t) => Padding(
@@ -200,25 +266,35 @@ class _DashboardSiswaPageState extends State<DashboardSiswaPage> {
             color: AppColors.primary,
             title: 'Materi Baru',
             trailing: GestureDetector(
-              onTap: () => _segera('E-Library'),
-              child: const Text('E-Library',
-                  style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primary)),
+              onTap: _bukaMateri,
+              child: const Text(
+                'E-Library',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 10),
           if (d.materi.isEmpty)
             const _EmptyCard(
-                icon: Icons.menu_book_outlined,
-                text: 'Belum ada materi baru')
+              icon: Icons.menu_book_outlined,
+              text: 'Belum ada materi baru',
+            )
           else
             ...d.materi.map(
               (m) => Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: _MateriCard(
-                    materi: m, onTap: () => _segera('Materi belajar')),
+                  materi: m,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => SiswaMateriDetailScreen(materiId: m.id),
+                    ),
+                  ),
+                ),
               ),
             ),
         ],
@@ -228,11 +304,27 @@ class _DashboardSiswaPageState extends State<DashboardSiswaPage> {
 
   static String _labelTanggal(String? hari, DateTime now) {
     const bln = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
     ];
     const namaHari = [
-      'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'
+      'Senin',
+      'Selasa',
+      'Rabu',
+      'Kamis',
+      'Jumat',
+      'Sabtu',
+      'Minggu',
     ];
     return '${hari ?? namaHari[now.weekday - 1]}, ${now.day} ${bln[now.month - 1]}';
   }
@@ -241,13 +333,14 @@ class _DashboardSiswaPageState extends State<DashboardSiswaPage> {
 /* ===================== App bar & bottom nav ===================== */
 
 class _AppBar extends StatelessWidget implements PreferredSizeWidget {
-  final bool adaNotifikasi;
+  final int jumlahNotifikasi;
   final VoidCallback onLonceng;
   final VoidCallback onProfil;
-  const _AppBar(
-      {required this.adaNotifikasi,
-      required this.onLonceng,
-      required this.onProfil});
+  const _AppBar({
+    required this.jumlahNotifikasi,
+    required this.onLonceng,
+    required this.onProfil,
+  });
 
   @override
   Size get preferredSize => const Size.fromHeight(64);
@@ -271,15 +364,22 @@ class _AppBar extends StatelessWidget implements PreferredSizeWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Matsanam Siswa',
-                          style: TextStyle(
-                              fontSize: 12, color: AppColors.textSecondary)),
+                      Text(
+                        'Matsanam Siswa',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
                       SizedBox(height: 2),
-                      Text('Siswa: Dashboard',
-                          style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary)),
+                      Text(
+                        'Siswa: Dashboard',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -288,20 +388,35 @@ class _AppBar extends StatelessWidget implements PreferredSizeWidget {
                   children: [
                     IconButton(
                       onPressed: onLonceng,
-                      icon: const Icon(Icons.notifications_none_rounded,
-                          size: 26, color: AppColors.textPrimary),
+                      icon: const Icon(
+                        Icons.notifications_none_rounded,
+                        size: 26,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
-                    if (adaNotifikasi)
+                    if (jumlahNotifikasi > 0)
                       Positioned(
-                        top: 10,
-                        right: 11,
+                        top: 5,
+                        right: 3,
                         child: Container(
-                          width: 9,
-                          height: 9,
+                          constraints: const BoxConstraints(
+                            minWidth: 17,
+                            minHeight: 17,
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          alignment: Alignment.center,
                           decoration: BoxDecoration(
                             color: AppColors.error,
-                            shape: BoxShape.circle,
+                            borderRadius: BorderRadius.circular(10),
                             border: Border.all(color: Colors.white, width: 1.5),
+                          ),
+                          child: Text(
+                            jumlahNotifikasi > 9 ? '9+' : '$jumlahNotifikasi',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
                       ),
@@ -317,8 +432,11 @@ class _AppBar extends StatelessWidget implements PreferredSizeWidget {
                       color: AppColors.primaryDark,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.person_outline_rounded,
-                        size: 22, color: Colors.white),
+                    child: const Icon(
+                      Icons.person_outline_rounded,
+                      size: 22,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ],
@@ -361,8 +479,7 @@ class _BottomNav extends StatelessWidget {
           child: Row(
             children: List.generate(items.length, (i) {
               final aktif = i == 0; // halaman ini = Beranda
-              final warna =
-                  aktif ? AppColors.primary : const Color(0xFF475569);
+              final warna = aktif ? AppColors.primary : const Color(0xFF475569);
               return Expanded(
                 child: InkWell(
                   onTap: () => onTap(i),
@@ -371,12 +488,14 @@ class _BottomNav extends StatelessWidget {
                     children: [
                       Icon(items[i].$1, size: 24, color: warna),
                       const SizedBox(height: 3),
-                      Text(items[i].$2,
-                          style: TextStyle(
-                              fontSize: 11.5,
-                              fontWeight:
-                                  aktif ? FontWeight.w800 : FontWeight.w600,
-                              color: warna)),
+                      Text(
+                        items[i].$2,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: aktif ? FontWeight.w800 : FontWeight.w600,
+                          color: warna,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -432,8 +551,10 @@ class _Banner extends StatelessWidget {
             children: [
               Flexible(
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(20),
@@ -441,41 +562,57 @@ class _Banner extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.circle,
-                          size: 7, color: Color(0xFF34D399)),
+                      const Icon(
+                        Icons.circle,
+                        size: 7,
+                        color: Color(0xFF34D399),
+                      ),
                       const SizedBox(width: 6),
                       Flexible(
-                        child: Text('Siswa Aktif • Kelas ${data.kelas}',
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700)),
+                        child: Text(
+                          'Siswa Aktif • Kelas ${data.kelas}',
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
               const SizedBox(width: 8),
-              Text('NIS: ${data.nis}',
-                  style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600)),
+              Text(
+                'NIS: ${data.nis}',
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
-          Text('Selamat $_salam, ${data.namaPanggilan} 👋',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 23,
-                  fontWeight: FontWeight.w800)),
+          Text(
+            'Selamat $_salam, ${data.namaPanggilan} 👋',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 23,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
           const SizedBox(height: 6),
           Row(
             children: [
-              const Icon(Icons.bolt_rounded, size: 17, color: Color(0xFF5EEAD4)),
+              const Icon(
+                Icons.bolt_rounded,
+                size: 17,
+                color: Color(0xFF5EEAD4),
+              ),
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
@@ -489,11 +626,14 @@ class _Banner extends StatelessWidget {
           Divider(color: Colors.white.withValues(alpha: 0.25), height: 1),
           const SizedBox(height: 10),
           Text(
-            data.periode != null ? 'Semester ${data.periode}' : 'Semester aktif',
+            data.periode != null
+                ? 'Semester ${data.periode}'
+                : 'Semester aktif',
             style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w700),
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),
@@ -537,7 +677,7 @@ class _StatsRow extends StatelessWidget {
           child: _StatCard(
             label: 'Rerata',
             value: rerata != null ? rerata.toStringAsFixed(1) : '-',
-            caption: 'Nilai Rapor',
+            caption: 'Nilai Tugas',
             icon: Icons.star_border_rounded,
             color: const Color(0xFFF59E0B),
             soft: AppColors.warningLight,
@@ -586,11 +726,14 @@ class _StatCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(label,
-                  style: const TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary)),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
+              ),
               Container(
                 width: 26,
                 height: 26,
@@ -603,15 +746,22 @@ class _StatCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
-          Text(value,
-              style: const TextStyle(
-                  fontSize: 25,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary)),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 25,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            ),
+          ),
           const SizedBox(height: 2),
-          Text(caption,
-              style: const TextStyle(
-                  fontSize: 11.5, color: AppColors.textSecondary)),
+          Text(
+            caption,
+            style: const TextStyle(
+              fontSize: 11.5,
+              color: AppColors.textSecondary,
+            ),
+          ),
         ],
       ),
     );
@@ -654,18 +804,24 @@ class _AksesCepat extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Akses Cepat',
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary)),
+              const Text(
+                'Akses Cepat',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
+              ),
               GestureDetector(
                 onTap: onBantuan,
-                child: const Text('Bantuan Siswa',
-                    style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primary)),
+                child: const Text(
+                  'Bantuan Siswa',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
               ),
             ],
           ),
@@ -764,20 +920,26 @@ class _AksesItem extends StatelessWidget {
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 1.5),
                     ),
-                    child: const Icon(Icons.photo_camera_rounded,
-                        size: 10, color: Colors.white),
+                    child: const Icon(
+                      Icons.photo_camera_rounded,
+                      size: 10,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
             ],
           ),
           const SizedBox(height: 8),
-          Text(label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                  fontSize: 12,
-                  height: 1.25,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary)),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 12,
+              height: 1.25,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
         ],
       ),
     );
@@ -790,8 +952,11 @@ class _SectionHeader extends StatelessWidget {
   final Color color;
   final String title;
   final Widget trailing;
-  const _SectionHeader(
-      {required this.color, required this.title, required this.trailing});
+  const _SectionHeader({
+    required this.color,
+    required this.title,
+    required this.trailing,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -800,11 +965,14 @@ class _SectionHeader extends StatelessWidget {
         Icon(Icons.circle, size: 9, color: color),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(title,
-              style: const TextStyle(
-                  fontSize: 16.5,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary)),
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 16.5,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            ),
+          ),
         ),
         trailing,
       ],
@@ -813,16 +981,16 @@ class _SectionHeader extends StatelessWidget {
 }
 
 BoxDecoration _kartu() => BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(18),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.04),
-          blurRadius: 8,
-          offset: const Offset(0, 2),
-        ),
-      ],
-    );
+  color: Colors.white,
+  borderRadius: BorderRadius.circular(18),
+  boxShadow: [
+    BoxShadow(
+      color: Colors.black.withValues(alpha: 0.04),
+      blurRadius: 8,
+      offset: const Offset(0, 2),
+    ),
+  ],
+);
 
 class _EmptyCard extends StatelessWidget {
   final IconData icon;
@@ -840,10 +1008,14 @@ class _EmptyCard extends StatelessWidget {
         children: [
           Icon(icon, size: 30, color: const Color(0xFF94A3B8)),
           const SizedBox(height: 8),
-          Text(text,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                  fontSize: 13.5, color: AppColors.textSecondary)),
+          Text(
+            text,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 13.5,
+              color: AppColors.textSecondary,
+            ),
+          ),
         ],
       ),
     );
@@ -854,19 +1026,31 @@ class _JadwalCard extends StatelessWidget {
   final JadwalHariIni jadwal;
   final DateTime now;
   final VoidCallback onScan;
-  const _JadwalCard(
-      {required this.jadwal, required this.now, required this.onScan});
+  const _JadwalCard({
+    required this.jadwal,
+    required this.now,
+    required this.onScan,
+  });
 
   @override
   Widget build(BuildContext context) {
     final fase = jadwal.faseSekarang(now);
     final (chipText, chipBg, chipFg) = switch (fase) {
-      JadwalFase.berlangsung =>
-        ('Sedang Berlangsung', AppColors.successLight, AppColors.success),
-      JadwalFase.akan =>
-        ('Akan Datang', AppColors.infoLight, AppColors.primaryDark),
-      JadwalFase.selesai =>
-        ('Selesai', const Color(0xFFE2E8F0), AppColors.textSecondary),
+      JadwalFase.berlangsung => (
+        'Sedang Berlangsung',
+        AppColors.successLight,
+        AppColors.success,
+      ),
+      JadwalFase.akan => (
+        'Akan Datang',
+        AppColors.infoLight,
+        AppColors.primaryDark,
+      ),
+      JadwalFase.selesai => (
+        'Selesai',
+        const Color(0xFFE2E8F0),
+        AppColors.textSecondary,
+      ),
     };
 
     final matematika = jadwal.mapel.toLowerCase().contains('matematika');
@@ -885,7 +1069,9 @@ class _JadwalCard extends StatelessWidget {
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: chipBg,
                         borderRadius: BorderRadius.circular(14),
@@ -895,21 +1081,31 @@ class _JadwalCard extends StatelessWidget {
                         children: [
                           Icon(Icons.circle, size: 7, color: chipFg),
                           const SizedBox(width: 5),
-                          Text(chipText,
-                              style: TextStyle(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: chipFg)),
+                          Text(
+                            chipText,
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              color: chipFg,
+                            ),
+                          ),
                         ],
                       ),
                     ),
                     const Spacer(),
-                    const Icon(Icons.access_time_rounded,
-                        size: 14, color: AppColors.textSecondary),
+                    const Icon(
+                      Icons.access_time_rounded,
+                      size: 14,
+                      color: AppColors.textSecondary,
+                    ),
                     const SizedBox(width: 4),
-                    Text('${jadwal.jamMulai} - ${jadwal.jamSelesai} WIB',
-                        style: const TextStyle(
-                            fontSize: 12.5, color: AppColors.textSecondary)),
+                    Text(
+                      '${jadwal.jamMulai} - ${jadwal.jamSelesai} WIB',
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -920,36 +1116,51 @@ class _JadwalCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(jadwal.mapel,
-                              style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.textPrimary)),
+                          Text(
+                            jadwal.mapel,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
                           const SizedBox(height: 6),
                           Row(
                             children: [
-                              const Icon(Icons.person_outline_rounded,
-                                  size: 15, color: AppColors.textSecondary),
+                              const Icon(
+                                Icons.person_outline_rounded,
+                                size: 15,
+                                color: AppColors.textSecondary,
+                              ),
                               const SizedBox(width: 5),
                               Expanded(
-                                child: Text(jadwal.guru,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                        fontSize: 13,
-                                        color: AppColors.textSecondary)),
+                                child: Text(
+                                  jadwal.guru,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 3),
                           Row(
                             children: [
-                              const Icon(Icons.meeting_room_outlined,
-                                  size: 15, color: AppColors.textSecondary),
+                              const Icon(
+                                Icons.meeting_room_outlined,
+                                size: 15,
+                                color: AppColors.textSecondary,
+                              ),
                               const SizedBox(width: 5),
-                              Text('Ruang ${jadwal.ruangan}',
-                                  style: const TextStyle(
-                                      fontSize: 13,
-                                      color: AppColors.textSecondary)),
+                              Text(
+                                'Ruang ${jadwal.ruangan}',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
                             ],
                           ),
                         ],
@@ -964,11 +1175,12 @@ class _JadwalCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Icon(
-                          matematika
-                              ? Icons.calculate_outlined
-                              : Icons.auto_stories_outlined,
-                          size: 25,
-                          color: AppColors.primary),
+                        matematika
+                            ? Icons.calculate_outlined
+                            : Icons.auto_stories_outlined,
+                        size: 25,
+                        color: AppColors.primary,
+                      ),
                     ),
                   ],
                 ),
@@ -984,11 +1196,14 @@ class _JadwalCard extends StatelessWidget {
                 const Icon(Icons.circle, size: 9, color: AppColors.success),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text('Toleransi s/d ${jadwal.batasToleransi} WIB',
-                      style: const TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary)),
+                  child: Text(
+                    'Toleransi s/d ${jadwal.batasToleransi} WIB',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
                 ),
                 _AksiPresensi(jadwal: jadwal, fase: fase, onScan: onScan),
               ],
@@ -1004,14 +1219,19 @@ class _AksiPresensi extends StatelessWidget {
   final JadwalHariIni jadwal;
   final JadwalFase fase;
   final VoidCallback onScan;
-  const _AksiPresensi(
-      {required this.jadwal, required this.fase, required this.onScan});
+  const _AksiPresensi({
+    required this.jadwal,
+    required this.fase,
+    required this.onScan,
+  });
 
   @override
   Widget build(BuildContext context) {
     if (jadwal.sudahAbsen) {
-      final s = jadwal.statusAbsen!;
-      final label = '${s[0].toUpperCase()}${s.substring(1)}';
+      final s = (jadwal.statusAbsen ?? '').trim().toLowerCase();
+      final label = s.isEmpty
+          ? 'Tercatat'
+          : '${s[0].toUpperCase()}${s.substring(1)}';
       final ok = s == 'hadir';
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
@@ -1022,14 +1242,20 @@ class _AksiPresensi extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(ok ? Icons.check_circle_rounded : Icons.info_outline_rounded,
-                size: 15, color: ok ? AppColors.success : AppColors.warning),
+            Icon(
+              ok ? Icons.check_circle_rounded : Icons.info_outline_rounded,
+              size: 15,
+              color: ok ? AppColors.success : AppColors.warning,
+            ),
             const SizedBox(width: 5),
-            Text(label,
-                style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    color: ok ? AppColors.success : AppColors.warning)),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: ok ? AppColors.success : AppColors.warning,
+              ),
+            ),
           ],
         ),
       );
@@ -1039,8 +1265,10 @@ class _AksiPresensi extends StatelessWidget {
       return ElevatedButton.icon(
         onPressed: onScan,
         icon: const Icon(Icons.qr_code_scanner_rounded, size: 16),
-        label: const Text('Scan QR Hadir',
-            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+        label: const Text(
+          'Scan QR Hadir',
+          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+        ),
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF047857),
           foregroundColor: Colors.white,
@@ -1048,8 +1276,9 @@ class _AksiPresensi extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
           minimumSize: Size.zero,
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
     }
@@ -1082,24 +1311,33 @@ class _TugasCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: chipBg,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Text(tugas.labelSisa,
-                    style: const TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white)),
+                child: Text(
+                  tugas.labelSisa,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(tugas.mapel,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontSize: 12.5, color: AppColors.textSecondary)),
+                child: Text(
+                  tugas.mapel,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
               ),
               Container(
                 width: 36,
@@ -1112,36 +1350,52 @@ class _TugasCard extends StatelessWidget {
                 ),
                 child: matematika
                     ? const Center(
-                        child: Text('Σ',
-                            style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.primaryDark)))
-                    : const Icon(Icons.edit_note_rounded,
-                        size: 22, color: AppColors.warning),
+                        child: Text(
+                          'Σ',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primaryDark,
+                          ),
+                        ),
+                      )
+                    : const Icon(
+                        Icons.edit_note_rounded,
+                        size: 22,
+                        color: AppColors.warning,
+                      ),
               ),
             ],
           ),
           const SizedBox(height: 10),
-          Text(tugas.judul,
-              style: const TextStyle(
-                  fontSize: 16.5,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary)),
+          Text(
+            tugas.judul,
+            style: const TextStyle(
+              fontSize: 16.5,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            ),
+          ),
           if (tugas.totalSiswa > 0) ...[
             const SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                    'Pengumpulan Kelas: ${tugas.sudahKumpul}/${tugas.totalSiswa} Siswa',
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.textSecondary)),
-                Text('$persen%',
-                    style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.primary)),
+                  'Pengumpulan Kelas: ${tugas.sudahKumpul}/${tugas.totalSiswa} Siswa',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                Text(
+                  '$persen%',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 6),
@@ -1162,27 +1416,39 @@ class _TugasCard extends StatelessWidget {
               if (tugas.adaLampiran)
                 const Row(
                   children: [
-                    Icon(Icons.attach_file_rounded,
-                        size: 16, color: AppColors.textSecondary),
+                    Icon(
+                      Icons.attach_file_rounded,
+                      size: 16,
+                      color: AppColors.textSecondary,
+                    ),
                     SizedBox(width: 4),
-                    Text('Ada File Lampiran',
-                        style: TextStyle(
-                            fontSize: 12, color: AppColors.textSecondary)),
+                    Text(
+                      'Ada File Lampiran',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
                   ],
                 )
               else
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFE8EEF9),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text(tugas.jenisLabel,
-                      style: const TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary)),
+                  child: Text(
+                    tugas.jenisLabel,
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                 ),
               merah
                   ? ElevatedButton(
@@ -1192,19 +1458,25 @@ class _TugasCard extends StatelessWidget {
                         foregroundColor: Colors.white,
                         elevation: 0,
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 9),
+                          horizontal: 14,
+                          vertical: 9,
+                        ),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text('Kerjakan',
-                              style: TextStyle(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w700)),
+                          Text(
+                            'Kerjakan',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                           SizedBox(width: 4),
                           Icon(Icons.arrow_forward_rounded, size: 15),
                         ],
@@ -1216,15 +1488,22 @@ class _TugasCard extends StatelessWidget {
                         backgroundColor: const Color(0xFFE0E7FF),
                         foregroundColor: AppColors.primaryDark,
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 9),
+                          horizontal: 14,
+                          vertical: 9,
+                        ),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
-                      child: const Text('Rincian',
-                          style: TextStyle(
-                              fontSize: 12.5, fontWeight: FontWeight.w700)),
+                      child: const Text(
+                        'Rincian',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
             ],
           ),
@@ -1256,8 +1535,11 @@ class _MateriCard extends StatelessWidget {
                 color: const Color(0xFFE0E7FF),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: const Icon(Icons.play_lesson_outlined,
-                  size: 27, color: AppColors.primaryDark),
+              child: const Icon(
+                Icons.play_lesson_outlined,
+                size: 27,
+                color: AppColors.primaryDark,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1269,40 +1551,56 @@ class _MateriCard extends StatelessWidget {
                       if (materi.ekstensi.isNotEmpty)
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 7, vertical: 2),
+                            horizontal: 7,
+                            vertical: 2,
+                          ),
                           margin: const EdgeInsets.only(right: 6),
                           decoration: BoxDecoration(
                             color: AppColors.infoLight,
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: Text(materi.ekstensi,
-                              style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.primaryDark)),
+                          child: Text(
+                            materi.ekstensi,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primaryDark,
+                            ),
+                          ),
                         ),
                       Expanded(
-                        child: Text(materi.mapel,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                fontSize: 12, color: AppColors.textSecondary)),
+                        child: Text(
+                          materi.mapel,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(materi.judul,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontSize: 15.5,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary)),
+                  Text(
+                    materi.judul,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text('Diunggah oleh ${materi.guru}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontSize: 12, color: AppColors.textSecondary)),
+                  Text(
+                    'Diunggah oleh ${materi.guru}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1314,8 +1612,11 @@ class _MateriCard extends StatelessWidget {
                 color: const Color(0xFFE0E7FF),
                 borderRadius: BorderRadius.circular(11),
               ),
-              child: const Icon(Icons.chevron_right_rounded,
-                  size: 22, color: AppColors.primaryDark),
+              child: const Icon(
+                Icons.chevron_right_rounded,
+                size: 22,
+                color: AppColors.primaryDark,
+              ),
             ),
           ],
         ),
@@ -1337,13 +1638,20 @@ class _ErrorView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.cloud_off_rounded,
-                size: 52, color: Color(0xFF94A3B8)),
+            const Icon(
+              Icons.cloud_off_rounded,
+              size: 52,
+              color: Color(0xFF94A3B8),
+            ),
             const SizedBox(height: 12),
-            Text(message,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    fontSize: 14, color: AppColors.textSecondary)),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.textSecondary,
+              ),
+            ),
             const SizedBox(height: 18),
             ElevatedButton.icon(
               onPressed: onRetry,
@@ -1353,7 +1661,8 @@ class _ErrorView extends StatelessWidget {
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ],

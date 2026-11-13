@@ -1,12 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../utils/constants.dart';
 
-enum ButtonVariant {
-  primary,
-  secondary,
-  danger,
-  outline,
-}
+enum ButtonVariant { primary, secondary, danger, outline }
 
 class PrimaryButton extends StatelessWidget {
   final String text;
@@ -72,9 +67,7 @@ class PrimaryButton extends StatelessWidget {
           style: OutlinedButton.styleFrom(
             foregroundColor: colors['foreground'],
             side: BorderSide(
-              color: isDisabled
-                  ? AppColors.border
-                  : colors['background']!,
+              color: isDisabled ? AppColors.border : colors['background']!,
               width: 1.5,
             ),
             shape: RoundedRectangleBorder(
@@ -112,15 +105,9 @@ class PrimaryButton extends StatelessWidget {
   Map<String, Color> _getColors() {
     switch (variant) {
       case ButtonVariant.secondary:
-        return {
-          'background': AppColors.success,
-          'foreground': Colors.white,
-        };
+        return {'background': AppColors.success, 'foreground': Colors.white};
       case ButtonVariant.danger:
-        return {
-          'background': AppColors.danger,
-          'foreground': Colors.white,
-        };
+        return {'background': AppColors.danger, 'foreground': Colors.white};
       case ButtonVariant.outline:
         return {
           'background': AppColors.primary,
@@ -128,10 +115,7 @@ class PrimaryButton extends StatelessWidget {
         };
       case ButtonVariant.primary:
       default:
-        return {
-          'background': AppColors.primary,
-          'foreground': Colors.white,
-        };
+        return {'background': AppColors.primary, 'foreground': Colors.white};
     }
   }
 }

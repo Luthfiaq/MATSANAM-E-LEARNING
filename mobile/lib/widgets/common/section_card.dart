@@ -49,10 +49,7 @@ class SectionCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      title,
-                      style: AppTypography.labelLarge,
-                    ),
+                    Text(title, style: AppTypography.labelLarge),
                     if (badgeText != null)
                       StatusBadge(
                         text: badgeText!,

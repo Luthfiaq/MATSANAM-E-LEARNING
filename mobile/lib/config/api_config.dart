@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 
 /// Central API configuration.
 ///
@@ -43,11 +44,20 @@ class ApiConfig {
   static const Duration timeout = Duration(seconds: 30);
 
   static Map<String, String> headers([String? token]) => {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
-      };
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+    if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+  };
 
   static String get siswaDashboard => '$baseUrl/siswa/dashboard';
   static String get siswaPengajuanIzin => '$baseUrl/siswa/pengajuan-izin';
+  static String get siswaMapel => '$baseUrl/siswa/mapel';
+  static String get siswaMateri => '$baseUrl/siswa/materi';
+  static String get siswaTugas => '$baseUrl/siswa/tugas';
+  static String get siswaNilai => '$baseUrl/siswa/nilai';
+  static String get siswaJadwal => '$baseUrl/siswa/jadwal';
+  static String get siswaRiwayatAbsensi => '$baseUrl/siswa/absensi/riwayat';
+  static String get siswaScanQr => '$baseUrl/siswa/absensi/scan';
+  static String get siswaSuratIzin => '$baseUrl/siswa/surat-izin';
+  static String get changePassword => '$baseUrl/auth/change-password';
 }

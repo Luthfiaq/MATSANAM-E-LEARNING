@@ -83,7 +83,7 @@
                     id="deadline" 
                     name="deadline" 
                     required
-                    value="{{ $tugas->deadline->format('Y-m-d\TH:i') }}"
+                    value="{{ old('deadline', $tugas->deadline->copy()->timezone('Asia/Jakarta')->format('Y-m-d\TH:i')) }}"
                     class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 />
                 @error('deadline')

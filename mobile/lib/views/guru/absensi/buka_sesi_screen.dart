@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -21,7 +22,12 @@ class BukaSesiScreen extends StatefulWidget {
 }
 
 class _BukaSesiScreenState extends State<BukaSesiScreen> {
-  final _location = {'latitude': -6.200000, 'longitude': 106.816666};
+  String _locationMode = 'gps';
+  double? _locationLatitude;
+  double? _locationLongitude;
+  bool _readingLocation = false;
+  final _manualLatitudeController = TextEditingController();
+  final _manualLongitudeController = TextEditingController();
   int _radius = 150;
   bool _toleransi = false;
   bool _loading = false;
@@ -32,7 +38,7 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
   DateTime? _expiredAt;
   Timer? _refreshTimer;
   Timer? _attendanceTimer;
-  
+
   // Real-time attendance data
   int _totalStudents = 0;
   int _presentStudents = 0;
@@ -43,7 +49,8 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
     super.initState();
     _totalStudents = (widget.jadwal['jumlah_siswa'] as num?)?.toInt() ?? 0;
     final existingId = widget.jadwal['sesi_id'];
-    final hasActiveSession = widget.jadwal['status_absensi'] == 'aktif' && existingId != null;
+    final hasActiveSession =
+        widget.jadwal['status_absensi'] == 'aktif' && existingId != null;
     if (hasActiveSession) {
       _sessionActive = true;
       _sessionId = existingId.toString();
@@ -56,7 +63,18 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
   void dispose() {
     _refreshTimer?.cancel();
     _attendanceTimer?.cancel();
+    _manualLatitudeController.dispose();
+    _manualLongitudeController.dispose();
     super.dispose();
+  }
+
+  String _formatSchoolTime(DateTime value) {
+    // API timestamps are UTC ISO-8601. Display the school's fixed WIB time,
+    // independent of the timezone configured on the teacher's device.
+    final schoolTime = value.toUtc().add(const Duration(hours: 7));
+    final hour = schoolTime.hour.toString().padLeft(2, '0');
+    final minute = schoolTime.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
   }
 
   Future<String?> _refreshQR() async {
@@ -69,17 +87,24 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
         throw Exception('Sesi login tidak ditemukan. Silakan masuk kembali.');
       }
 
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/guru/absensi/session/$id/regenerate-qr'),
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(ApiConfig.timeout);
+      final response = await http
+          .post(
+            Uri.parse(
+              '${ApiConfig.baseUrl}/guru/absensi/session/$id/regenerate-qr',
+            ),
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(ApiConfig.timeout);
 
       final decoded = json.decode(response.body);
-      if (response.statusCode < 200 || response.statusCode >= 300 ||
-          decoded is! Map || decoded['success'] != true || decoded['data'] is! Map) {
+      if (response.statusCode < 200 ||
+          response.statusCode >= 300 ||
+          decoded is! Map ||
+          decoded['success'] != true ||
+          decoded['data'] is! Map) {
         final message = decoded is Map ? decoded['message'] : null;
         throw Exception(message?.toString() ?? 'QR Code gagal diperbarui.');
       }
@@ -92,7 +117,8 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
 
       if (!mounted) return null;
       _qrData = qrData;
-      _expiredAt = DateTime.tryParse(data['expired_at']?.toString() ?? '') ?? _expiredAt;
+      _expiredAt =
+          DateTime.tryParse(data['expired_at']?.toString() ?? '') ?? _expiredAt;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('QR Code berhasil dibuat ulang.'),
@@ -103,7 +129,9 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
     } catch (error) {
       if (!mounted) return null;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+        SnackBar(
+          content: Text(error.toString().replaceFirst('Exception: ', '')),
+        ),
       );
       return null;
     }
@@ -124,16 +152,21 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
-      if (token == null || token.isEmpty) throw Exception('Sesi login tidak ditemukan.');
-      final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/guru/absensi/session/$id'),
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(ApiConfig.timeout);
+      if (token == null || token.isEmpty)
+        throw Exception('Sesi login tidak ditemukan.');
+      final response = await http
+          .get(
+            Uri.parse('${ApiConfig.baseUrl}/guru/absensi/session/$id'),
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(ApiConfig.timeout);
       if (response.statusCode != 200) {
-        throw Exception('Sesi tidak dapat dimuat (HTTP ${response.statusCode}).');
+        throw Exception(
+          'Sesi tidak dapat dimuat (HTTP ${response.statusCode}).',
+        );
       }
       final decoded = json.decode(response.body);
       final data = decoded is Map && decoded['data'] is Map
@@ -146,10 +179,22 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
       final nextActive = data['status'] == 'aktif';
       final nextId = (data['sesi_id'] ?? data['id'] ?? id).toString();
       final nextQr = data['qr_data']?.toString();
-      final nextExpiry = DateTime.tryParse(data['expired_at']?.toString() ?? '');
-      final nextTotal = (data['total_students'] as num?)?.toInt() ?? _totalStudents;
-      final changed = _sessionActive != nextActive || _sessionId != nextId ||
-          _qrData != nextQr || _expiredAt != nextExpiry || _totalStudents != nextTotal || _loading;
+      final nextExpiry = DateTime.tryParse(
+        data['expired_at']?.toString() ?? '',
+      );
+      final nextTotal =
+          (data['total_students'] as num?)?.toInt() ?? _totalStudents;
+      final savedLocationMode = data['mode_lokasi']?.toString() ?? 'mts';
+      final savedLatitude = (data['lokasi_latitude'] as num?)?.toDouble();
+      final savedLongitude = (data['lokasi_longitude'] as num?)?.toDouble();
+      final savedRadius = (data['radius_meter'] as num?)?.toInt();
+      final changed =
+          _sessionActive != nextActive ||
+          _sessionId != nextId ||
+          _qrData != nextQr ||
+          _expiredAt != nextExpiry ||
+          _totalStudents != nextTotal ||
+          _loading;
       if (changed) {
         setState(() {
           _sessionActive = nextActive;
@@ -157,6 +202,14 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
           _qrData = nextQr;
           _expiredAt = nextExpiry;
           _totalStudents = nextTotal;
+          if (savedLatitude != null && savedLongitude != null) {
+            _locationLatitude = savedLatitude;
+            _locationLongitude = savedLongitude;
+            _locationMode = savedLocationMode == 'bebas' ? 'gps' : 'manual';
+            if (savedRadius != null) _radius = savedRadius;
+            _manualLatitudeController.text = savedLatitude.toStringAsFixed(6);
+            _manualLongitudeController.text = savedLongitude.toStringAsFixed(6);
+          }
           _loading = false;
         });
       }
@@ -172,7 +225,9 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
       setState(() => _loading = false);
       if (!silent) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+          SnackBar(
+            content: Text(error.toString().replaceFirst('Exception: ', '')),
+          ),
         );
       }
     }
@@ -181,7 +236,9 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
   void _startAttendancePolling() {
     // Hindari timer polling ganda ketika detail sesi dimuat ulang.
     _attendanceTimer?.cancel();
-    _attendanceTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
+    _attendanceTimer = Timer.periodic(const Duration(seconds: 3), (
+      timer,
+    ) async {
       if (mounted && _sessionActive) {
         await _fetchAttendanceData();
       }
@@ -194,21 +251,31 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
       final token = prefs.getString('auth_token');
       if (token == null) return;
 
-      final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/guru/absensi/session/$_sessionId/attendance'),
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(const Duration(seconds: 5));
+      final response = await http
+          .get(
+            Uri.parse(
+              '${ApiConfig.baseUrl}/guru/absensi/session/$_sessionId/attendance',
+            ),
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true && mounted) {
-          final nextPresent = (data['data']['present_count'] as num?)?.toInt() ?? 0;
-          final nextTotal = (data['data']['total_students'] as num?)?.toInt() ?? _totalStudents;
-          final nextScans = List<Map<String, dynamic>>.from(data['data']['recent_scans'] ?? []).take(5).toList();
-          if (nextPresent != _presentStudents || nextTotal != _totalStudents ||
+          final nextPresent =
+              (data['data']['present_count'] as num?)?.toInt() ?? 0;
+          final nextTotal =
+              (data['data']['total_students'] as num?)?.toInt() ??
+              _totalStudents;
+          final nextScans = List<Map<String, dynamic>>.from(
+            data['data']['recent_scans'] ?? [],
+          ).take(5).toList();
+          if (nextPresent != _presentStudents ||
+              nextTotal != _totalStudents ||
               json.encode(nextScans) != json.encode(_recentScans)) {
             setState(() {
               _presentStudents = nextPresent;
@@ -230,33 +297,44 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
 
     try {
       final scheduleId = widget.jadwal['jadwal_id'] ?? widget.jadwal['id'];
+      if (_locationLatitude == null || _locationLongitude == null) {
+        throw Exception(
+          'Tentukan lokasi presensi terlebih dahulu. Gunakan GPS saat berada di tempat presensi atau masukkan koordinat resmi madrasah.',
+        );
+      }
       if (scheduleId == null || int.tryParse(scheduleId.toString()) == null) {
-        throw Exception('Jadwal kelas tidak valid. Kembali ke daftar mapel dan pilih kelas lagi.');
+        throw Exception(
+          'Jadwal kelas tidak valid. Kembali ke daftar mapel dan pilih kelas lagi.',
+        );
       }
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
-      if (token == null || token.isEmpty) throw Exception('Sesi login tidak ditemukan.');
-      
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/guru/absensi/start-session'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: json.encode({
-          'jadwal_id': int.parse(scheduleId.toString()),
-          'mata_pelajaran': widget.jadwal['mata_pelajaran'] ?? 'Matematika',
-          'kelas': widget.jadwal['kelas'] ?? '9A',
-          'session_id': _sessionId,
-          'qr_data': _qrData,
-          'lokasi_latitude': _location['latitude'],
-          'lokasi_longitude': _location['longitude'],
-          'radius_meter': _radius,
-          'toleransi_keterlambatan': _toleransi,
-          'expired_at': _expiredAt?.toIso8601String(),
-        }),
-      ).timeout(ApiConfig.timeout);
+      if (token == null || token.isEmpty)
+        throw Exception('Sesi login tidak ditemukan.');
+
+      final response = await http
+          .post(
+            Uri.parse('${ApiConfig.baseUrl}/guru/absensi/start-session'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: json.encode({
+              'jadwal_id': int.parse(scheduleId.toString()),
+              'mode_lokasi': _locationMode == 'gps' ? 'bebas' : 'mts',
+              'mata_pelajaran': widget.jadwal['mata_pelajaran'] ?? 'Matematika',
+              'kelas': widget.jadwal['kelas'] ?? '9A',
+              'session_id': _sessionId,
+              'qr_data': _qrData,
+              'lokasi_latitude': _locationLatitude,
+              'lokasi_longitude': _locationLongitude,
+              'radius_meter': _radius,
+              'toleransi_keterlambatan': _toleransi,
+              'expired_at': _expiredAt?.toIso8601String(),
+            }),
+          )
+          .timeout(ApiConfig.timeout);
 
       if (response.statusCode == 409) {
         final conflictBody = json.decode(response.body);
@@ -272,16 +350,19 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
           await _loadActiveSession();
           return;
         }
-        throw Exception(conflictBody is Map
-            ? conflictBody['message']?.toString() ?? 'Sesi absensi sudah aktif.'
-            : 'Sesi absensi sudah aktif.');
+        throw Exception(
+          conflictBody is Map
+              ? conflictBody['message']?.toString() ??
+                    'Sesi absensi sudah aktif.'
+              : 'Sesi absensi sudah aktif.',
+        );
       }
 
-      if (response.statusCode == 200) {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
         String cleanBody = response.body.trim();
         int jsonStart = cleanBody.indexOf('{');
         if (jsonStart > 0) cleanBody = cleanBody.substring(jsonStart);
-        
+
         final data = json.decode(cleanBody);
         if (data['success'] == true && mounted) {
           final sessionData = data['data'] is Map
@@ -292,11 +373,13 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
             _sessionId = sessionData['sesi_id']?.toString() ?? _sessionId;
             _qrData = sessionData['qr_data']?.toString() ?? _qrData;
             final expires = sessionData['expired_at']?.toString();
-            _expiredAt = expires == null ? _expiredAt : DateTime.tryParse(expires);
+            _expiredAt = expires == null
+                ? _expiredAt
+                : DateTime.tryParse(expires);
           });
           _startAutoRefresh();
           _startAttendancePolling();
-          
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(data['message'] ?? 'Sesi absensi berhasil dibuka'),
@@ -328,7 +411,9 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Tutup Sesi Absensi?'),
-        content: const Text('Siswa tidak akan bisa absen setelah sesi ditutup.'),
+        content: const Text(
+          'Siswa tidak akan bisa absen setelah sesi ditutup.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -347,14 +432,18 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
       try {
         final prefs = await SharedPreferences.getInstance();
         final token = prefs.getString('auth_token');
-        
-        final response = await http.post(
-          Uri.parse('${ApiConfig.baseUrl}/guru/absensi/close-session/$_sessionId'),
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Accept': 'application/json',
-          },
-        ).timeout(ApiConfig.timeout);
+
+        final response = await http
+            .post(
+              Uri.parse(
+                '${ApiConfig.baseUrl}/guru/absensi/close-session/$_sessionId',
+              ),
+              headers: {
+                'Authorization': 'Bearer $token',
+                'Accept': 'application/json',
+              },
+            )
+            .timeout(ApiConfig.timeout);
         if (response.statusCode < 200 || response.statusCode >= 300) {
           throw Exception('Gagal menutup sesi (HTTP ${response.statusCode}).');
         }
@@ -367,9 +456,9 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error: $e')));
         }
       }
     }
@@ -400,7 +489,7 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
           // Session Info Card
           _buildSessionInfoCard(),
           const SizedBox(height: AppDimens.spacingLarge),
-          
+
           // QR Code
           Container(
             width: double.infinity,
@@ -415,20 +504,42 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.qr_code_2_rounded, color: AppColors.primary, size: 20),
+                    const Icon(
+                      Icons.qr_code_2_rounded,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     const Expanded(
-                      child: Text('Kode QR Interaktif', style: TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w700)),
+                      child: Text(
+                        'Kode QR Interaktif',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        color: _sessionActive ? AppColors.successLight : AppColors.background,
+                        color: _sessionActive
+                            ? AppColors.successLight
+                            : AppColors.background,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         _sessionActive ? 'Live Sync' : 'Belum Aktif',
-                        style: TextStyle(color: _sessionActive ? AppColors.success : AppColors.textMuted, fontSize: 10, fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                          color: _sessionActive
+                              ? AppColors.success
+                              : AppColors.textMuted,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ],
@@ -449,7 +560,7 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
             ),
           ),
           const SizedBox(height: AppDimens.spacingLarge),
-          
+
           // Attendance Counter (only if active)
           if (_sessionActive) ...[
             _buildAttendanceCounter(),
@@ -457,7 +568,7 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
             _buildRecentScans(),
             const SizedBox(height: AppDimens.spacingLarge),
           ],
-          
+
           // Location Settings (only before start)
           if (!_sessionActive) ...[
             _buildLocationSection(),
@@ -465,7 +576,7 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
             _buildToleransiSection(),
             const SizedBox(height: AppDimens.spacingXLarge),
           ],
-          
+
           // Action Buttons
           _buildActionButtons(),
         ],
@@ -476,8 +587,9 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
   Widget _buildSessionInfoCard() {
     final now = DateTime.now();
     final dateStr = '${now.day}/${now.month}/${now.year}';
-    final timeStr = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-    
+    final timeStr =
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+
     return Container(
       padding: AppDimens.paddingLarge,
       decoration: BoxDecoration(
@@ -506,7 +618,11 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
                   color: Colors.white.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.qr_code_scanner, color: Colors.white, size: 28),
+                child: const Icon(
+                  Icons.qr_code_scanner,
+                  color: Colors.white,
+                  size: 28,
+                ),
               ),
               const SizedBox(width: AppDimens.spacingMedium),
               Expanded(
@@ -560,10 +676,14 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.access_time, color: Colors.white70, size: 16),
+                  const Icon(
+                    Icons.access_time,
+                    color: Colors.white70,
+                    size: 16,
+                  ),
                   const SizedBox(width: AppDimens.spacingXSmall),
                   Text(
-                    'Expired: ${_expiredAt!.hour.toString().padLeft(2, '0')}:${_expiredAt!.minute.toString().padLeft(2, '0')} WIB',
+                    'Berakhir: ${_formatSchoolTime(_expiredAt!)} WIB',
                     style: AppTypography.bodySmall.copyWith(
                       color: Colors.white,
                     ),
@@ -578,9 +698,11 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
   }
 
   Widget _buildAttendanceCounter() {
-    final progress = _totalStudents > 0 ? _presentStudents / _totalStudents : 0.0;
+    final progress = _totalStudents > 0
+        ? _presentStudents / _totalStudents
+        : 0.0;
     final percentage = (progress * 100).toInt();
-    
+
     return Container(
       padding: AppDimens.paddingLarge,
       decoration: BoxDecoration(
@@ -609,7 +731,8 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
           ProgressBarWithLabel(
             value: progress,
             label: 'Progress Absensi',
-            subLabel: '$_presentStudents dari $_totalStudents siswa ($percentage%)',
+            subLabel:
+                '$_presentStudents dari $_totalStudents siswa ($percentage%)',
             height: 8,
           ),
         ],
@@ -634,56 +757,148 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.history, size: 20, color: AppColors.textSecondary),
-              const SizedBox(width: AppDimens.spacingSmall),
-              Text(
-                'Scan Terbaru',
-                style: AppTypography.labelLarge,
+              const Icon(
+                Icons.history,
+                size: 20,
+                color: AppColors.textSecondary,
               ),
+              const SizedBox(width: AppDimens.spacingSmall),
+              Text('Scan Terbaru', style: AppTypography.labelLarge),
             ],
           ),
           const SizedBox(height: AppDimens.spacingMedium),
-          ..._recentScans.map((scan) => Padding(
-            padding: const EdgeInsets.only(bottom: AppDimens.spacingSmall),
-            child: Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: AppColors.successLight,
-                    shape: BoxShape.circle,
+          ..._recentScans
+              .map(
+                (scan) => Padding(
+                  padding: const EdgeInsets.only(
+                    bottom: AppDimens.spacingSmall,
                   ),
-                  child: const Icon(Icons.check, color: AppColors.success, size: 18),
-                ),
-                const SizedBox(width: AppDimens.spacingMedium),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Text(
-                        scan['nama'] ?? 'Siswa',
-                        style: AppTypography.bodyMedium.copyWith(
-                          fontWeight: FontWeight.w600,
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: AppColors.successLight,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.check,
+                          color: AppColors.success,
+                          size: 18,
                         ),
                       ),
-                      Text(
-                        scan['waktu'] ?? 'Baru saja',
-                        style: AppTypography.caption,
+                      const SizedBox(width: AppDimens.spacingMedium),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              scan['nama'] ?? 'Siswa',
+                              style: AppTypography.bodyMedium.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              scan['waktu'] ?? 'Baru saja',
+                              style: AppTypography.caption,
+                            ),
+                          ],
+                        ),
+                      ),
+                      StatusBadge(
+                        text: 'Hadir',
+                        type: BadgeType.success,
+                        size: BadgeSize.small,
                       ),
                     ],
                   ),
                 ),
-                StatusBadge(
-                  text: 'Hadir',
-                  type: BadgeType.success,
-                  size: BadgeSize.small,
-                ),
-              ],
-            ),
-          )).toList(),
+              )
+              .toList(),
         ],
       ),
+    );
+  }
+
+  Future<void> _ambilLokasiSaatIni() async {
+    setState(() => _readingLocation = true);
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        throw Exception(
+          'Aktifkan layanan lokasi/GPS perangkat terlebih dahulu.',
+        );
+      }
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        throw Exception(
+          'Izin lokasi belum diberikan. Izinkan akses lokasi pada perangkat atau browser.',
+        );
+      }
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 25),
+        ),
+      );
+      if (position.accuracy > _radius) {
+        throw Exception(
+          'Akurasi GPS ±${position.accuracy.toStringAsFixed(0)} m masih lebih besar dari radius $_radius m. Coba lagi di area terbuka.',
+        );
+      }
+      if (!mounted) return;
+      setState(() {
+        _locationLatitude = position.latitude;
+        _locationLongitude = position.longitude;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Lokasi perangkat berhasil dibaca (akurasi ±${position.accuracy.toStringAsFixed(0)} m).',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error.toString().replaceFirst('Exception: ', '')),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _readingLocation = false);
+    }
+  }
+
+  void _simpanLokasiManual() {
+    final latitude = double.tryParse(_manualLatitudeController.text.trim());
+    final longitude = double.tryParse(_manualLongitudeController.text.trim());
+    if (latitude == null ||
+        longitude == null ||
+        latitude < -90 ||
+        latitude > 90 ||
+        longitude < -180 ||
+        longitude > 180) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Masukkan koordinat latitude dan longitude yang valid.',
+          ),
+        ),
+      );
+      return;
+    }
+    setState(() {
+      _locationLatitude = latitude;
+      _locationLongitude = longitude;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Titik lokasi khusus berhasil dipilih.')),
     );
   }
 
@@ -718,20 +933,147 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Text('Lokasi Absensi', style: AppTypography.labelLarge),
                     Text(
-                      'Lokasi Absensi',
-                      style: AppTypography.labelLarge,
-                    ),
-                    Text(
-                      'MTsN Matsanam',
+                      _locationLatitude == null
+                          ? 'Lokasi belum ditentukan'
+                          : (_sessionActive
+                                ? 'Lokasi sesi tersimpan'
+                                : (_locationMode == 'gps'
+                                      ? 'Lokasi perangkat saat ini'
+                                      : 'Titik lokasi khusus / madrasah')),
                       style: AppTypography.bodySmall,
                     ),
                   ],
                 ),
               ),
-              StatusBadge(text: 'Aktif', type: BadgeType.success),
+              StatusBadge(
+                text: _locationLatitude == null ? 'Pilih lokasi' : 'Siap',
+                type: _locationLatitude == null
+                    ? BadgeType.warning
+                    : BadgeType.success,
+              ),
             ],
           ),
+          const SizedBox(height: AppDimens.spacingMedium),
+          RadioListTile<String>(
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+            value: 'gps',
+            groupValue: _locationMode,
+            onChanged: _sessionActive
+                ? null
+                : (value) => setState(() {
+                    _locationMode = value ?? 'gps';
+                    _locationLatitude = null;
+                    _locationLongitude = null;
+                  }),
+            title: const Text(
+              'Gunakan lokasi perangkat saat ini',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+            subtitle: const Text(
+              'Pilih ini saat Guru sudah berada di titik presensi.',
+              style: TextStyle(fontSize: 11),
+            ),
+          ),
+          if (_locationMode == 'gps' && !_sessionActive) ...[
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _readingLocation ? null : _ambilLokasiSaatIni,
+                icon: _readingLocation
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.my_location_rounded),
+                label: Text(
+                  _readingLocation ? 'Mengambil lokasi…' : 'Ambil Lokasi GPS',
+                ),
+              ),
+            ),
+          ],
+          RadioListTile<String>(
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+            value: 'manual',
+            groupValue: _locationMode,
+            onChanged: _sessionActive
+                ? null
+                : (value) => setState(() {
+                    _locationMode = value ?? 'manual';
+                    _locationLatitude = null;
+                    _locationLongitude = null;
+                  }),
+            title: const Text(
+              'Tentukan lokasi khusus / madrasah',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+            subtitle: const Text(
+              'Masukkan koordinat resmi yang diberikan Admin madrasah.',
+              style: TextStyle(fontSize: 11),
+            ),
+          ),
+          if (_locationMode == 'manual' && !_sessionActive) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _manualLatitudeController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                      signed: true,
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: 'Latitude',
+                      hintText: '-7.xxxxxx',
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    controller: _manualLongitudeController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                      signed: true,
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: 'Longitude',
+                      hintText: '111.xxxxxx',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: _simpanLokasiManual,
+                icon: const Icon(Icons.check_rounded),
+                label: const Text('Gunakan koordinat ini'),
+              ),
+            ),
+          ],
+          if (_locationLatitude != null && _locationLongitude != null)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.successLight,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                'Titik presensi: ${_locationLatitude!.toStringAsFixed(6)}, ${_locationLongitude!.toStringAsFixed(6)}',
+                style: const TextStyle(
+                  color: AppColors.success,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
           const SizedBox(height: AppDimens.spacingLarge),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

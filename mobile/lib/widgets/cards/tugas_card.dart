@@ -216,8 +216,8 @@ class TugasCard extends StatelessWidget {
                     ),
                     child: Text(
                       deadlineMepet
-                        ? "🚀 Kumpulkan Tugas Sekarang"
-                        : "📖 Buka & Kerjakan",
+                          ? "🚀 Kumpulkan Tugas Sekarang"
+                          : "📖 Buka & Kerjakan",
                       style: TextStyle(
                         color: deadlineMepet
                             ? Colors.white

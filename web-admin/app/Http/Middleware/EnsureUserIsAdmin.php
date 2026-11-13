@@ -15,8 +15,18 @@ class EnsureUserIsAdmin
             return redirect()->route('login');
         }
 
+        if (! Auth::user()->is_active) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            return redirect()->route('login')
+                ->withErrors(['email' => 'Akun tidak aktif. Hubungi administrator madrasah.']);
+        }
+
         if (Auth::user()->role !== 'admin') {
             Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
             return redirect()->route('login')
                 ->withErrors(['email' => 'Akses tidak sah. Silakan login dengan akun administrator.']);
         }

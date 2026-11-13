@@ -51,10 +51,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: AppTypography.heading3.copyWith(fontSize: 18),
-          ),
+          Text(title, style: AppTypography.heading3.copyWith(fontSize: 18)),
           if (subtitle != null) ...[
             const SizedBox(height: 2),
             Text(
@@ -125,7 +122,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   Color _getBadgeColor() {
     if (statusBadgeType == null) return AppColors.success;
-    
+
     switch (statusBadgeType!) {
       case BadgeType.success:
         return AppColors.success;

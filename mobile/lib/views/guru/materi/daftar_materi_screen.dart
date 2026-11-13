@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../config/api_config.dart';
 import '../../../utils/constants.dart';
@@ -12,7 +14,12 @@ class DaftarMateriScreen extends StatefulWidget {
   final String? kelasFilter;
   final int? jadwalIdFilter;
 
-  const DaftarMateriScreen({super.key, this.mapelFilter, this.kelasFilter, this.jadwalIdFilter});
+  const DaftarMateriScreen({
+    super.key,
+    this.mapelFilter,
+    this.kelasFilter,
+    this.jadwalIdFilter,
+  });
 
   @override
   State<DaftarMateriScreen> createState() => _DaftarMateriScreenState();
@@ -21,6 +28,7 @@ class DaftarMateriScreen extends StatefulWidget {
 class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
   List<Map<String, dynamic>> _materiList = [];
   bool _isLoading = true;
+  String? _loadError;
   bool _didChange = false;
   int _currentPage = 1;
   int _totalPages = 1;
@@ -62,16 +70,26 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
       final type = (materi['tipe'] ?? 'pdf').toString().toUpperCase();
       final mapel = _materiMapel(materi);
       final kelas = _materiKelas(materi);
-      final matchesType = _selectedFilter == 'Semua' || type == _selectedFilter.toUpperCase();
-      final matchesMapel = widget.mapelFilter == null || mapel == widget.mapelFilter;
-      final matchesKelas = widget.kelasFilter == null ||
+      final matchesType =
+          _selectedFilter == 'Semua' || type == _selectedFilter.toUpperCase();
+      final matchesMapel =
+          widget.mapelFilter == null || mapel == widget.mapelFilter;
+      final matchesKelas =
+          widget.kelasFilter == null ||
           _normalizeClass(kelas) == _normalizeClass(widget.kelasFilter!);
-      final scheduleId = materi['jadwal_id'] ??
+      final scheduleId =
+          materi['jadwal_id'] ??
           (materi['jadwal'] is Map ? materi['jadwal']['id'] : null);
-      final matchesSchedule = widget.jadwalIdFilter == null ||
+      final matchesSchedule =
+          widget.jadwalIdFilter == null ||
           scheduleId?.toString() == widget.jadwalIdFilter.toString();
-      final searchText = '${materi['judul'] ?? ''} ${materi['deskripsi'] ?? ''} $mapel $kelas'.toLowerCase();
-      return matchesType && matchesMapel && matchesKelas && matchesSchedule &&
+      final searchText =
+          '${materi['judul'] ?? ''} ${materi['deskripsi'] ?? ''} $mapel $kelas'
+              .toLowerCase();
+      return matchesType &&
+          matchesMapel &&
+          matchesKelas &&
+          matchesSchedule &&
           searchText.contains(_searchQuery.toLowerCase());
     }).toList();
   }
@@ -87,7 +105,10 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
 
   Future<void> _loadMateri({int? page}) async {
     if (!mounted) return;
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _loadError = null;
+    });
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
@@ -95,22 +116,37 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
         throw Exception('Sesi login tidak ditemukan. Silakan login kembali.');
       }
 
-      final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/guru/materi'),
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(ApiConfig.timeout);
+      final response = await http
+          .get(
+            Uri.parse('${ApiConfig.baseUrl}/guru/materi'),
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(ApiConfig.timeout);
 
-      if (response.statusCode != 200) {
-        throw Exception('Gagal memuat materi (HTTP ${response.statusCode}).');
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        dynamic errorPayload;
+        try {
+          errorPayload = json.decode(response.body);
+        } catch (_) {
+          errorPayload = null;
+        }
+        final message = errorPayload is Map
+            ? errorPayload['message']?.toString()
+            : null;
+        throw Exception(
+          message ?? 'Gagal memuat materi (HTTP ${response.statusCode}).',
+        );
       }
       final data = json.decode(response.body);
       if (data is! Map || data['success'] != true) {
-        throw Exception(data is Map
-            ? data['message']?.toString() ?? 'Respons API tidak valid.'
-            : 'Respons API tidak valid.');
+        throw Exception(
+          data is Map
+              ? data['message']?.toString() ?? 'Respons API tidak valid.'
+              : 'Respons API tidak valid.',
+        );
       }
       final rows = (data['data'] as List? ?? [])
           .whereType<Map>()
@@ -121,11 +157,15 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
         _materiList = rows;
         _currentPage = 1;
         _totalPages = 1;
+        _loadError = null;
         _isLoading = false;
       });
     } catch (error) {
       if (!mounted) return;
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _loadError = error.toString().replaceFirst('Exception: ', '');
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(error.toString().replaceFirst('Exception: ', '')),
@@ -168,10 +208,7 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
           ),
         ),
         actions: [
-          IconButton(
-            onPressed: _openTambahMateri,
-            icon: const Icon(Icons.add),
-          ),
+          IconButton(onPressed: _openTambahMateri, icon: const Icon(Icons.add)),
         ],
       ),
       body: _isLoading
@@ -186,15 +223,60 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
   }
 
   Widget _buildContent() {
+    if (_loadError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.cloud_off_outlined,
+                size: 52,
+                color: AppColors.textSecondary,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Materi gagal dimuat',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                _loadError!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: _loadMateri,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Coba Lagi'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (_materiList.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.book_outlined, size: 64, color: AppColors.textSecondary),
+            const Icon(
+              Icons.book_outlined,
+              size: 64,
+              color: AppColors.textSecondary,
+            ),
             const SizedBox(height: 14),
-            const Text('Belum ada materi',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 16)),
+            const Text(
+              'Belum ada materi',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
+            ),
             const SizedBox(height: 10),
             ElevatedButton.icon(
               onPressed: _openTambahMateri,
@@ -268,7 +350,9 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
                     onSelected: (_) => setState(() => _selectedFilter = filter),
                     selectedColor: AppColors.primary,
                     backgroundColor: AppColors.surface,
-                    side: BorderSide(color: selected ? AppColors.primary : AppColors.border),
+                    side: BorderSide(
+                      color: selected ? AppColors.primary : AppColors.border,
+                    ),
                     labelStyle: TextStyle(
                       color: selected ? Colors.white : AppColors.textPrimary,
                       fontWeight: FontWeight.w600,
@@ -299,6 +383,95 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
     }
   }
 
+  Future<void> _openMateriResource(Map<String, dynamic> materi) async {
+    final type = materi['tipe']?.toString() ?? 'pdf';
+    if (type == 'link') {
+      final rawLink = materi['link']?.toString() ?? '';
+      final uri = Uri.tryParse(rawLink);
+      if (uri == null ||
+          !uri.hasScheme ||
+          !['http', 'https'].contains(uri.scheme)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Tautan materi tidak valid.'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+        return;
+      }
+      try {
+        final opened = await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+        if (!opened && mounted) {
+          throw Exception('Tautan tidak dapat dibuka pada perangkat ini.');
+        }
+      } catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error.toString().replaceFirst('Exception: ', '')),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
+    final id = int.tryParse(materi['id']?.toString() ?? '');
+    final storedPath = materi['file_path']?.toString() ?? '';
+    if (id == null || storedPath.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('File materi tidak tersedia.')),
+      );
+      return;
+    }
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      if (token == null || token.isEmpty) {
+        throw Exception('Sesi login tidak ditemukan. Silakan login kembali.');
+      }
+      final response = await http
+          .get(
+            Uri.parse('${ApiConfig.guruMateri}/$id/file'),
+            headers: {'Accept': '*/*', 'Authorization': 'Bearer $token'},
+          )
+          .timeout(ApiConfig.timeout);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        var message =
+            'File materi gagal diunduh (HTTP ${response.statusCode}).';
+        try {
+          final payload = jsonDecode(utf8.decode(response.bodyBytes));
+          if (payload is Map && payload['message'] != null) {
+            message = payload['message'].toString();
+          }
+        } catch (_) {
+          // Keep the HTTP fallback when the server returns a non-JSON error page.
+        }
+        throw Exception(message);
+      }
+
+      await FilePicker.platform.saveFile(
+        dialogTitle: 'Simpan materi',
+        fileName: storedPath.split('/').last,
+        bytes: response.bodyBytes,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   Future<void> _deleteMateri(Map<String, dynamic> materi) async {
     final id = int.tryParse(materi['id']?.toString() ?? '');
     if (id == null) return;
@@ -306,9 +479,14 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Hapus materi?'),
-        content: Text('Materi "${materi['judul'] ?? 'Tanpa judul'}" akan dihapus permanen.'),
+        content: Text(
+          'Materi "${materi['judul'] ?? 'Tanpa judul'}" akan dihapus permanen.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Batal')),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Batal'),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(dialogContext, true),
@@ -325,27 +503,63 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
       if (token == null || token.isEmpty) {
         throw Exception('Sesi login tidak ditemukan. Silakan login kembali.');
       }
-      final response = await http.delete(
-        Uri.parse('${ApiConfig.guruMateri}/$id'),
-        headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
-      ).timeout(ApiConfig.timeout);
-      final decoded = jsonDecode(response.body);
-      if (response.statusCode < 200 || response.statusCode >= 300 ||
-          decoded is! Map || decoded['success'] != true) {
-        throw Exception(decoded is Map ? decoded['message']?.toString() ?? 'Materi gagal dihapus.' : 'Materi gagal dihapus.');
+      final response = await http
+          .delete(
+            Uri.parse('${ApiConfig.guruMateri}/$id'),
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(ApiConfig.timeout);
+      dynamic decoded;
+      try {
+        decoded = jsonDecode(response.body);
+      } catch (_) {
+        decoded = null;
+      }
+      if (response.statusCode < 200 ||
+          response.statusCode >= 300 ||
+          decoded is! Map ||
+          decoded['success'] != true) {
+        var message = 'Materi gagal dihapus (HTTP ${response.statusCode}).';
+        if (decoded is Map) {
+          final errors = decoded['errors'];
+          if (errors is Map &&
+              errors.isNotEmpty &&
+              errors.values.first is List &&
+              (errors.values.first as List).isNotEmpty) {
+            message = (errors.values.first as List).first.toString();
+          } else {
+            message = decoded['message']?.toString() ?? message;
+          }
+        }
+        throw Exception(message);
       }
       if (!mounted) return;
       setState(() {
         _didChange = true;
-        _materiList.removeWhere((item) => item['id'].toString() == id.toString());
+        _materiList.removeWhere(
+          (item) => item['id'].toString() == id.toString(),
+        );
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(decoded['message']?.toString() ?? 'Materi berhasil dihapus.'), backgroundColor: AppColors.success, behavior: SnackBarBehavior.floating),
+        SnackBar(
+          content: Text(
+            decoded['message']?.toString() ?? 'Materi berhasil dihapus.',
+          ),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString().replaceFirst('Exception: ', '')), backgroundColor: AppColors.error, behavior: SnackBarBehavior.floating),
+        SnackBar(
+          content: Text(error.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }
@@ -474,7 +688,12 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  _safeSubstring((materi['deskripsi'] ?? 'Materi pembelajaran untuk topik...').toString(), 80),
+                  _safeSubstring(
+                    (materi['deskripsi'] ??
+                            'Materi pembelajaran untuk topik...')
+                        .toString(),
+                    80,
+                  ),
                   style: const TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 13,
@@ -501,7 +720,9 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              (materi['created_at']?.toString() ?? '-').split('T').first,
+                              (materi['created_at']?.toString() ?? '-')
+                                  .split('T')
+                                  .first,
                               style: const TextStyle(
                                 color: AppColors.textSecondary,
                                 fontSize: 12,
@@ -518,19 +739,27 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Aksi unduh langsung akan diaktifkan setelah URL penyimpanan file dikonfigurasi.',
-                              ),
-                              backgroundColor: AppColors.success,
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.download_rounded),
-                        label: const Text('Unduh'),
+                        onPressed:
+                            ((materi['tipe']?.toString() == 'link' &&
+                                    (materi['link']?.toString().isNotEmpty ??
+                                        false)) ||
+                                (materi['tipe']?.toString() != 'link' &&
+                                    (materi['file_path']
+                                            ?.toString()
+                                            .isNotEmpty ??
+                                        false)))
+                            ? () => _openMateriResource(materi)
+                            : null,
+                        icon: Icon(
+                          materi['tipe']?.toString() == 'link'
+                              ? Icons.open_in_new_rounded
+                              : Icons.download_rounded,
+                        ),
+                        label: Text(
+                          materi['tipe']?.toString() == 'link'
+                              ? 'Buka Link'
+                              : 'Unduh',
+                        ),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
@@ -556,7 +785,9 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
                     const SizedBox(width: 8),
                     Container(
                       decoration: BoxDecoration(
-                        border: Border.all(color: AppColors.error.withOpacity(0.35)),
+                        border: Border.all(
+                          color: AppColors.error.withOpacity(0.35),
+                        ),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: IconButton(

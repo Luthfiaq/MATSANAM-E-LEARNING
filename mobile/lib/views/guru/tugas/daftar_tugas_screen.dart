@@ -457,7 +457,11 @@ class _DaftarTugasGuruScreenState extends State<DaftarTugasGuruScreen> {
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
-                                _safeSubstring(tugas['deskripsi'] ?? 'Kerjakan soal latihan dan upload foto jawaban.', 50),
+                                _safeSubstring(
+                                  tugas['deskripsi'] ??
+                                      'Kerjakan soal latihan dan upload foto jawaban.',
+                                  50,
+                                ),
                                 style: const TextStyle(
                                   color: AppColors.textSecondary,
                                   fontSize: 12,

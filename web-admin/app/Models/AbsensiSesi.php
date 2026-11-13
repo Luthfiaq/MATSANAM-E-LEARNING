@@ -15,6 +15,7 @@ class AbsensiSesi extends Model
         'jadwal_id',
         'guru_id',
         'kelas_id',
+        'mode_lokasi',
         'lokasi_latitude',
         'lokasi_longitude',
         'radius_meter',

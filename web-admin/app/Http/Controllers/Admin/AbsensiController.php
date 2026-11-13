@@ -7,6 +7,9 @@ use App\Models\AbsensiHarian;
 use App\Models\JadwalPelajaran;
 use App\Models\Kelas;
 use App\Models\SuratAbsensi;
+use App\Services\MatsanamNotificationService;
+use App\Services\SuratAbsensiApprovalService;
+use App\Services\SuratAbsensiFileService;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\RedirectResponse;
@@ -58,13 +61,15 @@ class AbsensiController extends Controller
         $surat = SuratAbsensi::findOrFail($id);
         $path = $surat->file_surat;
 
-        abort_if(blank($path) || ! Storage::disk('public')->exists($path), 404, 'Dokumen surat tidak ditemukan.');
+        abort_if(blank($path), 404, 'Dokumen surat tidak ditemukan.');
+        $files = app(SuratAbsensiFileService::class);
+        abort_unless($files->diskFor($path), 404, 'Dokumen surat tidak ditemukan.');
 
         if ($request->boolean('download')) {
-            return Storage::disk('public')->download($path, basename($path));
+            return $files->download($path);
         }
 
-        return Storage::disk('public')->response($path, basename($path));
+        return $files->response($path);
     }
 
     public function approveSurat(Request $request, int $id): RedirectResponse
@@ -73,7 +78,7 @@ class AbsensiController extends Controller
             'kategori_master' => ['nullable', Rule::in(['sakit', 'izin'])],
         ]);
 
-        $surat = SuratAbsensi::with('siswa')->findOrFail($id);
+        $surat = SuratAbsensi::with('siswa.user')->findOrFail($id);
         if (strtolower((string) $surat->status_verifikasi) !== 'pending') {
             return back()->with('error', 'Surat ini sudah diproses sebelumnya. Muat ulang halaman untuk melihat status terbaru.');
         }
@@ -83,67 +88,19 @@ class AbsensiController extends Controller
             return back()->with('error', 'Kategori absensi tidak valid.');
         }
 
-        $attendanceRows = 0;
+        $attendanceRows = app(SuratAbsensiApprovalService::class)->approve(
+            $surat,
+            (int) auth()->id(),
+            $kategori,
+        );
 
-        DB::transaction(function () use ($surat, $kategori, &$attendanceRows) {
-            $surat->update([
-                'status_verifikasi' => 'disetujui',
-                'verifikator_id' => auth()->id(),
-                'tanggal_verifikasi' => now(),
-                'catatan_verifikasi' => null,
-            ]);
-
-            $student = $surat->siswa;
-            if (! $student || ! $student->kelas_id) {
-                return;
-            }
-
-            $schedulesByDay = JadwalPelajaran::where('kelas_id', $student->kelas_id)
-                ->whereHas('periode', function ($periodQuery) use ($surat) {
-                    $periodQuery->whereDate('tanggal_mulai', '<=', $surat->tanggal_selesai)
-                        ->whereDate('tanggal_selesai', '>=', $surat->tanggal_mulai);
-                })
-                ->get()
-                ->groupBy('hari');
-
-            $dayNames = [
-                1 => 'Senin',
-                2 => 'Selasa',
-                3 => 'Rabu',
-                4 => 'Kamis',
-                5 => 'Jumat',
-                6 => 'Sabtu',
-            ];
-
-            $period = CarbonPeriod::create(
-                Carbon::parse($surat->tanggal_mulai)->startOfDay(),
-                Carbon::parse($surat->tanggal_selesai)->startOfDay()
-            );
-
-            foreach ($period as $date) {
-                $dayName = $dayNames[$date->dayOfWeekIso] ?? null;
-                if (! $dayName) {
-                    continue;
-                }
-
-                foreach ($schedulesByDay->get($dayName, collect()) as $schedule) {
-                    AbsensiHarian::updateOrCreate(
-                        [
-                            'siswa_id' => $student->id,
-                            'jadwal_id' => $schedule->id,
-                            'tanggal' => $date->toDateString(),
-                        ],
-                        [
-                            'status' => $kategori,
-                            'waktu_absen' => null,
-                            'metode' => 'manual',
-                            'keterangan' => 'Surat absensi #' . $surat->id . ' telah disetujui oleh Admin.',
-                        ]
-                    );
-                    $attendanceRows++;
-                }
-            }
-        });
+        app(MatsanamNotificationService::class)->send(
+            $surat->siswa?->user,
+            'status_pengajuan_izin',
+            'Pengajuan izin disetujui',
+            'Pengajuan ' . $surat->jenis . ' untuk tanggal ' . $surat->tanggal_mulai?->format('d/m/Y') . ' sampai ' . $surat->tanggal_selesai?->format('d/m/Y') . ' telah disetujui oleh Admin.',
+            ['surat_id' => $surat->id, 'status' => 'disetujui'],
+        );
 
         return redirect()->route('admin.absensi.verifikasi', [
             'status' => 'disetujui',
@@ -160,17 +117,34 @@ class AbsensiController extends Controller
             'catatan' => ['required', 'string', 'max:500'],
         ]);
 
-        $surat = SuratAbsensi::findOrFail($id);
-        if (strtolower((string) $surat->status_verifikasi) !== 'pending') {
-            return back()->with('error', 'Surat ini sudah diproses sebelumnya. Muat ulang halaman untuk melihat status terbaru.');
-        }
+        $surat = DB::transaction(function () use ($id, $validated) {
+            $locked = SuratAbsensi::with('siswa.user')
+                ->lockForUpdate()
+                ->findOrFail($id);
 
-        $surat->update([
-            'status_verifikasi' => 'ditolak',
-            'verifikator_id' => auth()->id(),
-            'tanggal_verifikasi' => now(),
-            'catatan_verifikasi' => $validated['catatan'],
-        ]);
+            abort_unless(
+                strtolower((string) $locked->status_verifikasi) === 'pending',
+                409,
+                'Surat ini sudah diproses sebelumnya. Muat ulang halaman untuk melihat status terbaru.'
+            );
+
+            $locked->update([
+                'status_verifikasi' => 'ditolak',
+                'verifikator_id' => auth()->id(),
+                'tanggal_verifikasi' => now(),
+                'catatan_verifikasi' => $validated['catatan'],
+            ]);
+
+            return $locked;
+        });
+
+        app(MatsanamNotificationService::class)->send(
+            $surat->siswa?->user,
+            'status_pengajuan_izin',
+            'Pengajuan izin memerlukan perbaikan',
+            'Pengajuan ' . $surat->jenis . ' ditolak oleh Admin. Catatan: ' . $validated['catatan'],
+            ['surat_id' => $surat->id, 'status' => 'ditolak'],
+        );
 
         return redirect()->route('admin.absensi.verifikasi', [
             'status' => 'ditolak',
@@ -186,7 +160,7 @@ class AbsensiController extends Controller
             'status' => ['nullable', Rule::in(['hadir', 'izin', 'sakit', 'alpa'])],
         ]);
 
-        $periode = $validated['periode'] ?? now()->format('Y-m');
+        $periode = $validated['periode'] ?? Carbon::now('Asia/Jakarta')->format('Y-m');
         $periodDate = Carbon::createFromFormat('Y-m', $periode);
 
         $baseQuery = AbsensiHarian::query()

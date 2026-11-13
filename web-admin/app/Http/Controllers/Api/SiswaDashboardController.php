@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\JadwalPelajaran;
+use App\Models\Materi;
 use App\Models\PeriodeAkademik;
 use App\Models\Penugasan;
 use Carbon\Carbon;
@@ -36,7 +37,11 @@ class SiswaDashboardController extends Controller
         $hari = self::HARI[$now->dayOfWeekIso] ?? null; // Minggu => null
         $periode = PeriodeAkademik::where('is_active', true)->first();
 
-        $jadwalIds = JadwalPelajaran::where('kelas_id', $siswa->kelas_id)->pluck('id');
+        $jadwalQuery = JadwalPelajaran::where('kelas_id', $siswa->kelas_id);
+        if ($periode) {
+            $jadwalQuery->where('periode_id', $periode->id);
+        }
+        $jadwalIds = $jadwalQuery->pluck('id');
 
         // ---- Statistik ----
         $sudahDikumpulkan = DB::table('pengumpulan_tugas')
@@ -60,6 +65,9 @@ class SiswaDashboardController extends Controller
         $rerata = DB::table('nilai')
             ->join('pengumpulan_tugas', 'pengumpulan_tugas.id', '=', 'nilai.pengumpulan_id')
             ->where('pengumpulan_tugas.siswa_id', $siswa->id)
+            ->when($periode, fn ($query) => $query->join('penugasan', 'penugasan.id', '=', 'pengumpulan_tugas.penugasan_id')
+                ->join('jadwal_pelajaran', 'jadwal_pelajaran.id', '=', 'penugasan.jadwal_id')
+                ->where('jadwal_pelajaran.periode_id', $periode->id))
             ->avg('nilai.nilai');
 
         // ---- Jadwal hari ini ----
@@ -71,6 +79,7 @@ class SiswaDashboardController extends Controller
                 ->pluck('status', 'jadwal_id');
 
             $jadwalHariIni = JadwalPelajaran::with(['mataPelajaran', 'guru'])
+                ->whereIn('id', $jadwalIds)
                 ->where('kelas_id', $siswa->kelas_id)
                 ->where('hari', $hari)
                 ->orderBy('jam_mulai')
@@ -110,19 +119,19 @@ class SiswaDashboardController extends Controller
             })->values();
 
         // ---- Materi baru ----
-        $materiBaru = Penugasan::with(['jadwal.mataPelajaran', 'guru'])
+        $materiBaru = Materi::with(['jadwal.mataPelajaran', 'guru'])
             ->whereIn('jadwal_id', $jadwalIds)
-            ->whereNotNull('file_materi')
             ->latest()
             ->limit(3)
             ->get()
-            ->map(fn ($p) => [
-                'id' => $p->id,
-                'judul' => $p->judul,
-                'mapel' => optional(optional($p->jadwal)->mataPelajaran)->nama,
-                'guru' => optional($p->guru)->nama_lengkap,
-                'file' => $p->file_materi,
-                'ekstensi' => strtoupper(pathinfo($p->file_materi, PATHINFO_EXTENSION)),
+            ->map(fn ($materi) => [
+                'id' => $materi->id,
+                'judul' => $materi->judul,
+                'mapel' => optional(optional($materi->jadwal)->mataPelajaran)->nama,
+                'guru' => optional($materi->guru)->nama_lengkap,
+                'ekstensi' => $materi->tipe === 'pdf'
+                    ? 'PDF'
+                    : strtoupper($materi->tipe),
             ])->values();
 
         return response()->json([

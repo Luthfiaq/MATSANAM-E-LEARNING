@@ -1,13 +1,16 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-
-
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../config/api_config.dart';
 import '../../utils/constants.dart';
+import '../../utils/session.dart';
 import '../../widgets/common/guru_bottom_navigation.dart';
-
+import '../../widgets/common/notification_bell_button.dart';
+import '../auth/login_screen.dart';
+import 'notifikasi/guru_notifikasi_screen.dart';
 
 class DashboardGuruScreen extends StatefulWidget {
   const DashboardGuruScreen({super.key});
@@ -27,66 +30,83 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
   }
 
   Future<void> _loadDashboard() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
+
     try {
       final prefs = await SharedPreferences.getInstance();
+      if (!mounted) return;
+
       final token = prefs.getString('auth_token');
-      
-      if (token == null) {
-        throw Exception('Token tidak ditemukan. Silakan login ulang.');
+      if (token == null || token.isEmpty) {
+        await Session.clearLogin();
+        if (!mounted) return;
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
+          (_) => false,
+        );
+        return;
       }
 
-      final response = await http.get(
-        Uri.parse(ApiConfig.guruDashboard),
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(ApiConfig.timeout);
-      
-      if (response.statusCode == 200) {
-        // Clean response body - remove PHP warnings/errors before JSON
-        String cleanBody = response.body;
-        
-        // Find the first '{' which marks start of JSON
-        int jsonStart = cleanBody.indexOf('{');
-        if (jsonStart > 0) {
-          cleanBody = cleanBody.substring(jsonStart);
-        }
-        
-        // Parse the cleaned JSON
-        final data = json.decode(cleanBody);
-        
-        if (data['success'] == true) {
-          setState(() {
-            _dashboardData = data['data'];
-            _isLoading = false;
-          });
-        } else {
-          throw Exception('API returned success=false');
-        }
-      } else {
+      final response = await http
+          .get(
+            Uri.parse(ApiConfig.guruDashboard),
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(ApiConfig.timeout);
+
+      if (!mounted) return;
+      if (response.statusCode == 401) {
+        await Session.clearLogin();
+        if (!mounted) return;
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
+          (_) => false,
+        );
+        return;
+      }
+
+      if (response.statusCode != 200) {
         throw Exception('HTTP ${response.statusCode}');
       }
-    } catch (e) {
-      print('Dashboard Error: $e');
-      print('Full error details: ${e.toString()}');
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error memuat dashboard: Periksa koneksi backend'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 5),
-            action: SnackBarAction(
-              label: 'Coba Lagi',
-              textColor: Colors.white,
-              onPressed: _loadDashboard,
-            ),
-          ),
-        );
+
+      // Tanggapi hanya JSON valid; jangan menampilkan payload contoh ketika
+      // API tidak mengirim ringkasan dashboard yang diharapkan.
+      final decoded = json.decode(response.body);
+      if (decoded is! Map ||
+          decoded['success'] != true ||
+          decoded['data'] is! Map) {
+        throw const FormatException('Format respons dashboard tidak sesuai.');
       }
+
+      final dashboard = Map<String, dynamic>.from(decoded['data'] as Map);
+      if (!mounted) return;
+      setState(() {
+        _dashboardData = dashboard;
+        _isLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      debugPrint('Dashboard Guru gagal dimuat: $error');
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Dashboard belum dapat dimuat. Periksa koneksi backend.',
+          ),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 5),
+          action: SnackBarAction(
+            label: 'Coba Lagi',
+            textColor: Colors.white,
+            onPressed: _loadDashboard,
+          ),
+        ),
+      );
     }
   }
 
@@ -132,9 +152,14 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.notifications_outlined),
+          NotificationBellButton(
+            onPressed: () async {
+              await Navigator.of(context).push<void>(
+                MaterialPageRoute<void>(
+                  builder: (_) => const GuruNotifikasiScreen(),
+                ),
+              );
+            },
           ),
           Padding(
             padding: const EdgeInsets.only(right: 16),
@@ -211,7 +236,7 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  _dashboardData['tahun_ajaran'] ?? 'Tahun Ajaran 2024/2025',
+                  _dashboardData['tahun_ajaran'] ?? 'Periode akademik',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 12,
@@ -224,7 +249,7 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Selamat Pagi, ${_dashboardData['nama_guru'] ?? 'Imam'} 👋',
+            'Selamat datang, ${_dashboardData['nama_guru'] ?? 'Guru'} 👋',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 20,
@@ -241,7 +266,7 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
               ),
               const SizedBox(width: 6),
               Text(
-                '${_dashboardData['tugas_menunggu'] ?? 12} tugas menunggu dinilai',
+                '${_dashboardData['tugas_menunggu'] ?? 0} tugas menunggu dinilai',
                 style: const TextStyle(color: Colors.white, fontSize: 14),
               ),
             ],
@@ -257,7 +282,7 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
         Expanded(
           child: _buildStatCard(
             'AKTIF',
-            '${_dashboardData['total_kelas'] ?? 3}',
+            '${_dashboardData['total_kelas'] ?? '—'}',
             'Kelas',
             AppColors.primary,
           ),
@@ -266,7 +291,7 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
         Expanded(
           child: _buildStatCard(
             'TOTAL',
-            '${_dashboardData['total_siswa'] ?? 92}',
+            '${_dashboardData['total_siswa'] ?? '—'}',
             'Siswa',
             AppColors.info,
           ),
@@ -275,7 +300,7 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
         Expanded(
           child: _buildStatCard(
             'KEHADIRAN',
-            '${_dashboardData['kehadiran'] ?? 80}',
+            '${_dashboardData['kehadiran'] ?? '—'}',
             'Siswa',
             AppColors.success,
           ),
@@ -383,7 +408,7 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
                 'Penugasan & Evaluasi',
                 Icons.assignment_outlined,
                 AppColors.info,
-                badge: '${_dashboardData['tugas_menunggu'] ?? 12}',
+                badge: '${_dashboardData['tugas_menunggu'] ?? 0}',
                 route: '/guru/tugas/pilih-mapel',
               ),
             ),
@@ -521,197 +546,48 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
               ),
             ),
             IconButton(
-              onPressed: () {},
+              tooltip: 'Buka notifikasi',
+              onPressed: () async {
+                await Navigator.of(context).push<void>(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const GuruNotifikasiScreen(),
+                  ),
+                );
+              },
               icon: const Icon(Icons.notifications_outlined, size: 20),
             ),
           ],
         ),
         const SizedBox(height: 12),
-        _buildActivityCard(
-          'Tugas Mandiri 04 (SPLDV)',
-          'Matematika • Kelas 9A',
-          '28/32 Siswa (87%)',
-          '2 jam yang lalu',
-          '12 Perlu Nilai',
-          AppColors.warning,
-          Icons.assignment_outlined,
-        ),
-        const SizedBox(height: 12),
-        _buildActivityCard(
-          'Absensi Kelas 9A Hari Ini',
-          'Selesai di-generate QR',
-          '30 Hadir • 2 Sakit • 0 Alpa',
-          null,
-          'Aktif',
-          AppColors.success,
-          Icons.qr_code_scanner,
-        ),
-        const SizedBox(height: 12),
-        _buildActivityCard(
-          'Trigonometri Dasar',
-          'Kelas 9B • Matematika Peminatan',
-          'Modul_01.pdf • Slide.pptx',
-          '3 Berkas',
-          null,
-          AppColors.primary,
-          Icons.upload_file_outlined,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActivityCard(
-    String title,
-    String subtitle,
-    String detail,
-    String? time,
-    String? badge,
-    Color badgeColor,
-    IconData icon,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
           ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: const Column(
             children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: badgeColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+              Icon(Icons.history_rounded, size: 28, color: AppColors.textMuted),
+              SizedBox(height: 8),
+              Text(
+                'Belum ada ringkasan aktivitas',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w700,
                 ),
-                child: Icon(icon, color: badgeColor, size: 24),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (badge != null)
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 6),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: badgeColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          badge,
-                          style: TextStyle(
-                            color: badgeColor,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
+              SizedBox(height: 4),
+              Text(
+                'Aktivitas terbaru belum disediakan oleh API dashboard.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Pengumpulan Siswa',
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 11,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  detail,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (time != null) ...[
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(
-                  Icons.access_time,
-                  size: 14,
-                  color: AppColors.textSecondary,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  time,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                  ),
-                ),
-                const Spacer(),
-                TextButton(
-                  onPressed: () {},
-                  style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    minimumSize: const Size(0, 0),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: const Text(
-                    'Buka Penilaian',
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

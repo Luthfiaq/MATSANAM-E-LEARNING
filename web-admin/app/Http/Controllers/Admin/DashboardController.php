@@ -19,7 +19,7 @@ class DashboardController extends Controller
         $suratPending = SuratAbsensi::where('status_verifikasi', 'pending')->count();
         
         // Absensi hari ini
-        $today = Carbon::now()->format('Y-m-d');
+        $today = Carbon::now('Asia/Jakarta')->toDateString();
         $absensiHariIni = AbsensiHarian::where('tanggal', $today)
             ->where('status', 'hadir')
             ->count();

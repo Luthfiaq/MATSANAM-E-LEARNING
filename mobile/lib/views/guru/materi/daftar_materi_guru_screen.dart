@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-
 class DaftarMateriGuruScreen extends StatefulWidget {
   final String mapel;
   final String kelas;
@@ -12,51 +11,43 @@ class DaftarMateriGuruScreen extends StatefulWidget {
   });
 
   @override
-  State<DaftarMateriGuruScreen> createState() =>
-      _DaftarMateriGuruScreenState();
+  State<DaftarMateriGuruScreen> createState() => _DaftarMateriGuruScreenState();
 }
 
-class _DaftarMateriGuruScreenState
-    extends State<DaftarMateriGuruScreen> {
+class _DaftarMateriGuruScreenState extends State<DaftarMateriGuruScreen> {
   final Color primary = const Color(0xFF0349C9);
 
-  final TextEditingController searchController =
-      TextEditingController();
+  final TextEditingController searchController = TextEditingController();
 
   String searchQuery = '';
 
   final List<Map<String, String>> materials = [
     {
       'title': 'Persamaan Kuadrat',
-      'description':
-          'Mengenal bentuk umum dan penyelesaian persamaan kuadrat.',
+      'description': 'Mengenal bentuk umum dan penyelesaian persamaan kuadrat.',
       'type': 'PDF',
       'date': '04 November 2026',
     },
     {
       'title': 'Rumus Bangun Ruang',
-      'description':
-          'Materi tentang volume dan luas permukaan bangun ruang.',
+      'description': 'Materi tentang volume dan luas permukaan bangun ruang.',
       'type': 'Dokumen',
       'date': '02 November 2026',
     },
     {
       'title': 'Latihan Soal Matematika',
-      'description':
-          'Kumpulan latihan soal untuk persiapan evaluasi.',
+      'description': 'Kumpulan latihan soal untuk persiapan evaluasi.',
       'type': 'PDF',
       'date': '30 Oktober 2026',
     },
   ];
 
-  bool get isDark =>
-      Theme.of(context).brightness == Brightness.dark;
+  bool get isDark => Theme.of(context).brightness == Brightness.dark;
 
   Color get background =>
       isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC);
 
-  Color get cardColor =>
-      isDark ? const Color(0xFF1F2937) : Colors.white;
+  Color get cardColor => isDark ? const Color(0xFF1F2937) : Colors.white;
 
   Color get textColor =>
       isDark ? const Color(0xFFF1F5F9) : const Color(0xFF172033);
@@ -69,9 +60,9 @@ class _DaftarMateriGuruScreenState
 
   List<Map<String, String>> get filteredMaterials {
     return materials.where((material) {
-      return material['title']!
-          .toLowerCase()
-          .contains(searchQuery.toLowerCase());
+      return material['title']!.toLowerCase().contains(
+        searchQuery.toLowerCase(),
+      );
     }).toList();
   }
 
@@ -83,10 +74,7 @@ class _DaftarMateriGuruScreenState
 
   void showMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-      ),
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
     );
   }
 
@@ -113,10 +101,7 @@ class _DaftarMateriGuruScreenState
               backgroundColor: cardColor,
               title: Text(
                 material == null ? 'Tambah Materi' : 'Edit Materi',
-                style: TextStyle(
-                  color: textColor,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
               ),
               content: SingleChildScrollView(
                 child: Column(
@@ -170,8 +155,7 @@ class _DaftarMateriGuruScreenState
               ),
               actions: [
                 TextButton(
-                  onPressed: () =>
-                      Navigator.pop(dialogContext),
+                  onPressed: () => Navigator.pop(dialogContext),
                   child: const Text('Batal'),
                 ),
                 ElevatedButton(
@@ -186,11 +170,9 @@ class _DaftarMateriGuruScreenState
 
                     Navigator.pop(dialogContext, {
                       'title': titleController.text.trim(),
-                      'description':
-                          descriptionController.text.trim(),
+                      'description': descriptionController.text.trim(),
                       'type': selectedType,
-                      'date': material?['date'] ??
-                          '04 November 2026',
+                      'date': material?['date'] ?? '04 November 2026',
                     });
                   },
                   child: const Text('Simpan'),
@@ -227,10 +209,7 @@ class _DaftarMateriGuruScreenState
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: cardColor,
-        title: Text(
-          'Hapus Materi?',
-          style: TextStyle(color: textColor),
-        ),
+        title: Text('Hapus Materi?', style: TextStyle(color: textColor)),
         content: Text(
           'Materi "${materials[index]['title']}" akan dihapus.',
           style: TextStyle(color: secondaryColor),
@@ -242,10 +221,7 @@ class _DaftarMateriGuruScreenState
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text(
-              'Hapus',
-              style: TextStyle(color: Colors.red),
-            ),
+            child: const Text('Hapus', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -301,8 +277,7 @@ class _DaftarMateriGuruScreenState
                     _buildSearch(),
                     const SizedBox(height: 22),
                     Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
                           'Materi Pembelajaran',
@@ -351,11 +326,7 @@ class _DaftarMateriGuruScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            Icons.school_outlined,
-            color: Colors.white,
-            size: 27,
-          ),
+          const Icon(Icons.school_outlined, color: Colors.white, size: 27),
           const SizedBox(height: 12),
           const Text(
             'MATA PELAJARAN',
@@ -378,10 +349,7 @@ class _DaftarMateriGuruScreenState
           const SizedBox(height: 5),
           Text(
             widget.kelas,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 13,
-            ),
+            style: const TextStyle(color: Colors.white70, fontSize: 13),
           ),
         ],
       ),
@@ -421,10 +389,7 @@ class _DaftarMateriGuruScreenState
     );
   }
 
-  Widget _buildMaterialCard(
-    Map<String, String> material,
-    int index,
-  ) {
+  Widget _buildMaterialCard(Map<String, String> material, int index) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(15),
@@ -447,10 +412,7 @@ class _DaftarMateriGuruScreenState
                       : const Color(0xFFEFF6FF),
                   borderRadius: BorderRadius.circular(11),
                 ),
-                child: Icon(
-                  Icons.menu_book_rounded,
-                  color: primary,
-                ),
+                child: Icon(Icons.menu_book_rounded, color: primary),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -468,25 +430,16 @@ class _DaftarMateriGuruScreenState
                     const SizedBox(height: 5),
                     Text(
                       '${material['type']} • ${material['date']}',
-                      style: TextStyle(
-                        color: secondaryColor,
-                        fontSize: 11,
-                      ),
+                      style: TextStyle(color: secondaryColor, fontSize: 11),
                     ),
                   ],
                 ),
               ),
               PopupMenuButton<String>(
-                icon: Icon(
-                  Icons.more_vert,
-                  color: secondaryColor,
-                ),
+                icon: Icon(Icons.more_vert, color: secondaryColor),
                 onSelected: (value) {
                   if (value == 'edit') {
-                    showMaterialForm(
-                      material: material,
-                      index: index,
-                    );
+                    showMaterialForm(material: material, index: index);
                   } else if (value == 'delete') {
                     deleteMaterial(index);
                   }
@@ -506,11 +459,7 @@ class _DaftarMateriGuruScreenState
                     value: 'delete',
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.delete_outline,
-                          color: Colors.red,
-                          size: 19,
-                        ),
+                        Icon(Icons.delete_outline, color: Colors.red, size: 19),
                         SizedBox(width: 8),
                         Text('Hapus'),
                       ],
@@ -523,11 +472,7 @@ class _DaftarMateriGuruScreenState
           const SizedBox(height: 13),
           Text(
             material['description']!,
-            style: TextStyle(
-              color: secondaryColor,
-              fontSize: 12,
-              height: 1.5,
-            ),
+            style: TextStyle(color: secondaryColor, fontSize: 12, height: 1.5),
           ),
           const SizedBox(height: 12),
           Divider(color: borderColor),
@@ -541,17 +486,10 @@ class _DaftarMateriGuruScreenState
               const SizedBox(width: 6),
               Text(
                 'Diterbitkan ${material['date']}',
-                style: TextStyle(
-                  color: secondaryColor,
-                  fontSize: 10,
-                ),
+                style: TextStyle(color: secondaryColor, fontSize: 10),
               ),
               const Spacer(),
-              Icon(
-                Icons.check_circle_outline,
-                color: Colors.green,
-                size: 15,
-              ),
+              Icon(Icons.check_circle_outline, color: Colors.green, size: 15),
               const SizedBox(width: 4),
               const Text(
                 'Terbit',
@@ -579,26 +517,16 @@ class _DaftarMateriGuruScreenState
       ),
       child: Column(
         children: [
-          Icon(
-            Icons.menu_book_outlined,
-            size: 42,
-            color: secondaryColor,
-          ),
+          Icon(Icons.menu_book_outlined, size: 42, color: secondaryColor),
           const SizedBox(height: 12),
           Text(
             'Materi tidak ditemukan',
-            style: TextStyle(
-              color: textColor,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 5),
           Text(
             'Coba gunakan kata kunci lainnya.',
-            style: TextStyle(
-              color: secondaryColor,
-              fontSize: 12,
-            ),
+            style: TextStyle(color: secondaryColor, fontSize: 12),
           ),
         ],
       ),

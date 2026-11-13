@@ -13,7 +13,7 @@
         <div><strong>Mapel:</strong> {{ $tugas->jadwal->mataPelajaran->nama }}</div>
         <div><strong>Kelas:</strong> {{ $tugas->jadwal->kelas->nama_kelas }}</div>
         <div><strong>Jenis:</strong> {{ ucfirst($tugas->jenis) }}</div>
-        <div><strong>Deadline:</strong> {{ $tugas->deadline->format('d M Y H:i') }}</div>
+        <div><strong>Deadline:</strong> {{ $tugas->deadline->copy()->timezone('Asia/Jakarta')->format('d M Y H:i') }} WIB</div>
         <div><strong>Bobot:</strong> {{ $tugas->bobot }}</div>
         <div class="col-span-2"><strong>Deskripsi:</strong> {{ $tugas->deskripsi }}</div>
         @if($tugas->file_materi)

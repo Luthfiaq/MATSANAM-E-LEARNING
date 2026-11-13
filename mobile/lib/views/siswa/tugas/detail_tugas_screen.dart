@@ -11,19 +11,14 @@ class DetailTugasPage extends StatelessWidget {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(
-          Icons.arrow_back,
-          color: Colors.black),
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () {
             Navigator.pop(context);
           },
         ),
         title: const Text(
           "Detail Tugas",
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
         actions: [
           Padding(
@@ -32,14 +27,13 @@ class DetailTugasPage extends StatelessWidget {
               backgroundColor: Colors.blue,
               child: Icon(Icons.person_outline, color: Colors.white),
             ),
-          )
+          ),
         ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-
             // HEADER TUGAS
             _card(
               child: Column(
@@ -49,7 +43,9 @@ class DetailTugasPage extends StatelessWidget {
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 5),
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFE8F0FF),
                           borderRadius: BorderRadius.circular(8),
@@ -66,7 +62,9 @@ class DetailTugasPage extends StatelessWidget {
                       const Spacer(),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 5),
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.red.shade100,
                           borderRadius: BorderRadius.circular(8),
@@ -78,16 +76,13 @@ class DetailTugasPage extends StatelessWidget {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                      )
+                      ),
                     ],
                   ),
                   const SizedBox(height: 15),
                   const Text(
                     "Soal Persamaan Linear\n(SPLDV)",
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   const Text(
@@ -103,8 +98,7 @@ class DetailTugasPage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.spaceAround,
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: const [
                         InfoBox(
                           title: "Batas Waktu",
@@ -123,7 +117,7 @@ class DetailTugasPage extends StatelessWidget {
                         ),
                       ],
                     ),
-                  )
+                  ),
                 ],
               ),
             ),
@@ -137,10 +131,7 @@ class DetailTugasPage extends StatelessWidget {
                 children: const [
                   Text(
                     "📖 Instruksi Tugas",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 22,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
                   ),
                   SizedBox(height: 12),
                   Text(
@@ -164,10 +155,7 @@ class DetailTugasPage extends StatelessWidget {
                 children: [
                   const Text(
                     "📎 Berkas Lampiran Soal",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 22,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
                   ),
                   const SizedBox(height: 15),
                   Container(
@@ -193,14 +181,11 @@ class DetailTugasPage extends StatelessWidget {
                         const SizedBox(width: 10),
                         const Expanded(
                           child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 "Panduan_Soal_SPLDV.pdf",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                style: TextStyle(fontWeight: FontWeight.bold),
                               ),
                               Text("1.2 MB"),
                             ],
@@ -209,10 +194,10 @@ class DetailTugasPage extends StatelessWidget {
                         ElevatedButton(
                           onPressed: () {},
                           child: const Text("Unduh"),
-                        )
+                        ),
                       ],
                     ),
-                  )
+                  ),
                 ],
               ),
             ),
@@ -226,10 +211,7 @@ class DetailTugasPage extends StatelessWidget {
                 children: [
                   const Text(
                     "📤 Unggah Lembar Jawaban",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 22,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
                   ),
                   const SizedBox(height: 15),
 
@@ -245,8 +227,7 @@ class DetailTugasPage extends StatelessWidget {
                       ),
                     ),
                     child: const Column(
-                      mainAxisAlignment:
-                          MainAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
                           Icons.add_photo_alternate_outlined,
@@ -256,14 +237,12 @@ class DetailTugasPage extends StatelessWidget {
                         SizedBox(height: 10),
                         Text(
                           "Ketuk untuk Tambah Foto",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                         Text(
                           "JPG, PNG, PDF (Maks 15MB)",
                           style: TextStyle(color: Colors.grey),
-                        )
+                        ),
                       ],
                     ),
                   ),
@@ -273,17 +252,15 @@ class DetailTugasPage extends StatelessWidget {
                   TextField(
                     maxLines: 3,
                     decoration: InputDecoration(
-                      hintText:
-                          "Tuliskan catatan tambahan...",
+                      hintText: "Tuliskan catatan tambahan...",
                       filled: true,
                       fillColor: const Color(0xFFF2F3FC),
                       border: OutlineInputBorder(
-                        borderRadius:
-                            BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
                       ),
                     ),
-                  )
+                  ),
                 ],
               ),
             ),
@@ -297,8 +274,7 @@ class DetailTugasPage extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
                   shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(15),
+                    borderRadius: BorderRadius.circular(15),
                   ),
                 ),
                 onPressed: () {},
@@ -311,7 +287,7 @@ class DetailTugasPage extends StatelessWidget {
                   ),
                 ),
               ),
-            )
+            ),
           ],
         ),
       ),
@@ -347,20 +323,11 @@ class InfoBox extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(
-          title,
-          style: const TextStyle(
-            color: Colors.grey,
-            fontSize: 12,
-          ),
-        ),
+        Text(title, style: const TextStyle(color: Colors.grey, fontSize: 12)),
         const SizedBox(height: 4),
         Text(
           value,
-          style: TextStyle(
-            color: color,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: color, fontWeight: FontWeight.bold),
         ),
       ],
     );

@@ -2,16 +2,13 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../../../models/absensi_model.dart';
 import '../../../services/absensi_service.dart';
 import '../../../utils/constants.dart';
 
 class UploadSuratScreen extends StatefulWidget {
-  const UploadSuratScreen({
-    super.key,
-  });
+  const UploadSuratScreen({super.key});
 
   @override
   State<UploadSuratScreen> createState() => _UploadSuratScreenState();
@@ -19,772 +16,493 @@ class UploadSuratScreen extends StatefulWidget {
 
 class _UploadSuratScreenState extends State<UploadSuratScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _service = AbsensiService();
+  final _reasonController = TextEditingController();
 
-  final AbsensiService _absensiService = AbsensiService();
-
-  final TextEditingController _keteranganController =
-      TextEditingController();
-
-  String? _jenisIzin;
-
-  DateTime? _tanggalMulai;
-  DateTime? _tanggalSelesai;
-
+  String _type = 'izin';
+  DateTime? _startDate;
+  DateTime? _endDate;
   Uint8List? _fileBytes;
   String? _fileName;
-
-  bool _isLoading = false;
-
-  final List<String> _jenisIzinList = [
-    'Sakit',
-    'Izin',
-  ];
+  bool _submitting = false;
 
   @override
   void dispose() {
-    _keteranganController.dispose();
+    _reasonController.dispose();
     super.dispose();
   }
 
-  // ============================================================
-  // DATE PICKER
-  // ============================================================
-
-  Future<void> _pilihTanggalMulai() async {
-    final DateTime? picked = await showDatePicker(
+  Future<void> _selectDate({required bool start}) async {
+    final now = DateTime.now();
+    final minimum = start
+        ? DateTime(2020, 1, 1)
+        : (_startDate ?? DateTime(2020, 1, 1));
+    final current = start
+        ? (_startDate ?? now)
+        : (_endDate ?? _startDate ?? now);
+    final picked = await showDatePicker(
       context: context,
-      initialDate: _tanggalMulai ?? DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2100),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.primary,
-              surface: AppColors.surface,
-            ),
-          ),
-          child: child!,
-        );
-      },
+      initialDate: current.isBefore(minimum) ? minimum : current,
+      firstDate: minimum,
+      lastDate: DateTime(now.year + 2, 12, 31),
+      helpText: start ? 'Pilih tanggal mulai' : 'Pilih tanggal selesai',
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: Theme.of(
+            context,
+          ).colorScheme.copyWith(primary: AppColors.primary),
+        ),
+        child: child!,
+      ),
     );
+    if (picked == null || !mounted) return;
 
-    if (picked != null) {
-      setState(() {
-        _tanggalMulai = picked;
-
-        // Jika tanggal selesai belum dipilih,
-        // otomatis mengikuti tanggal mulai.
-        if (_tanggalSelesai == null ||
-            _tanggalSelesai!.isBefore(picked)) {
-          _tanggalSelesai = picked;
+    setState(() {
+      if (start) {
+        _startDate = picked;
+        if (_endDate == null || _endDate!.isBefore(picked)) {
+          _endDate = picked;
         }
-      });
-    }
+      } else {
+        _endDate = picked;
+      }
+    });
   }
 
-  Future<void> _pilihTanggalSelesai() async {
-    final DateTime minimumDate =
-        _tanggalMulai ?? DateTime.now();
-
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _tanggalSelesai ?? minimumDate,
-      firstDate: minimumDate,
-      lastDate: DateTime(2100),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.primary,
-              surface: AppColors.surface,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (picked != null) {
-      setState(() {
-        _tanggalSelesai = picked;
-      });
-    }
-  }
-
-  // ============================================================
-  // FILE PICKER
-  // ============================================================
-
-  Future<void> _pilihFile() async {
+  Future<void> _pickDocument() async {
     try {
-      final FilePickerResult? result =
-          await FilePicker.platform.pickFiles(
+      final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: [
-          'jpg',
-          'jpeg',
-          'png',
-          'pdf',
-        ],
+        allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'png'],
+        allowMultiple: false,
         withData: true,
       );
+      if (result == null || !mounted) return;
 
-      if (result == null) {
-        return;
-      }
-
-      final PlatformFile file = result.files.single;
-
-      if (file.bytes == null) {
-        _showSnackBar(
-          'File tidak dapat dibaca.',
+      final file = result.files.single;
+      final bytes = file.bytes;
+      if (bytes == null) {
+        _showMessage(
+          'File tidak dapat dibaca. Coba pilih file lain.',
           isError: true,
         );
         return;
       }
-
-      // Maksimal 5 MB
-      if (file.bytes!.length > 5 * 1024 * 1024) {
-        _showSnackBar(
-          'Ukuran file maksimal 5 MB.',
-          isError: true,
-        );
+      if (bytes.length > 5 * 1024 * 1024) {
+        _showMessage('Ukuran dokumen maksimal 5 MB.', isError: true);
         return;
       }
 
       setState(() {
-        _fileBytes = file.bytes;
+        _fileBytes = bytes;
         _fileName = file.name;
       });
-    } catch (e) {
-      _showSnackBar(
-        'Gagal memilih file.',
-        isError: true,
-      );
+    } catch (error) {
+      if (mounted) _showMessage('Gagal memilih dokumen: $error', isError: true);
     }
   }
 
-  void _hapusFile() {
+  void _removeDocument() {
     setState(() {
       _fileBytes = null;
       _fileName = null;
     });
   }
 
-  // ============================================================
-  // SUBMIT
-  // ============================================================
-
-  Future<void> _kirimPengajuan() async {
+  Future<void> _submit() async {
     FocusScope.of(context).unfocus();
-
-    if (!_formKey.currentState!.validate()) {
+    if (!_formKey.currentState!.validate()) return;
+    if (_startDate == null || _endDate == null) {
+      _showMessage('Pilih tanggal mulai dan tanggal selesai.', isError: true);
       return;
     }
-
-    if (_tanggalMulai == null) {
-      _showSnackBar(
-        'Silakan pilih tanggal mulai.',
-        isError: true,
-      );
-      return;
-    }
-
-    if (_tanggalSelesai == null) {
-      _showSnackBar(
-        'Silakan pilih tanggal selesai.',
-        isError: true,
-      );
-      return;
-    }
-
-    if (_tanggalSelesai!.isBefore(_tanggalMulai!)) {
-      _showSnackBar(
+    if (_endDate!.isBefore(_startDate!)) {
+      _showMessage(
         'Tanggal selesai tidak boleh sebelum tanggal mulai.',
         isError: true,
       );
       return;
     }
 
-    if (_fileBytes == null || _fileName == null) {
-      _showSnackBar(
-        'Silakan upload surat bukti terlebih dahulu.',
-        isError: true,
-      );
-      return;
-    }
-
-    final PengajuanIzinModel pengajuan =
-        PengajuanIzinModel(
-      jenisIzin: _jenisIzin!,
-      tanggalMulai: _tanggalMulai!,
-      tanggalSelesai: _tanggalSelesai!,
-      keterangan: _keteranganController.text.trim(),
-      fileBytes: _fileBytes,
-      fileName: _fileName,
-    );
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final response =
-          await _absensiService.kirimPengajuanIzin(
-        pengajuan,
-      );
-
-      if (!mounted) return;
-
-      if (response.statusCode >= 200 &&
-          response.statusCode < 300) {
-        _showSnackBar(
-          'Pengajuan izin berhasil dikirim.',
-        );
-
-        _resetForm();
-      } else {
-        _showSnackBar(
-          'Pengajuan gagal. Status: ${response.statusCode}',
-          isError: true,
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
-
-      _showSnackBar(
-        'Terjadi kesalahan saat mengirim pengajuan.',
-        isError: true,
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  void _resetForm() {
-    setState(() {
-      _jenisIzin = null;
-      _tanggalMulai = null;
-      _tanggalSelesai = null;
-      _fileBytes = null;
-      _fileName = null;
-      _keteranganController.clear();
-    });
-  }
-
-  // ============================================================
-  // SNACKBAR
-  // ============================================================
-
-  void _showSnackBar(
-    String message, {
-    bool isError = false,
-  }) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor:
-            isError ? AppColors.error : AppColors.success,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Kirim pengajuan?'),
+        content: Text(
+          'Pengajuan ${_type == 'sakit' ? 'sakit' : 'izin'} untuk ${_formatIndonesianDate(_startDate!)} sampai ${_formatIndonesianDate(_endDate!)} akan dikirim untuk diverifikasi.',
         ),
-      ),
-    );
-  }
-
-  // ============================================================
-  // BUILD
-  // ============================================================
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-
-      appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        centerTitle: false,
-
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            size: 20,
-            color: AppColors.textPrimary,
-          ),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
-
-        title: const Text(
-          'Pengajuan Izin / Sakit',
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-
         actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            width: 36,
-            height: 36,
-            decoration: const BoxDecoration(
-              color: AppColors.primary,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.person_outline_rounded,
-              color: Colors.white,
-              size: 20,
-            ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Periksa lagi'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Ya, kirim'),
           ),
         ],
       ),
+    );
+    if (confirmed != true || !mounted) return;
 
+    setState(() => _submitting = true);
+    try {
+      final request = PengajuanIzinModel(
+        jenisIzin: _type,
+        tanggalMulai: _startDate!,
+        tanggalSelesai: _endDate!,
+        keterangan: _reasonController.text.trim(),
+        fileBytes: _fileBytes,
+        fileName: _fileName,
+      );
+      final response = await _service.kirimPengajuanIzin(request);
+      if (!mounted) return;
+      final message =
+          response['message']?.toString() ??
+          'Pengajuan berhasil dikirim dan menunggu verifikasi.';
+      Navigator.of(context).pop(message);
+    } catch (error) {
+      if (mounted) {
+        _showMessage(
+          error.toString().replaceFirst('Bad state: ', ''),
+          isError: true,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  void _showMessage(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: isError ? AppColors.error : AppColors.success,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Pengajuan Izin / Sakit')),
       body: SafeArea(
         child: Form(
           key: _formKey,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(
-              24,
-              16,
-              24,
-              24,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-
-                // ==================================================
-                // TAB
-                // ==================================================
-
-                _buildTabHeader(),
-
-                const SizedBox(height: 16),
-
-                // ==================================================
-                // INFO CARD
-                // ==================================================
-
-                _buildInfoCard(),
-
-                const SizedBox(height: 22),
-
-                // ==================================================
-                // JENIS KETIDAKHADIRAN
-                // ==================================================
-
-                _buildSectionTitle(
-                  'Jenis Ketidakhadiran',
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: .08),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: .16),
+                  ),
                 ),
-
-                const SizedBox(height: 8),
-
-                _buildJenisIzinDropdown(),
-
-                const SizedBox(height: 22),
-
-                // ==================================================
-                // RENTANG TANGGAL
-                // ==================================================
-
-                _buildSectionTitle(
-                  'Rentang Tanggal',
-                ),
-
-                const SizedBox(height: 8),
-
-                Row(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: _buildDateField(
-                        label: 'Mulai',
-                        date: _tanggalMulai,
-                        onTap: _pilihTanggalMulai,
-                      ),
+                    const Icon(
+                      Icons.info_outline_rounded,
+                      color: AppColors.primary,
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 10),
                     Expanded(
-                      child: _buildDateField(
-                        label: 'Selesai',
-                        date: _tanggalSelesai,
-                        onTap: _pilihTanggalSelesai,
+                      child: Text(
+                        'Isi informasi pengajuan dengan benar. Pengajuan akan diperiksa oleh Guru atau Admin. Dokumen pendukung dapat dilampirkan bila tersedia.',
+                        style: textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurface,
+                        ),
                       ),
                     ),
                   ],
                 ),
-
-                const SizedBox(height: 22),
-
-                // ==================================================
-                // KETERANGAN
-                // ==================================================
-
-                _buildSectionTitle(
-                  'Keterangan / Alasan',
-                ),
-
-                const SizedBox(height: 8),
-
-                _buildKeteranganField(),
-
-                const SizedBox(height: 22),
-
-                // ==================================================
-                // UPLOAD
-                // ==================================================
-
-                _buildSectionTitle(
-                  'Upload Dokumen Bukti',
-                ),
-
-                const SizedBox(height: 8),
-
-                _buildUploadBox(),
-
-                const SizedBox(height: 20),
-
-                // ==================================================
-                // BUTTON
-                // ==================================================
-
-                _buildSubmitButton(),
-
-                const SizedBox(height: 16),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ============================================================
-  // TAB HEADER
-  // ============================================================
-
-  Widget _buildTabHeader() {
-    return Container(
-      height: 42,
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE8EDFF),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(10),
               ),
-              alignment: Alignment.center,
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              const SizedBox(height: 22),
+              Text(
+                'Jenis Pengajuan',
+                style: textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
                 children: [
-                  Icon(
-                    Icons.edit_note_rounded,
-                    color: Colors.white,
-                    size: 18,
+                  Expanded(
+                    child: _TypeOption(
+                      label: 'Izin',
+                      subtitle: 'Keperluan pribadi',
+                      icon: Icons.event_note_outlined,
+                      selected: _type == 'izin',
+                      onTap: () => setState(() => _type = 'izin'),
+                    ),
                   ),
-                  SizedBox(width: 6),
-                  Text(
-                    'Form Izin',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _TypeOption(
+                      label: 'Sakit',
+                      subtitle: 'Kondisi kesehatan',
+                      icon: Icons.medical_services_outlined,
+                      selected: _type == 'sakit',
+                      onTap: () => setState(() => _type = 'sakit'),
                     ),
                   ),
                 ],
               ),
-            ),
-          ),
-
-          Expanded(
-            child: InkWell(
-              borderRadius: BorderRadius.circular(10),
-              onTap: () {
-                // Bisa diarahkan ke halaman histori
-              },
-              child: const Center(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.calendar_month_outlined,
-                      color: AppColors.textSecondary,
-                      size: 17,
-                    ),
-                    SizedBox(width: 6),
-                    Text(
-                      'Histori Kehadiran',
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
+              const SizedBox(height: 22),
+              Text(
+                'Rentang Tanggal',
+                style: textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
                 ),
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ============================================================
-  // INFO CARD
-  // ============================================================
-
-  Widget _buildInfoCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.primaryLight,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: AppColors.infoLight,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              Icons.info_outline_rounded,
-              color: AppColors.primary,
-              size: 20,
-            ),
-          ),
-
-          const SizedBox(width: 12),
-
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Form Ketidakhadiran Resmi',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: _DateField(
+                      label: 'Tanggal mulai',
+                      value: _startDate == null
+                          ? null
+                          : _formatIndonesianDate(_startDate!),
+                      onTap: () => _selectDate(start: true),
+                    ),
                   ),
-                ),
-
-                SizedBox(height: 4),
-
-                Text(
-                  'Surat permohonan akan diverifikasi oleh Wali Kelas dan guru piket madrasah.',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                    height: 1.4,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _DateField(
+                      label: 'Tanggal selesai',
+                      value: _endDate == null
+                          ? null
+                          : _formatIndonesianDate(_endDate!),
+                      onTap: () => _selectDate(start: false),
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ============================================================
-  // SECTION TITLE
-  // ============================================================
-
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        color: AppColors.textPrimary,
-        fontSize: 12,
-        fontWeight: FontWeight.w500,
-      ),
-    );
-  }
-
-  // ============================================================
-  // DROPDOWN
-  // ============================================================
-
-  Widget _buildJenisIzinDropdown() {
-    return DropdownButtonFormField<String>(
-      value: _jenisIzin,
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: AppColors.surface,
-
-        hintText: 'Pilih jenis ketidakhadiran',
-        hintStyle: const TextStyle(
-          color: AppColors.textSecondary,
-          fontSize: 13,
-        ),
-
-        prefixIcon: const Icon(
-          Icons.event_busy_outlined,
-          color: AppColors.primary,
-          size: 20,
-        ),
-
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 14,
-        ),
-
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(
-            color: AppColors.border,
-          ),
-        ),
-
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(
-            color: AppColors.border,
-          ),
-        ),
-
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(
-            color: AppColors.primary,
-            width: 1.5,
-          ),
-        ),
-
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(
-            color: AppColors.error,
-          ),
-        ),
-
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(
-            color: AppColors.error,
-          ),
-        ),
-      ),
-
-      icon: const Icon(
-        Icons.keyboard_arrow_down_rounded,
-        color: AppColors.textSecondary,
-      ),
-
-      items: _jenisIzinList.map(
-        (String jenis) {
-          return DropdownMenuItem<String>(
-            value: jenis,
-            child: Text(
-              jenis,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 14,
+                ],
               ),
-            ),
-          );
-        },
-      ).toList(),
-
-      onChanged: (String? value) {
-        setState(() {
-          _jenisIzin = value;
-        });
-      },
-
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Jenis izin wajib dipilih';
-        }
-
-        return null;
-      },
+              const SizedBox(height: 22),
+              Text(
+                'Alasan / Keterangan',
+                style: textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: _reasonController,
+                minLines: 4,
+                maxLines: 6,
+                maxLength: 2000,
+                textInputAction: TextInputAction.newline,
+                decoration: const InputDecoration(
+                  hintText:
+                      'Jelaskan alasan pengajuan secara singkat dan jelas...',
+                  alignLabelWithHint: true,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(12)),
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty)
+                    return 'Alasan pengajuan wajib diisi.';
+                  if (value.trim().length < 5)
+                    return 'Keterangan minimal 5 karakter.';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'Dokumen Pendukung',
+                style: textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Opsional · PDF, JPG, JPEG, atau PNG · Maksimal 5 MB',
+                style: textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 10),
+              _DocumentPicker(
+                fileName: _fileName,
+                fileSize: _fileBytes?.length,
+                onPick: _pickDocument,
+                onRemove: _removeDocument,
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                height: 48,
+                child: FilledButton.icon(
+                  onPressed: _submitting ? null : _submit,
+                  icon: _submitting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.send_rounded),
+                  label: Text(
+                    _submitting ? 'Mengirim pengajuan...' : 'Kirim Pengajuan',
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 48,
+                child: OutlinedButton(
+                  onPressed: _submitting
+                      ? null
+                      : () => Navigator.of(context).maybePop(),
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('Batal'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
+}
 
-  // ============================================================
-  // DATE FIELD
-  // ============================================================
+class _TypeOption extends StatelessWidget {
+  final String label;
+  final String subtitle;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
 
-  Widget _buildDateField({
-    required String label,
-    required DateTime? date,
-    required VoidCallback onTap,
-  }) {
-    final String dateText = date == null
-        ? 'Pilih tanggal'
-        : DateFormat('MM/dd/yyyy').format(date);
+  const _TypeOption({
+    required this.label,
+    required this.subtitle,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
 
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: selected
+          ? AppColors.primary.withValues(alpha: .08)
+          : scheme.surface,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: selected ? AppColors.primary : scheme.outlineVariant,
+              width: selected ? 1.5 : 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                icon,
+                color: selected ? AppColors.primary : scheme.onSurfaceVariant,
+              ),
+              const SizedBox(height: 9),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: selected ? AppColors.primary : scheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DateField extends StatelessWidget {
+  final String label;
+  final String? value;
+  final VoidCallback onTap;
+
+  const _DateField({
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return InkWell(
-      borderRadius: BorderRadius.circular(10),
       onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 11,
-        ),
+        constraints: const BoxConstraints(minHeight: 76),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: AppColors.border,
-          ),
+          color: scheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: scheme.outlineVariant),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               label,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
             ),
-
-            const SizedBox(height: 5),
-
+            const SizedBox(height: 8),
             Row(
               children: [
                 const Icon(
-                  Icons.calendar_today_outlined,
-                  color: AppColors.textSecondary,
-                  size: 16,
+                  Icons.calendar_month_outlined,
+                  size: 17,
+                  color: AppColors.primary,
                 ),
-
                 const SizedBox(width: 6),
-
                 Expanded(
                   child: Text(
-                    dateText,
-                    style: TextStyle(
-                      color: date == null
-                          ? AppColors.textSecondary
-                          : AppColors.textPrimary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
+                    value ?? 'Pilih tanggal',
+                    maxLines: 2,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: value == null
+                          ? scheme.onSurfaceVariant
+                          : scheme.onSurface,
                     ),
                   ),
                 ),
@@ -795,267 +513,129 @@ class _UploadSuratScreenState extends State<UploadSuratScreen> {
       ),
     );
   }
+}
 
-  // ============================================================
-  // KETERANGAN
-  // ============================================================
+class _DocumentPicker extends StatelessWidget {
+  final String? fileName;
+  final int? fileSize;
+  final VoidCallback onPick;
+  final VoidCallback onRemove;
 
-  Widget _buildKeteranganField() {
-    return TextFormField(
-      controller: _keteranganController,
-      maxLines: 4,
-      textInputAction: TextInputAction.newline,
+  const _DocumentPicker({
+    required this.fileName,
+    required this.fileSize,
+    required this.onPick,
+    required this.onRemove,
+  });
 
-      style: const TextStyle(
-        color: AppColors.textPrimary,
-        fontSize: 13,
-      ),
-
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: AppColors.surface,
-
-        hintText:
-            'Tuliskan alasan lengkap kondisi siswa dan informasi pendukung...',
-
-        hintStyle: const TextStyle(
-          color: Color(0xFF94A3B8),
-          fontSize: 13,
-          height: 1.4,
-        ),
-
-        contentPadding: const EdgeInsets.all(14),
-
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(
-            color: AppColors.border,
-          ),
-        ),
-
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(
-            color: AppColors.border,
-          ),
-        ),
-
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(
-            color: AppColors.primary,
-            width: 1.5,
-          ),
-        ),
-
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(
-            color: AppColors.error,
-          ),
-        ),
-      ),
-
-      validator: (value) {
-        if (value == null || value.trim().isEmpty) {
-          return 'Keterangan wajib diisi';
-        }
-
-        if (value.trim().length < 5) {
-          return 'Keterangan terlalu singkat';
-        }
-
-        return null;
-      },
-    );
+  String _readableSize(int bytes) {
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(0)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB';
   }
 
-  // ============================================================
-  // UPLOAD BOX
-  // ============================================================
-
-  Widget _buildUploadBox() {
-    final bool hasFile =
-        _fileBytes != null && _fileName != null;
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: hasFile ? null : _pilihFile,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: AppColors.border,
-          ),
-        ),
-        child: hasFile
-            ? _buildSelectedFile()
-            : _buildEmptyUpload(),
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final hasFile = fileName != null;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: scheme.outlineVariant),
       ),
-    );
-  }
-
-  Widget _buildEmptyUpload() {
-    return Column(
-      children: [
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: AppColors.primaryLight,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(
-            Icons.cloud_upload_outlined,
-            color: AppColors.primary,
-            size: 27,
-          ),
-        ),
-
-        const SizedBox(height: 12),
-
-        const Text(
-          'Upload Surat Dokter / Keterangan',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-
-        const SizedBox(height: 4),
-
-        const Text(
-          'Format JPG, PNG, atau PDF (Maks. 5MB)',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 11,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSelectedFile() {
-    return Row(
-      children: [
-        Container(
-          width: 46,
-          height: 46,
-          decoration: BoxDecoration(
-            color: AppColors.successLight,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: const Icon(
-            Icons.description_outlined,
-            color: AppColors.success,
-            size: 25,
-          ),
-        ),
-
-        const SizedBox(width: 12),
-
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Dokumen terpilih',
-                style: TextStyle(
-                  color: AppColors.success,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
+      child: hasFile
+          ? Row(
+              children: [
+                const Icon(
+                  Icons.insert_drive_file_outlined,
+                  color: AppColors.primary,
+                  size: 30,
                 ),
-              ),
-
-              const SizedBox(height: 3),
-
-              Text(
-                _fileName!,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        IconButton(
-          tooltip: 'Hapus file',
-          onPressed: _hapusFile,
-          icon: const Icon(
-            Icons.close_rounded,
-            color: AppColors.error,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ============================================================
-  // SUBMIT BUTTON
-  // ============================================================
-
-  Widget _buildSubmitButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 50,
-      child: ElevatedButton(
-        onPressed: _isLoading
-            ? null
-            : _kirimPengajuan,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          disabledBackgroundColor:
-              AppColors.primary.withOpacity(0.6),
-          foregroundColor: Colors.white,
-          elevation: 2,
-          shadowColor:
-              AppColors.primary.withOpacity(0.25),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-        child: _isLoading
-            ? const SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  valueColor:
-                      AlwaysStoppedAnimation<Color>(
-                    Colors.white,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        fileName!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      if (fileSize != null)
+                        Text(
+                          _readableSize(fileSize!),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: scheme.onSurfaceVariant),
+                        ),
+                    ],
                   ),
                 ),
-              )
-            : const Row(
-                mainAxisAlignment:
-                    MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.send_outlined,
-                    size: 19,
+                IconButton(
+                  onPressed: onRemove,
+                  tooltip: 'Hapus dokumen',
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: .08),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  SizedBox(width: 8),
-                  Text(
-                    'Kirim Surat Izin / Sakit',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  child: const Icon(
+                    Icons.upload_file_rounded,
+                    color: AppColors.primary,
                   ),
-                ],
-              ),
-      ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Belum ada dokumen',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        'Lampirkan bukti jika tersedia',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                OutlinedButton(onPressed: onPick, child: const Text('Pilih')),
+              ],
+            ),
     );
   }
 }
+
+const _monthNames = <String>[
+  'Januari',
+  'Februari',
+  'Maret',
+  'April',
+  'Mei',
+  'Juni',
+  'Juli',
+  'Agustus',
+  'September',
+  'Oktober',
+  'November',
+  'Desember',
+];
+
+String _formatIndonesianDate(DateTime date) =>
+    '${date.day} ${_monthNames[date.month - 1]} ${date.year}';

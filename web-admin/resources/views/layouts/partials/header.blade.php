@@ -12,6 +12,13 @@
     </div>
 
     <div class="flex items-center gap-3 md:gap-6">
+        @php($adminUnreadNotifications = \Illuminate\Support\Facades\Schema::hasTable('notifications') ? Auth::user()->unreadNotifications()->count() : 0)
+        <a href="{{ route('admin.notifications.index') }}" class="relative inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-blue-50 hover:text-blue-700 dark:text-slate-300 dark:hover:bg-slate-700" title="Notifikasi Admin" aria-label="Notifikasi Admin">
+            <span class="text-lg">🔔</span>
+            @if($adminUnreadNotifications > 0)
+                <span class="absolute -right-1 -top-1 min-w-[17px] rounded-full border-2 border-white bg-red-600 px-1 py-0.5 text-center text-[9px] font-extrabold leading-none text-white dark:border-slate-800">{{ $adminUnreadNotifications > 9 ? '9+' : $adminUnreadNotifications }}</span>
+            @endif
+        </a>
         <a href="{{ route('admin.pengaturan') }}" class="text-slate-500 dark:text-slate-300 hover:text-blue-600 text-sm" title="Pengaturan">⚙</a>
         <div class="flex items-center gap-2 relative">
             <div class="hidden sm:block text-right leading-tight">

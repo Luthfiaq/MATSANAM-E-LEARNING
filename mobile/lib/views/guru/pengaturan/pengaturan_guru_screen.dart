@@ -1,18 +1,19 @@
-
 import 'package:flutter/material.dart';
 
 import '../../../services/auth_service.dart';
+import '../../../services/notification_service.dart';
 import '../../../utils/session.dart';
 import '../../auth/login_screen.dart';
 import '../../../main.dart';
 import '../../../widgets/common/guru_bottom_navigation.dart';
+import '../../../widgets/common/notification_bell_button.dart';
+import '../notifikasi/guru_notifikasi_screen.dart';
 
 class PengaturanGuruScreen extends StatefulWidget {
   const PengaturanGuruScreen({super.key});
 
   @override
-  State<PengaturanGuruScreen> createState() =>
-      _PengaturanGuruScreenState();
+  State<PengaturanGuruScreen> createState() => _PengaturanGuruScreenState();
 }
 
 class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
@@ -22,8 +23,7 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
   String selectedTheme = 'Terang';
 
   bool tugasBaru = true;
-  bool nilaiDiperbarui = true;
-  bool pengingatBelajar = true;
+  bool pengajuanIzin = true;
 
   String teacherName = 'Memuat profil...';
   String teacherNip = 'NIP: -';
@@ -41,6 +41,12 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
     try {
       final cachedProfile = await Session.getProfile();
       final fresh = await AuthService().getCurrentUser();
+      Map<String, dynamic> remotePreferences = {};
+      try {
+        remotePreferences = await NotificationService().fetchPreferences();
+      } catch (_) {
+        // Keep defaults if the notification API is temporarily unreachable.
+      }
       final freshProfile = fresh?['profile'];
       final freshUser = fresh?['user'];
       final profile = freshProfile is Map
@@ -48,10 +54,17 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
           : (cachedProfile ?? <String, dynamic>{});
       if (!mounted) return;
       setState(() {
-        teacherName = (profile['nama_lengkap'] ?? (freshUser is Map ? freshUser['name'] : null) ?? 'Nama Guru').toString();
+        teacherName =
+            (profile['nama_lengkap'] ??
+                    (freshUser is Map ? freshUser['name'] : null) ??
+                    'Nama Guru')
+                .toString();
         teacherNip = 'NIP: ${(profile['nip'] ?? '-').toString()}';
-        teacherEmail = (freshUser is Map ? freshUser['email'] : null)?.toString() ?? '-';
+        teacherEmail =
+            (freshUser is Map ? freshUser['email'] : null)?.toString() ?? '-';
         teacherPhoto = profile['foto_profil']?.toString();
+        tugasBaru = remotePreferences['pengumpulan_tugas'] as bool? ?? true;
+        pengajuanIzin = remotePreferences['pengajuan_izin'] as bool? ?? true;
         _profileLoading = false;
       });
     } catch (_) {
@@ -60,14 +73,12 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
     }
   }
 
-  bool get isDark =>
-      Theme.of(context).brightness == Brightness.dark;
+  bool get isDark => Theme.of(context).brightness == Brightness.dark;
 
   Color get background =>
       isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
 
-  Color get cardColor =>
-      isDark ? const Color(0xFF1E293B) : Colors.white;
+  Color get cardColor => isDark ? const Color(0xFF1E293B) : Colors.white;
 
   Color get textDark =>
       isDark ? const Color(0xFFF8FAFC) : const Color(0xFF1E293B);
@@ -98,12 +109,28 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
     }
   }
 
+  Future<void> _setNotificationPreference(String key, bool value) async {
+    try {
+      await NotificationService().updatePreferences({key: value});
+      if (!mounted) return;
+      setState(() {
+        switch (key) {
+          case 'pengumpulan_tugas':
+            tugasBaru = value;
+            break;
+          case 'pengajuan_izin':
+            pengajuanIzin = value;
+            break;
+        }
+      });
+    } catch (error) {
+      _showMessage('Gagal menyimpan preferensi: $error');
+    }
+  }
+
   void _showMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-      ),
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
     );
   }
 
@@ -144,10 +171,7 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
           backgroundColor: cardColor,
           title: Text(
             'Ganti Kata Sandi',
-            style: TextStyle(
-              color: textDark,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(color: textDark, fontWeight: FontWeight.bold),
           ),
           content: SingleChildScrollView(
             child: Column(
@@ -201,24 +225,18 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
                 }
 
                 if (newController.text.length < 6) {
-                  _showMessage(
-                    'Kata sandi baru minimal 6 karakter.',
-                  );
+                  _showMessage('Kata sandi baru minimal 6 karakter.');
                   return;
                 }
 
                 if (newController.text != confirmController.text) {
-                  _showMessage(
-                    'Konfirmasi kata sandi tidak cocok.',
-                  );
+                  _showMessage('Konfirmasi kata sandi tidak cocok.');
                   return;
                 }
 
                 Navigator.pop(dialogContext);
 
-                _showMessage(
-                  'Permintaan ganti kata sandi berhasil disiapkan.',
-                );
+                _showMessage('Permintaan ganti kata sandi berhasil disiapkan.');
               },
               child: const Text('Simpan'),
             ),
@@ -239,20 +257,14 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
       builder: (dialogContext) {
         return AlertDialog(
           backgroundColor: cardColor,
-          title: Text(
-            'Kontak & Email',
-            style: TextStyle(color: textDark),
-          ),
+          title: Text('Kontak & Email', style: TextStyle(color: textDark)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 'Email akun guru',
-                style: TextStyle(
-                  color: textMuted,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: textMuted, fontSize: 12),
               ),
               const SizedBox(height: 6),
               SelectableText(
@@ -265,10 +277,7 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
               const SizedBox(height: 12),
               Text(
                 'Hubungi administrator sekolah jika ingin memperbarui alamat email akun.',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: textDark,
-                ),
+                style: TextStyle(fontSize: 13, color: textDark),
               ),
             ],
           ),
@@ -290,10 +299,7 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
       builder: (dialogContext) {
         return AlertDialog(
           backgroundColor: cardColor,
-          title: Text(
-            'Keluar dari Akun?',
-            style: TextStyle(color: textDark),
-          ),
+          title: Text('Keluar dari Akun?', style: TextStyle(color: textDark)),
           content: Text(
             'Apakah kamu yakin ingin keluar dari akun Guru?',
             style: TextStyle(color: textMuted),
@@ -329,11 +335,7 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
   // JUDUL BAGIAN
   Widget _sectionTitle(String title) {
     return Padding(
-      padding: const EdgeInsets.only(
-        left: 2,
-        bottom: 9,
-        top: 18,
-      ),
+      padding: const EdgeInsets.only(left: 2, bottom: 9, top: 18),
       child: Text(
         title.toUpperCase(),
         style: TextStyle(
@@ -372,10 +374,7 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
       borderRadius: BorderRadius.circular(9),
       onTap: () => _changeTheme(value),
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 10,
-          vertical: 11,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
         decoration: BoxDecoration(
           color: isSelected ? softBlue : Colors.transparent,
           borderRadius: BorderRadius.circular(9),
@@ -401,17 +400,13 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
                 title,
                 style: TextStyle(
                   fontSize: 11,
-                  fontWeight: isSelected
-                      ? FontWeight.w700
-                      : FontWeight.w500,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                   color: textDark,
                 ),
               ),
             ),
             Icon(
-              isSelected
-                  ? Icons.check_circle
-                  : Icons.circle_outlined,
+              isSelected ? Icons.check_circle : Icons.circle_outlined,
               size: 18,
               color: isSelected ? primary : textMuted,
             ),
@@ -442,11 +437,7 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
                 color: softBlue,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(
-                icon,
-                color: primary,
-                size: 16,
-              ),
+              child: Icon(icon, color: primary, size: 16),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -468,18 +459,12 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
                   style: TextStyle(
                     fontSize: 9,
                     color: isEmail ? primary : textMuted,
-                    fontWeight: isEmail
-                        ? FontWeight.w600
-                        : FontWeight.normal,
+                    fontWeight: isEmail ? FontWeight.w600 : FontWeight.normal,
                   ),
                 ),
               ),
             const SizedBox(width: 5),
-            Icon(
-              Icons.chevron_right,
-              size: 17,
-              color: textMuted,
-            ),
+            Icon(Icons.chevron_right, size: 17, color: textMuted),
           ],
         ),
       ),
@@ -512,11 +497,7 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
                 const SizedBox(height: 4),
                 Text(
                   description,
-                  style: TextStyle(
-                    fontSize: 9,
-                    height: 1.4,
-                    color: textMuted,
-                  ),
+                  style: TextStyle(fontSize: 9, height: 1.4, color: textMuted),
                 ),
               ],
             ),
@@ -531,8 +512,7 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
             inactiveTrackColor: isDark
                 ? const Color(0xFF475569)
                 : const Color(0xFFCBD5E1),
-            materialTapTargetSize:
-                MaterialTapTargetSize.shrinkWrap,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
         ],
       ),
@@ -573,10 +553,7 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
                   decoration: BoxDecoration(
                     color: green,
                     shape: BoxShape.circle,
-                    border: Border.all(
-                      color: cardColor,
-                      width: 2,
-                    ),
+                    border: Border.all(color: cardColor, width: 2),
                   ),
                 ),
               ),
@@ -598,18 +575,12 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
                 const SizedBox(height: 4),
                 Text(
                   teacherNip,
-                  style: TextStyle(
-                    fontSize: 9,
-                    color: textMuted,
-                  ),
+                  style: TextStyle(fontSize: 9, color: textMuted),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   'Guru • MTs Matsanama',
-                  style: TextStyle(
-                    fontSize: 9,
-                    color: textMuted,
-                  ),
+                  style: TextStyle(fontSize: 9, color: textMuted),
                 ),
                 const SizedBox(height: 7),
                 Container(
@@ -639,7 +610,6 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
       ),
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -676,15 +646,15 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            onPressed: () {
-              _showMessage('Tidak ada notifikasi baru.');
+          NotificationBellButton(
+            onPressed: () async {
+              await Navigator.of(context).push<void>(
+                MaterialPageRoute<void>(
+                  builder: (_) => const GuruNotifikasiScreen(),
+                ),
+              );
             },
-            icon: Icon(
-              Icons.notifications_none_rounded,
-              color: textDark,
-              size: 21,
-            ),
+            tooltip: 'Notifikasi Guru',
           ),
           Padding(
             padding: const EdgeInsets.only(right: 15),
@@ -770,29 +740,19 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
                       description:
                           'Dapatkan pemberitahuan ketika siswa mengumpulkan tugas.',
                       value: tugasBaru,
-                      onChanged: (value) {
-                        setState(() => tugasBaru = value);
-                      },
+                      onChanged: (value) => _setNotificationPreference(
+                        'pengumpulan_tugas',
+                        value,
+                      ),
                     ),
                     Divider(height: 1, color: borderColor),
                     _notificationOption(
-                      title: 'Nilai Diubah / Finalisasi Selesai',
+                      title: 'Pengajuan Izin Siswa',
                       description:
-                          'Notifikasi saat nilai diperbarui atau proses finalisasi selesai.',
-                      value: nilaiDiperbarui,
-                      onChanged: (value) {
-                        setState(() => nilaiDiperbarui = value);
-                      },
-                    ),
-                    Divider(height: 1, color: borderColor),
-                    _notificationOption(
-                      title: 'Pengingat Batas Tenggat Waktu',
-                      description:
-                          'Pengingat terkait tenggat waktu tugas dan aktivitas belajar.',
-                      value: pengingatBelajar,
-                      onChanged: (value) {
-                        setState(() => pengingatBelajar = value);
-                      },
+                          'Pemberitahuan saat siswa mengirim pengajuan izin atau sakit.',
+                      value: pengajuanIzin,
+                      onChanged: (value) =>
+                          _setNotificationPreference('pengajuan_izin', value),
                     ),
                   ],
                 ),
@@ -805,16 +765,10 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
                 height: 43,
                 child: ElevatedButton.icon(
                   onPressed: _showLogoutDialog,
-                  icon: const Icon(
-                    Icons.logout_rounded,
-                    size: 17,
-                  ),
+                  icon: const Icon(Icons.logout_rounded, size: 17),
                   label: const Text(
                     'Keluar dari Akun (Logout)',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFDC2626),
@@ -833,10 +787,7 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
                 child: Text(
                   'Versi 1.0.0 • Hak Cipta Matsanama E-Learning',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 8,
-                    color: textMuted,
-                  ),
+                  style: TextStyle(fontSize: 8, color: textMuted),
                 ),
               ),
             ],

@@ -16,6 +16,7 @@ class AbsensiHarian extends Model
         'waktu_absen',
         'metode',
         'keterangan',
+        'surat_absensi_id',
     ];
 
     protected $casts = [
@@ -30,5 +31,10 @@ class AbsensiHarian extends Model
     public function jadwal()
     {
         return $this->belongsTo(JadwalPelajaran::class, 'jadwal_id');
+    }
+
+    public function suratAbsensi()
+    {
+        return $this->belongsTo(SuratAbsensi::class, 'surat_absensi_id');
     }
 }

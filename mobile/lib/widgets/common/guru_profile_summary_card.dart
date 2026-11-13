@@ -32,7 +32,11 @@ class GuruProfileSummaryCard extends StatelessWidget {
                   color: const Color(0xFFEFF6FF),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.badge_outlined, color: AppColors.primary, size: 26),
+                child: const Icon(
+                  Icons.badge_outlined,
+                  color: AppColors.primary,
+                  size: 26,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -61,12 +65,22 @@ class GuruProfileSummaryCard extends StatelessWidget {
                     ),
                     if (nip.isNotEmpty) ...[
                       const SizedBox(height: 2),
-                      Text('NIP. $nip', style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                      Text(
+                        'NIP. $nip',
+                        style: const TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 11,
+                        ),
+                      ),
                     ],
                   ],
                 ),
               ),
-              const Icon(Icons.tune_rounded, color: AppColors.textSecondary, size: 20),
+              const Icon(
+                Icons.tune_rounded,
+                color: AppColors.textSecondary,
+                size: 20,
+              ),
             ],
           ),
         );

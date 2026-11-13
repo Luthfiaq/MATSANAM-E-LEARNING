@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Penugasan;
 use App\Models\JadwalPelajaran;
+use Carbon\Carbon;
+use App\Services\MatsanamNotificationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class TugasController extends Controller
@@ -49,15 +52,42 @@ class TugasController extends Controller
             'bobot' => 'required|integer|min:1|max:100',
         ]);
 
-        $data = $request->except('file_materi');
-        
+        $jadwal = JadwalPelajaran::findOrFail($validated['jadwal_id']);
+        $validated['deadline'] = Carbon::parse($validated['deadline'], 'Asia/Jakarta')->utc();
+        $data = collect($validated)->except('file_materi')->all();
+        $data['guru_id'] = $jadwal->guru_id;
+        $data['deskripsi'] = $data['deskripsi'] ?? '';
+        $filePath = null;
+
         if ($request->hasFile('file_materi')) {
-            $file = $request->file('file_materi');
-            $path = $file->store('tugas', 'public');
-            $data['file_materi'] = $path;
+            $filePath = $request->file('file_materi')->store('tugas', 'public');
+            $data['file_materi'] = $filePath;
         }
 
-        Penugasan::create($data);
+        try {
+            $tugas = Penugasan::create($data)->load(['jadwal.kelas', 'jadwal.mataPelajaran']);
+        } catch (\Throwable $exception) {
+            if ($filePath) {
+                Storage::disk('public')->delete($filePath);
+            }
+            throw $exception;
+        }
+
+        if ($tugas->jadwal) {
+            app(MatsanamNotificationService::class)->notifyClassStudents(
+                (int) $tugas->jadwal->kelas_id,
+                'tugas_baru',
+                'Tugas baru diberikan',
+                (auth()->user()?->name ?? 'Admin TU') . ' memberikan tugas "' . $tugas->judul . '" untuk ' . ($tugas->jadwal->mataPelajaran?->nama ?? 'mata pelajaran') . '.',
+                [
+                    'tugas_id' => $tugas->id,
+                    'mapel_id' => $tugas->jadwal->mapel_id,
+                    'jadwal_id' => $tugas->jadwal_id,
+                    'class_id' => $tugas->jadwal->kelas_id,
+                    'deadline' => $tugas->deadline?->toIso8601String(),
+                ],
+            );
+        }
 
         return redirect()->route('admin.tugas.index')
             ->with('success', 'Tugas berhasil ditambahkan');
@@ -85,19 +115,32 @@ class TugasController extends Controller
             'bobot' => 'required|integer|min:1|max:100',
         ]);
 
-        $data = $request->except('file_materi');
-        
+        $jadwal = JadwalPelajaran::findOrFail($validated['jadwal_id']);
+        $validated['deadline'] = Carbon::parse($validated['deadline'], 'Asia/Jakarta')->utc();
+        $data = collect($validated)->except('file_materi')->all();
+        $data['guru_id'] = $jadwal->guru_id;
+        $data['deskripsi'] = $data['deskripsi'] ?? '';
+        $oldFilePath = $tugas->file_materi;
+        $newFilePath = null;
+
         if ($request->hasFile('file_materi')) {
-            if ($tugas->file_materi) {
-                Storage::disk('public')->delete($tugas->file_materi);
-            }
-            
-            $file = $request->file('file_materi');
-            $path = $file->store('tugas', 'public');
-            $data['file_materi'] = $path;
+            $newFilePath = $request->file('file_materi')->store('tugas', 'public');
+            $data['file_materi'] = $newFilePath;
         }
 
-        $tugas->update($data);
+        try {
+            $tugas->fill($data);
+            $tugas->save();
+        } catch (\Throwable $exception) {
+            if ($newFilePath) {
+                Storage::disk('public')->delete($newFilePath);
+            }
+            throw $exception;
+        }
+
+        if ($newFilePath && $oldFilePath && $oldFilePath !== $newFilePath) {
+            Storage::disk('public')->delete($oldFilePath);
+        }
 
         return redirect()->route('admin.tugas.index')
             ->with('success', 'Tugas berhasil diperbarui');
@@ -105,13 +148,31 @@ class TugasController extends Controller
 
     public function destroy($id)
     {
-        $tugas = Penugasan::findOrFail($id);
-        
-        if ($tugas->file_materi) {
-            Storage::disk('public')->delete($tugas->file_materi);
+        $result = DB::transaction(function () use ($id) {
+            $tugas = Penugasan::query()
+                ->lockForUpdate()
+                ->findOrFail($id);
+
+            // Keep submissions and their grades intact; the task cannot be removed
+            // after a student has submitted work.
+            if ($tugas->pengumpulan()->exists()) {
+                return ['deleted' => false, 'file' => null];
+            }
+
+            $filePath = $tugas->file_materi;
+            $tugas->delete();
+
+            return ['deleted' => true, 'file' => $filePath];
+        });
+
+        if (! $result['deleted']) {
+            return redirect()->route('admin.tugas.index')
+                ->with('error', 'Tugas tidak dapat dihapus karena sudah memiliki pengumpulan siswa.');
         }
-        
-        $tugas->delete();
+
+        if ($result['file']) {
+            Storage::disk('public')->delete($result['file']);
+        }
 
         return redirect()->route('admin.tugas.index')
             ->with('success', 'Tugas berhasil dihapus');
