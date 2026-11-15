@@ -1,6 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import '../../../utils/constants.dart';
-import 'daftar_tugas_guru_screen.dart';
+import 'daftar_tugas_per_mapel_guru_screen.dart';
 
 class PilihMapelKelasTugasGuruScreen extends StatefulWidget {
   const PilihMapelKelasTugasGuruScreen({super.key});
@@ -217,10 +217,10 @@ class _PilihMapelKelasTugasGuruScreenState
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => DaftarTugasGuruScreen(
-                            mapel: subject['name'],
-                            kelas: kelas,
-                          ),
+                          builder: (context) => DaftarTugasPerMapelGuruScreen(
+  mapel: subject['name'],
+  kelas: kelas,
+),
                         ),
                       );
                     },
