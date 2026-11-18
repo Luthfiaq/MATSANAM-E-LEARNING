@@ -80,10 +80,10 @@
                 type="file" 
                 id="file_path" 
                 name="file_path" 
-                accept=".pdf,.doc,.docx,.ppt,.pptx"
+                accept=".pdf"
                 class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
-            <p class="mt-1 text-xs text-gray-500">Format: PDF, DOC, PPT (Maks. 10MB)</p>
+            <p class="mt-1 text-xs text-gray-500">Format: PDF (Maks. 10MB)</p>
         </div>
 
         <div id="videoSection" class="hidden">
@@ -94,10 +94,10 @@
                 type="file" 
                 id="file_path_video" 
                 name="file_path" 
-                accept=".mp4,.mov,.avi"
+                accept=".mp4,.mov,.webm"
                 class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
-            <p class="mt-1 text-xs text-gray-500">Format: MP4, MOV, AVI (Maks. 50MB)</p>
+            <p class="mt-1 text-xs text-gray-500">Format: MP4, MOV, WEBM (Maks. 10MB)</p>
         </div>
 
         <div id="linkSection" class="hidden">
@@ -112,6 +112,13 @@
                 class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
         </div>
+
+        @error('file_path')
+        <p class="text-sm text-red-600">{{ $message }}</p>
+        @enderror
+        @error('link')
+        <p class="text-sm text-red-600">{{ $message }}</p>
+        @enderror
 
         <!-- Mapel & Kelas -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -161,23 +168,34 @@
 
 @push('scripts')
 <script>
-    document.getElementById('tipe').addEventListener('change', function() {
-        const tipe = this.value;
-        const fileSection = document.getElementById('fileSection');
+    (() => {
+        const typeInput = document.getElementById('tipe');
+        const pdfSection = document.getElementById('fileSection');
         const videoSection = document.getElementById('videoSection');
         const linkSection = document.getElementById('linkSection');
-        
-        fileSection.classList.add('hidden');
-        videoSection.classList.add('hidden');
-        linkSection.classList.add('hidden');
-        
-        if (tipe === 'pdf') {
-            fileSection.classList.remove('hidden');
-        } else if (tipe === 'video') {
-            videoSection.classList.remove('hidden');
-        } else if (tipe === 'link') {
-            linkSection.classList.remove('hidden');
-        }
-    });
+        const pdfFile = document.getElementById('file_path');
+        const videoFile = document.getElementById('file_path_video');
+        const linkInput = document.getElementById('link');
+
+        const updateSections = () => {
+            const type = typeInput.value;
+            pdfSection.classList.toggle('hidden', type !== 'pdf');
+            videoSection.classList.toggle('hidden', type !== 'video');
+            linkSection.classList.toggle('hidden', type !== 'link');
+            pdfFile.disabled = type !== 'pdf';
+            videoFile.disabled = type !== 'video';
+            pdfFile.required = type === 'pdf';
+            videoFile.required = type === 'video';
+            linkInput.disabled = type !== 'link';
+            linkInput.required = type === 'link';
+        };
+
+        typeInput.addEventListener('change', () => {
+            pdfFile.value = '';
+            videoFile.value = '';
+            updateSections();
+        });
+        updateSections();
+    })();
 </script>
 @endpush

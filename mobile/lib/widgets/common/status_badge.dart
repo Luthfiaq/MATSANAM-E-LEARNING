@@ -1,20 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../utils/constants.dart';
 
-enum BadgeType {
-  success,
-  warning,
-  danger,
-  info,
-  primary,
-  neutral,
-}
+enum BadgeType { success, warning, danger, info, primary, neutral }
 
-enum BadgeSize {
-  small,
-  medium,
-  large,
-}
+enum BadgeSize { small, medium, large }
 
 class StatusBadge extends StatelessWidget {
   final String text;
@@ -48,11 +37,7 @@ class StatusBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(
-              icon,
-              color: colors['text'],
-              size: dimensions['iconSize'],
-            ),
+            Icon(icon, color: colors['text'], size: dimensions['iconSize']),
             SizedBox(width: AppDimens.spacingXSmall),
           ],
           Text(
@@ -82,15 +67,9 @@ class StatusBadge extends StatelessWidget {
           'text': AppColors.warning,
         };
       case BadgeType.danger:
-        return {
-          'background': AppColors.dangerLight,
-          'text': AppColors.danger,
-        };
+        return {'background': AppColors.dangerLight, 'text': AppColors.danger};
       case BadgeType.info:
-        return {
-          'background': AppColors.infoLight,
-          'text': AppColors.info,
-        };
+        return {'background': AppColors.infoLight, 'text': AppColors.info};
       case BadgeType.primary:
         return {
           'background': AppColors.primaryLight,

@@ -25,7 +25,9 @@ class Session {
 
   static Future<String?> getRememberedToken() async {
     final prefs = await SharedPreferences.getInstance();
-    return (prefs.getBool(_kRemember) ?? false) ? prefs.getString(_kToken) : null;
+    return (prefs.getBool(_kRemember) ?? false)
+        ? prefs.getString(_kToken)
+        : null;
   }
 
   static Future<String?> getRole() async =>
@@ -36,6 +38,19 @@ class Session {
 
   static Future<Map<String, dynamic>?> getProfile() async {
     final raw = (await SharedPreferences.getInstance()).getString(_kProfile);
+    if (raw == null) return null;
+    try {
+      final value = jsonDecode(raw);
+      return value is Map ? Map<String, dynamic>.from(value) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Data akun yang disimpan saat login, digunakan sebagai fallback tampilan
+  /// ketika server sementara tidak dapat memverifikasi sesi.
+  static Future<Map<String, dynamic>?> getUser() async {
+    final raw = (await SharedPreferences.getInstance()).getString(_kUser);
     if (raw == null) return null;
     try {
       final value = jsonDecode(raw);
@@ -101,8 +116,15 @@ class Session {
   static Future<void> clearLogin() async {
     final prefs = await SharedPreferences.getInstance();
     for (final key in [
-      _kToken, _kRemember, _kNama, _kKelas, _kNis,
-      _kRole, _kProfile, _kProfileId, _kUser,
+      _kToken,
+      _kRemember,
+      _kNama,
+      _kKelas,
+      _kNis,
+      _kRole,
+      _kProfile,
+      _kProfileId,
+      _kUser,
     ]) {
       await prefs.remove(key);
     }

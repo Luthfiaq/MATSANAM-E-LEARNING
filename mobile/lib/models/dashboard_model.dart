@@ -30,8 +30,7 @@ class DashboardSiswa {
   String get namaPanggilan => nama.trim().split(RegExp(r'\s+')).first;
 
   /// Ada deadline kurang dari 24 jam -> titik merah di ikon lonceng.
-  bool get adaNotifikasi =>
-      deadline.any((d) => d.sisaMenit <= 24 * 60);
+  bool get adaNotifikasi => deadline.any((d) => d.sisaMenit <= 24 * 60);
 
   factory DashboardSiswa.fromJson(Map<String, dynamic> j) {
     final siswa = (j['siswa'] ?? {}) as Map<String, dynamic>;
@@ -79,15 +78,22 @@ class JadwalHariIni {
     required this.statusAbsen,
   });
 
-  factory JadwalHariIni.fromJson(Map<String, dynamic> j) => JadwalHariIni(
-        id: j['id'] as int,
-        mapel: (j['mapel'] ?? '-').toString(),
-        guru: (j['guru'] ?? '-').toString(),
-        ruangan: (j['ruangan'] ?? '-').toString(),
-        jamMulai: (j['jam_mulai'] ?? '00:00').toString(),
-        jamSelesai: (j['jam_selesai'] ?? '00:00').toString(),
-        statusAbsen: j['status_absen']?.toString(),
-      );
+  factory JadwalHariIni.fromJson(Map<String, dynamic> j) {
+    final rawStatus = j['status_absen']?.toString().trim();
+    return JadwalHariIni(
+      id: j['id'] as int,
+      mapel: (j['mapel'] ?? '-').toString(),
+      guru: (j['guru'] ?? '-').toString(),
+      ruangan: (j['ruangan'] ?? '-').toString(),
+      jamMulai: (j['jam_mulai'] ?? '00:00').toString(),
+      jamSelesai: (j['jam_selesai'] ?? '00:00').toString(),
+      // API may return an empty string when no attendance status exists.
+      // Normalize it to null so the UI does not treat it as an attendance.
+      statusAbsen: rawStatus == null || rawStatus.isEmpty
+          ? null
+          : rawStatus.toLowerCase(),
+    );
+  }
 
   static int _menit(String hhmm) {
     final p = hhmm.split(':');
@@ -139,16 +145,16 @@ class DeadlineTugas {
   });
 
   factory DeadlineTugas.fromJson(Map<String, dynamic> j) => DeadlineTugas(
-        id: j['id'] as int,
-        judul: (j['judul'] ?? '-').toString(),
-        jenis: (j['jenis'] ?? 'tugas').toString(),
-        mapel: (j['mapel'] ?? '-').toString(),
-        deadline: DateTime.parse(j['deadline'].toString()).toLocal(),
-        sisaMenit: ((j['sisa_menit'] ?? 0) as num).toInt(),
-        sudahKumpul: (j['sudah_kumpul'] ?? 0) as int,
-        totalSiswa: (j['total_siswa'] ?? 0) as int,
-        adaLampiran: (j['ada_lampiran'] ?? false) as bool,
-      );
+    id: j['id'] as int,
+    judul: (j['judul'] ?? '-').toString(),
+    jenis: (j['jenis'] ?? 'tugas').toString(),
+    mapel: (j['mapel'] ?? '-').toString(),
+    deadline: DateTime.parse(j['deadline'].toString()).toLocal(),
+    sisaMenit: ((j['sisa_menit'] ?? 0) as num).toInt(),
+    sudahKumpul: (j['sudah_kumpul'] ?? 0) as int,
+    totalSiswa: (j['total_siswa'] ?? 0) as int,
+    adaLampiran: (j['ada_lampiran'] ?? false) as bool,
+  );
 
   double get progress =>
       totalSiswa == 0 ? 0 : (sudahKumpul / totalSiswa).clamp(0.0, 1.0);
@@ -162,11 +168,21 @@ class DeadlineTugas {
     final jam =
         '${deadline.hour.toString().padLeft(2, '0')}:${deadline.minute.toString().padLeft(2, '0')}';
     final sekarang = DateTime.now();
-    final selisihHari = DateTime(deadline.year, deadline.month, deadline.day)
-        .difference(DateTime(sekarang.year, sekarang.month, sekarang.day))
-        .inDays;
+    final selisihHari = DateTime(
+      deadline.year,
+      deadline.month,
+      deadline.day,
+    ).difference(DateTime(sekarang.year, sekarang.month, sekarang.day)).inDays;
     if (selisihHari == 1) return 'Besok, $jam';
-    const hari = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+    const hari = [
+      'Senin',
+      'Selasa',
+      'Rabu',
+      'Kamis',
+      'Jumat',
+      'Sabtu',
+      'Minggu',
+    ];
     return '${hari[deadline.weekday - 1]}, $jam';
   }
 
@@ -200,10 +216,10 @@ class MateriBaru {
   });
 
   factory MateriBaru.fromJson(Map<String, dynamic> j) => MateriBaru(
-        id: j['id'] as int,
-        judul: (j['judul'] ?? '-').toString(),
-        mapel: (j['mapel'] ?? '-').toString(),
-        guru: (j['guru'] ?? '-').toString(),
-        ekstensi: (j['ekstensi'] ?? '').toString(),
-      );
+    id: j['id'] as int,
+    judul: (j['judul'] ?? '-').toString(),
+    mapel: (j['mapel'] ?? '-').toString(),
+    guru: (j['guru'] ?? '-').toString(),
+    ekstensi: (j['ekstensi'] ?? '').toString(),
+  );
 }

@@ -5,6 +5,7 @@ import '../utils/constants.dart';
 import '../utils/session.dart';
 import '../widgets/common/school_logo.dart';
 import 'auth/login_screen.dart';
+import 'auth/change_password_screen.dart';
 import 'guru/dashboard_guru_screen.dart';
 import 'onboarding/onboarding_screen.dart';
 import 'siswa/dashboard/dashboard_siswa_page.dart';
@@ -44,7 +45,11 @@ class _SplashGateState extends State<SplashGate> {
     if (!mounted) return;
     final user = current?['user'];
     final role = user is Map ? user['role']?.toString() : null;
-    if (role == 'guru') {
+    final mustChangePassword =
+        user is Map && user['must_change_password'] == true;
+    if (mustChangePassword) {
+      _buka(const ChangePasswordScreen(wajib: true));
+    } else if (role == 'guru') {
       _buka(const DashboardGuruScreen());
     } else if (role == 'siswa') {
       _buka(const DashboardSiswaPage());
@@ -55,9 +60,9 @@ class _SplashGateState extends State<SplashGate> {
   }
 
   void _buka(Widget tujuan) {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => tujuan),
-    );
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => tujuan));
   }
 
   @override

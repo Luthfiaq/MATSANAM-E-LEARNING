@@ -15,6 +15,9 @@ use App\Http\Controllers\Admin\MataPelajaranController;
 use App\Http\Controllers\Admin\PeriodeAkademikController;
 use App\Http\Controllers\Admin\JadwalPelajaranController;
 use App\Http\Controllers\Admin\PengaturanController;
+use App\Http\Controllers\Admin\AdminActivityLogController;
+use App\Http\Controllers\Admin\AdminDataTransferController;
+use App\Http\Controllers\Admin\NotificationCenterController;
 use Illuminate\Support\Facades\Route;
 
 // Redirect root to login
@@ -24,12 +27,17 @@ Route::get('/', function () {
 
 // Auth routes
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
-Route::post('/login', [LoginController::class, 'login']);
+Route::post('/login', [LoginController::class, 'login'])->middleware('throttle:login');
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
 // Admin routes (protected)
-Route::middleware(['auth', App\Http\Middleware\EnsureUserIsAdmin::class])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', App\Http\Middleware\EnsureUserIsAdmin::class, App\Http\Middleware\LogAdminActivity::class])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Notification Center Admin
+    Route::get('/notifications', [NotificationCenterController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/read-all', [NotificationCenterController::class, 'markAllAsRead'])->name('notifications.read-all');
+    Route::post('/notifications/{id}/read', [NotificationCenterController::class, 'markRead'])->whereUuid('id')->name('notifications.read');
 
     // Master data — routes ini melengkapi controller dan Blade yang sudah tersedia.
     Route::prefix('master-data')->name('master-data.')->group(function () {
@@ -74,6 +82,20 @@ Route::middleware(['auth', App\Http\Middleware\EnsureUserIsAdmin::class])->prefi
         Route::get('/jadwal-pelajaran/{id}/edit', [JadwalPelajaranController::class, 'edit'])->name('jadwal-pelajaran.edit');
         Route::put('/jadwal-pelajaran/{id}', [JadwalPelajaranController::class, 'update'])->name('jadwal-pelajaran.update');
         Route::delete('/jadwal-pelajaran/{id}', [JadwalPelajaranController::class, 'destroy'])->name('jadwal-pelajaran.destroy');
+    });
+
+    // Audit Log dan Import / Ekspor data Guru & Siswa
+    Route::get('/activity-logs/export', [AdminActivityLogController::class, 'export'])->name('activity-logs.export');
+    Route::get('/activity-logs', [AdminActivityLogController::class, 'index'])->name('activity-logs.index');
+
+    Route::prefix('data-transfer')->name('data-transfer.')->group(function () {
+        Route::get('/', [AdminDataTransferController::class, 'index'])->name('index');
+        Route::get('/template/{role}', [AdminDataTransferController::class, 'template'])->name('template');
+        Route::get('/export/{role}', [AdminDataTransferController::class, 'export'])->name('export');
+        Route::post('/preview', [AdminDataTransferController::class, 'preview'])->name('preview');
+        Route::post('/import', [AdminDataTransferController::class, 'import'])->name('import');
+        Route::post('/cancel', [AdminDataTransferController::class, 'cancel'])->name('cancel');
+        Route::get('/credentials', [AdminDataTransferController::class, 'downloadCredentials'])->name('credentials');
     });
 
     // Pengaturan Admin
