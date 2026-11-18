@@ -20,7 +20,7 @@ class ProgressBarWithLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final progressColor = color ?? AppColors.primary;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,

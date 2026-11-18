@@ -72,14 +72,12 @@
             <a href="{{ route('admin.master-data.jadwal-pelajaran.index') }}" class="nav-link {{ request()->routeIs('admin.master-data.jadwal-pelajaran.*') ? 'nav-active' : '' }}"><span class="nav-icon">▦</span><span>Jadwal Pelajaran</span></a>
         </section>
 
-        {{-- Menu Pembelajaran disembunyikan sementara sesuai permintaan.
         <section>
             <p class="px-3 mb-2 text-[10px] font-bold tracking-[.12em] text-slate-400">PEMBELAJARAN</p>
             <a href="{{ route('admin.materi.index') }}" class="nav-link {{ request()->routeIs('admin.materi.*') ? 'nav-active' : '' }}"><span class="nav-icon">▧</span><span>Manajemen Materi</span></a>
             <a href="{{ route('admin.tugas.index') }}" class="nav-link {{ request()->routeIs('admin.tugas.*') ? 'nav-active' : '' }}"><span class="nav-icon">☷</span><span>Manajemen Tugas</span></a>
             <a href="{{ route('admin.nilai.index') }}" class="nav-link {{ request()->routeIs('admin.nilai.*') ? 'nav-active' : '' }}"><span class="nav-icon">▤</span><span>Manajemen Nilai</span></a>
         </section>
-        --}}
 
         <section>
             <p class="px-3 mb-2 text-[10px] font-bold tracking-[.12em] text-slate-400">VERIFIKASI & IZIN</p>
@@ -93,6 +91,12 @@
         <section>
             <p class="px-3 mb-2 text-[10px] font-bold tracking-[.12em] text-slate-400">PRESENSI & LAPORAN</p>
             <a href="{{ route('admin.absensi.rekap') }}" class="nav-link {{ request()->routeIs('admin.absensi.rekap') ? 'nav-active' : '' }}"><span class="nav-icon">▧</span><span>Rekap Absensi Siswa</span></a>
+        </section>
+
+        <section>
+            <p class="px-3 mb-2 text-[10px] font-bold tracking-[.12em] text-slate-400">AUDIT & DATA</p>
+            <a href="{{ route('admin.data-transfer.index') }}" class="nav-link {{ request()->routeIs('admin.data-transfer.*') ? 'nav-active' : '' }}"><span class="nav-icon">⇅</span><span>Import / Ekspor Data</span></a>
+            <a href="{{ route('admin.activity-logs.index') }}" class="nav-link {{ request()->routeIs('admin.activity-logs.*') ? 'nav-active' : '' }}"><span class="nav-icon">▤</span><span>Audit Log Aktivitas</span></a>
         </section>
 
         <section>

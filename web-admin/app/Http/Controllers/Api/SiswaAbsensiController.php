@@ -4,8 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\SuratAbsensi;
+use App\Services\MatsanamNotificationService;
+use App\Services\SuratAbsensiFileService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class SiswaAbsensiController extends Controller
 {
@@ -37,7 +38,7 @@ class SiswaAbsensiController extends Controller
 
         $filePath = null;
         if ($request->hasFile('dokumen')) {
-            $filePath = $request->file('dokumen')->store('surat-absensi', 'public');
+            $filePath = app(SuratAbsensiFileService::class)->store($request->file('dokumen'));
         }
 
         try {
@@ -51,9 +52,23 @@ class SiswaAbsensiController extends Controller
                 'status_verifikasi' => 'pending',
             ]);
         } catch (\Throwable $e) {
-            if ($filePath) Storage::disk('public')->delete($filePath);
+            if ($filePath) app(SuratAbsensiFileService::class)->delete($filePath);
             throw $e;
         }
+
+        app(MatsanamNotificationService::class)->notifyClassTeachers(
+            (int) $siswa->kelas_id,
+            'pengajuan_izin',
+            'Pengajuan izin siswa baru',
+            $siswa->nama_lengkap . ' mengirim pengajuan ' . $surat->jenis . ' yang menunggu verifikasi.',
+            ['surat_id' => $surat->id, 'siswa_id' => $siswa->id, 'class_id' => $siswa->kelas_id],
+        );
+        app(MatsanamNotificationService::class)->notifyAdmins(
+            'pengajuan_izin',
+            'Pengajuan izin menunggu verifikasi',
+            $siswa->nama_lengkap . ' mengirim pengajuan ' . $surat->jenis . ' yang memerlukan pemeriksaan Admin.',
+            ['surat_id' => $surat->id, 'siswa_id' => $siswa->id, 'class_id' => $siswa->kelas_id],
+        );
 
         return response()->json([
             'success' => true,

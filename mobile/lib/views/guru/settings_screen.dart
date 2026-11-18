@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../utils/constants.dart';
+import '../../utils/constants.dart';
 
 class SettingsGuruScreen extends StatefulWidget {
   const SettingsGuruScreen({super.key});

@@ -1,7 +1,14 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
+import 'dart:convert';
 
+import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
+
+import '../../../services/siswa_learning_service.dart';
 import '../../../utils/constants.dart';
 import 'rekap_absensi_screen.dart';
+import 'status_pengajuan_screen.dart';
 import 'upload_surat_screen.dart';
 
 class AbsensiScreen extends StatefulWidget {
@@ -12,878 +19,406 @@ class AbsensiScreen extends StatefulWidget {
 }
 
 class _AbsensiScreenState extends State<AbsensiScreen> {
-  bool _flashOn = false;
-  bool _autoMode = true;
+  final MobileScannerController _scannerController = MobileScannerController(
+    detectionSpeed: DetectionSpeed.noDuplicates,
+    formats: const [BarcodeFormat.qrCode],
+  );
+  final SiswaLearningService _service = SiswaLearningService();
+
+  bool _processing = false;
+  bool _success = false;
+  String? _message;
+  Map<String, dynamic>? _attendance;
+
+  @override
+  void dispose() {
+    unawaited(_scannerController.dispose());
+    super.dispose();
+  }
+
+  Future<void> _onDetect(BarcodeCapture capture) async {
+    if (_processing || _success) return;
+
+    String? rawValue;
+    for (final barcode in capture.barcodes) {
+      final value = barcode.rawValue?.trim();
+      if (value != null && value.isNotEmpty) {
+        rawValue = value;
+        break;
+      }
+    }
+    if (rawValue == null) return;
+
+    // Only QR payloads issued by the Guru session are accepted.
+    dynamic decoded;
+    try {
+      decoded = jsonDecode(rawValue);
+    } catch (_) {
+      return;
+    }
+    if (decoded is! Map ||
+        decoded['sesi_id'] == null ||
+        decoded['qr_token'] == null) {
+      return;
+    }
+
+    setState(() {
+      _processing = true;
+      _message = 'Memvalidasi QR dan lokasi perangkat…';
+    });
+    await _scannerController.stop();
+
+    try {
+      final position = await _getCurrentPosition();
+      final response = await _service.scanQr(
+        qrData: rawValue,
+        latitude: position.latitude,
+        longitude: position.longitude,
+        accuracy: position.accuracy,
+      );
+      final data = response['data'] is Map
+          ? Map<String, dynamic>.from(response['data'] as Map)
+          : <String, dynamic>{};
+      if (!mounted) return;
+      setState(() {
+        _attendance = data;
+        _success = true;
+        _processing = false;
+        _message =
+            response['message']?.toString() ?? 'Presensi berhasil dicatat.';
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _success = false;
+        _processing = false;
+        _message = _cleanError(error);
+      });
+    }
+  }
+
+  Future<Position> _getCurrentPosition() async {
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      throw StateError(
+        'Aktifkan layanan lokasi/GPS perangkat sebelum melakukan presensi.',
+      );
+    }
+
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.denied) {
+      throw StateError(
+        'Izin lokasi belum diberikan. Izinkan lokasi untuk memvalidasi presensi.',
+      );
+    }
+    if (permission == LocationPermission.deniedForever) {
+      throw StateError(
+        'Izin lokasi diblokir. Ubah izin lokasi aplikasi atau situs melalui pengaturan perangkat/browser.',
+      );
+    }
+
+    return Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        timeLimit: Duration(seconds: 25),
+      ),
+    );
+  }
+
+  String _cleanError(Object error) => error
+      .toString()
+      .replaceFirst('Bad state: ', '')
+      .replaceFirst('Exception: ', '');
+
+  Future<void> _scanAgain() async {
+    setState(() {
+      _processing = false;
+      _success = false;
+      _message = null;
+      _attendance = null;
+    });
+    try {
+      await _scannerController.start();
+    } catch (error) {
+      if (mounted)
+        setState(
+          () => _message = 'Kamera tidak dapat dimulai: ${_cleanError(error)}',
+        );
+    }
+  }
+
+  Future<void> _toggleTorch() async {
+    try {
+      await _scannerController.toggleTorch();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Flash tidak tersedia pada kamera ini.'),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _switchCamera() async {
+    try {
+      await _scannerController.switchCamera();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Kamera depan/belakang tidak dapat diganti.'),
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: AppColors.background,
-
-      appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-
-        leading: IconButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: AppColors.textPrimary,
-            size: 20,
-          ),
-        ),
-
-        title: const Text(
-          'Scan Qr Presensi',
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-
-        actions: [
-          IconButton(
-            onPressed: () {
-              _showHelpDialog();
-            },
-            icon: const Icon(
-              Icons.help_outline_rounded,
-              color: AppColors.textSecondary,
-              size: 22,
-            ),
-          ),
-
-          Container(
-            width: 36,
-            height: 36,
-            margin: const EdgeInsets.only(right: 16),
-            decoration: const BoxDecoration(
-              color: AppColors.primary,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.person_outline_rounded,
-              color: Colors.white,
-              size: 20,
-            ),
-          ),
-        ],
-      ),
-
+      backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: AppBar(title: const Text('Presensi QR')),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(
-            24,
-            12,
-            24,
-            24,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // =====================================================
-              // INFORMASI SESI
-              // =====================================================
-
-              _buildSessionCard(),
-
-              const SizedBox(height: 12),
-
-              // =====================================================
-              // QR SCANNER
-              // =====================================================
-
-              _buildScanner(),
-
-              const SizedBox(height: 14),
-
-              // =====================================================
-              // GPS STATUS
-              // =====================================================
-
-              _buildGpsStatus(),
-
-              const SizedBox(height: 18),
-
-              // =====================================================
-              // AJUKAN IZIN / SAKIT
-              // =====================================================
-
-              _buildPermissionButton(),
-
-              const SizedBox(height: 8),
-
-              // =====================================================
-              // LIHAT REKAP
-              // =====================================================
-
-              _buildHistoryButton(),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ===============================================================
-  // SESSION CARD
-  // ===============================================================
-
-  Widget _buildSessionCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(
-        16,
-        12,
-        16,
-        0,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: AppColors.border,
-        ),
-      ),
-      child: Column(
-        children: [
-          // Active session
-          Row(
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: AppColors.success,
-                  shape: BoxShape.circle,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          children: [
+            Container(
+              padding: const EdgeInsets.all(15),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: theme.dividerColor.withValues(alpha: .55),
                 ),
               ),
-
-              const SizedBox(width: 7),
-
-              const Text(
-                'SESI AKTIF',
-                style: TextStyle(
-                  color: AppColors.success,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5,
-                ),
-              ),
-
-              const Spacer(),
-
-              InkWell(
-                onTap: () {
-                  _showChangeSessionDialog();
-                },
-                borderRadius: BorderRadius.circular(5),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 9,
-                    vertical: 6,
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Scan QR dari Guru',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
                   ),
-                  decoration: BoxDecoration(
-                    color: AppColors.background,
-                    borderRadius: BorderRadius.circular(5),
-                    border: Border.all(
-                      color: AppColors.border,
+                  SizedBox(height: 5),
+                  Text(
+                    'Arahkan kamera ke QR sesi yang sedang aktif. Aplikasi akan memeriksa token, kelas, masa berlaku, dan lokasi sesuai radius yang ditetapkan Guru.',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      height: 1.4,
+                      fontSize: 12,
                     ),
                   ),
-                  child: const Row(
-                    children: [
-                      Text(
-                        'Ganti Sesi',
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 10,
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              child: SizedBox(
+                height: 390,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    if (!_success)
+                      MobileScanner(
+                        controller: _scannerController,
+                        onDetect: _onDetect,
+                      )
+                    else
+                      Container(color: const Color(0xFF0F172A)),
+                    if (!_success)
+                      IgnorePointer(
+                        child: Center(
+                          child: Container(
+                            width: 220,
+                            height: 220,
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.white, width: 3),
+                              borderRadius: BorderRadius.circular(22),
+                            ),
+                          ),
                         ),
                       ),
-                      SizedBox(width: 4),
-                      Icon(
-                        Icons.sync_rounded,
-                        color: AppColors.textSecondary,
-                        size: 13,
+                    if (_processing)
+                      Container(
+                        color: Colors.black.withValues(alpha: .62),
+                        child: const Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircularProgressIndicator(color: Colors.white),
+                              SizedBox(height: 14),
+                              Text(
+                                'Memvalidasi presensi…',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 5),
-
-          // Subject
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(width: 15),
-
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Matematika 9A (Jam Ke-3)',
-                      style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
+                    if (_success)
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(22),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.check_circle_rounded,
+                                size: 62,
+                                color: Color(0xFF34D399),
+                              ),
+                              const SizedBox(height: 12),
+                              const Text(
+                                'Presensi Berhasil',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                '${_attendance?['mapel'] ?? 'Mata pelajaran'}',
+                                style: const TextStyle(color: Colors.white70),
+                              ),
+                              Text(
+                                'Waktu: ${_attendance?['waktu_absen'] ?? '-'}',
+                                style: const TextStyle(color: Colors.white70),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
-
-                    SizedBox(height: 4),
-
-                    Text(
-                      'Dra. Hj. Siti Rahmah • Ruang 204',
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 10,
+                    if (!_success && !_processing)
+                      Positioned(
+                        left: 12,
+                        right: 12,
+                        bottom: 12,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: .68),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              IconButton(
+                                onPressed: _toggleTorch,
+                                color: Colors.white,
+                                tooltip: 'Flash',
+                                icon: const Icon(Icons.flash_on_rounded),
+                              ),
+                              const Text(
+                                'Kamera QR aktif',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: _switchCamera,
+                                color: Colors.white,
+                                tooltip: 'Ganti kamera',
+                                icon: const Icon(Icons.cameraswitch_rounded),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),
-            ],
-          ),
-
-          const SizedBox(height: 12),
-
-          Container(
-            height: 1,
-            color: AppColors.border,
-          ),
-
-          // Time
-          SizedBox(
-            height: 44,
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.access_time_rounded,
-                  color: AppColors.textSecondary,
-                  size: 16,
+            ),
+            if (_message != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(13),
+                decoration: BoxDecoration(
+                  color: _success
+                      ? AppColors.successLight
+                      : AppColors.warningLight,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-
-                const SizedBox(width: 7),
-
-                const Text(
-                  '08:45 – 09:30 WIB',
+                child: Text(
+                  _message!,
                   style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
+                    color: _success ? AppColors.success : AppColors.warning,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
                   ),
                 ),
-
-                const Spacer(),
-
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 9,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryLight,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Text(
-                    'Presensi Masuk',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+              ),
+            ],
+            if (_message != null && !_processing && !_success) ...[
+              const SizedBox(height: 9),
+              OutlinedButton.icon(
+                onPressed: _scanAgain,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Coba Scan Lagi'),
+              ),
+            ],
+            if (_success) ...[
+              const SizedBox(height: 10),
+              FilledButton.icon(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.check_rounded),
+                label: const Text('Selesai'),
+              ),
+            ],
+            const SizedBox(height: 18),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const UploadSuratScreen()),
+              ),
+              icon: const Icon(Icons.description_outlined),
+              label: const Text('Ajukan Izin / Sakit'),
+            ),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const StatusPengajuanScreen(),
                 ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ===============================================================
-  // SCANNER
-  // ===============================================================
-
-  Widget _buildScanner() {
-    return Container(
-      width: double.infinity,
-      height: 394,
-      decoration: BoxDecoration(
-        color: const Color(0xFF3D4446),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
-        children: [
-          // ---------------------------------------------------------
-          // CAMERA BACKGROUND
-          // ---------------------------------------------------------
-
-          Container(
-            width: double.infinity,
-            height: double.infinity,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color(0xFF5E6667),
-                  Color(0xFF303536),
-                ],
               ),
+              icon: const Icon(Icons.receipt_long_outlined),
+              label: const Text('Lihat Status Pengajuan'),
             ),
-            child: Stack(
-              children: [
-                // Simulasi dinding
-                Positioned(
-                  top: 55,
-                  left: 20,
-                  right: 20,
-                  child: Container(
-                    height: 145,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFD4D2C9),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-                ),
-
-                // Simulasi papan/proyektor
-                Positioned(
-                  top: 75,
-                  right: 28,
-                  child: Container(
-                    width: 145,
-                    height: 105,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE8E8E5),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.qr_code_2_rounded,
-                        color: Color(0xFF20252A),
-                        size: 72,
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Meja
-                Positioned(
-                  bottom: 80,
-                  left: 0,
-                  right: 0,
-                  child: Container(
-                    height: 30,
-                    color: const Color(0xFF6A4832),
-                  ),
-                ),
-
-                // Overlay kamera
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.08),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // ---------------------------------------------------------
-          // INSTRUCTION
-          // ---------------------------------------------------------
-
-          Positioned(
-            top: 16,
-            left: 16,
-            right: 16,
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 9,
+            TextButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const RekapAbsensiScreen()),
               ),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.65),
-                borderRadius: BorderRadius.circular(5),
-              ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.qr_code_scanner_rounded,
-                    color: Colors.white,
-                    size: 15,
-                  ),
-
-                  SizedBox(width: 7),
-
-                  Text(
-                    'Arahkan kamera ke QR Code di layar proyektor',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                    ),
-                  ),
-                ],
-              ),
+              icon: const Icon(Icons.history_rounded),
+              label: const Text('Lihat Riwayat Absensi'),
             ),
-          ),
-
-          // ---------------------------------------------------------
-          // SCAN FRAME
-          // ---------------------------------------------------------
-
-          Center(
-            child: SizedBox(
-              width: 190,
-              height: 190,
-              child: Stack(
-                children: [
-                  // Top left
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    child: _buildCorner(
-                      top: true,
-                      left: true,
-                    ),
-                  ),
-
-                  // Top right
-                  Positioned(
-                    top: 0,
-                    right: 0,
-                    child: _buildCorner(
-                      top: true,
-                      left: false,
-                    ),
-                  ),
-
-                  // Bottom left
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    child: _buildCorner(
-                      top: false,
-                      left: true,
-                    ),
-                  ),
-
-                  // Bottom right
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: _buildCorner(
-                      top: false,
-                      left: false,
-                    ),
-                  ),
-
-                  // Scan line
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    top: 95,
-                    child: Container(
-                      height: 2,
-                      color: const Color(0xFF22D3EE),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // ---------------------------------------------------------
-          // CAMERA CONTROLS
-          // ---------------------------------------------------------
-
-          Positioned(
-            left: 16,
-            right: 16,
-            bottom: 16,
-            child: Container(
-              height: 42,
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.75),
-                borderRadius: BorderRadius.circular(7),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: InkWell(
-                      onTap: () {
-                        setState(() {
-                          _flashOn = !_flashOn;
-                        });
-                      },
-                      child: Row(
-                        mainAxisAlignment:
-                            MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            _flashOn
-                                ? Icons.flash_on_rounded
-                                : Icons.flash_off_rounded,
-                            color: Colors.white,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 5),
-                          const Text(
-                            'Kilat',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  Container(
-                    width: 1,
-                    height: 22,
-                    color: Colors.white24,
-                  ),
-
-                  Expanded(
-                    child: InkWell(
-                      onTap: () {
-                        setState(() {
-                          _autoMode = !_autoMode;
-                        });
-                      },
-                      child: Row(
-                        mainAxisAlignment:
-                            MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.center_focus_strong_rounded,
-                            color: _autoMode
-                                ? const Color(0xFF22D3EE)
-                                : Colors.white,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 5),
-                          Text(
-                            'Auto',
-                            style: TextStyle(
-                              color: _autoMode
-                                  ? const Color(0xFF22D3EE)
-                                  : Colors.white,
-                              fontSize: 10,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  Container(
-                    width: 1,
-                    height: 22,
-                    color: Colors.white24,
-                  ),
-
-                  const Expanded(
-                    child: Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.photo_camera_outlined,
-                          color: Colors.white,
-                          size: 16,
-                        ),
-                        SizedBox(width: 5),
-                        Text(
-                          'Kamera',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ===============================================================
-  // SCAN FRAME CORNER
-  // ===============================================================
-
-  Widget _buildCorner({
-    required bool top,
-    required bool left,
-  }) {
-    const double size = 22;
-    const double thickness = 2;
-
-    return SizedBox(
-      width: size,
-      height: size,
-      child: Stack(
-        children: [
-          Positioned(
-            top: top ? 0 : null,
-            bottom: top ? null : 0,
-            left: left ? 0 : null,
-            right: left ? null : 0,
-            child: Container(
-              width: size,
-              height: thickness,
-              color: Colors.white,
-            ),
-          ),
-          Positioned(
-            top: top ? 0 : null,
-            bottom: top ? null : 0,
-            left: left ? 0 : null,
-            right: left ? null : 0,
-            child: Container(
-              width: thickness,
-              height: size,
-              color: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ===============================================================
-  // GPS STATUS
-  // ===============================================================
-
-  Widget _buildGpsStatus() {
-    return Row(
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: const BoxDecoration(
-            color: AppColors.success,
-            shape: BoxShape.circle,
-          ),
-        ),
-
-        const SizedBox(width: 8),
-
-        const Text(
-          'GPS Terdeteksi:',
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-
-        const SizedBox(width: 5),
-
-        const Text(
-          'MTSN Matsanam • 12m dari Ruang 204',
-          style: TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 10,
-          ),
-        ),
-
-        const Spacer(),
-
-        const Icon(
-          Icons.check_circle_outline_rounded,
-          color: AppColors.success,
-          size: 16,
-        ),
-      ],
-    );
-  }
-
-  // ===============================================================
-  // BUTTON AJUKAN IZIN / SAKIT
-  // ===============================================================
-
-  Widget _buildPermissionButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 48,
-      child: OutlinedButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  const UploadSuratScreen(),
-            ),
-          );
-        },
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.primary,
-          backgroundColor: AppColors.surface,
-          side: const BorderSide(
-            color: AppColors.primary,
-            width: 1,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-        child: const Row(
-          mainAxisAlignment:
-              MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.description_outlined,
-              size: 19,
-            ),
-            SizedBox(width: 8),
-            Text(
-              'Ajukan Izin / Sakit',
+            const SizedBox(height: 5),
+            const Text(
+              'Catatan: izin kamera dan lokasi diperlukan. Di Chrome, izinkan keduanya untuk localhost atau gunakan HTTPS saat menguji melalui alamat jaringan.',
+              textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
+                fontSize: 10,
+                color: AppColors.textSecondary,
+                height: 1.4,
               ),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  // ===============================================================
-  // BUTTON REKAP ABSENSI
-  // ===============================================================
-
-  Widget _buildHistoryButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 42,
-      child: TextButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  const RekapAbsensiScreen(),
-            ),
-          );
-        },
-        style: TextButton.styleFrom(
-          foregroundColor: AppColors.primary,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(9),
-          ),
-        ),
-        child: const Row(
-          mainAxisAlignment:
-              MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.history_rounded,
-              size: 17,
-            ),
-            SizedBox(width: 6),
-            Text(
-              'Lihat Rekap Absensi',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ===============================================================
-  // HELP DIALOG
-  // ===============================================================
-
-  void _showHelpDialog() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text(
-            'Cara Presensi',
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          content: const Text(
-            'Arahkan kamera ke QR Code presensi yang ditampilkan pada layar proyektor kelas. Pastikan GPS aktif dan berada di area madrasah.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text(
-                'Mengerti',
-                style: TextStyle(
-                  color: AppColors.primary,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // ===============================================================
-  // GANTI SESI
-  // ===============================================================
-
-  void _showChangeSessionDialog() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text(
-            'Ganti Sesi',
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          content: const Text(
-            'Fitur pemilihan sesi akan menampilkan jadwal presensi yang tersedia untuk siswa.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text(
-                'Tutup',
-                style: TextStyle(
-                  color: AppColors.primary,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
     );
   }
 }

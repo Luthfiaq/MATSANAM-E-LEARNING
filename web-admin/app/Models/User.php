@@ -20,6 +20,7 @@ class User extends Authenticatable
         'is_active',
         'last_login_at',
         'must_change_password',
+        'notification_preferences',
         'last_password_reset_at',
     ];
 
@@ -37,6 +38,7 @@ class User extends Authenticatable
             'must_change_password' => 'boolean',
             'last_login_at' => 'datetime',
             'last_password_reset_at' => 'datetime',
+            'notification_preferences' => 'array',
         ];
     }
 

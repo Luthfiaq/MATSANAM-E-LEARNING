@@ -151,7 +151,8 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
                     const SizedBox(height: 24),
                     _buildFormSectionTitle('File / Link Saat Ini'),
                     const SizedBox(height: 16),
-                    if (widget.materi['file_path'] != null) ...[
+                    if ((widget.materi['file_path']?.toString() ?? '')
+                        .isNotEmpty) ...[
                       _buildCurrentFile(),
                     ] else if (widget.materi['link'] != null) ...[
                       _buildCurrentLink(),
@@ -235,20 +236,29 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 12,
-                )),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(value, style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w600,
-                )),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
           ),
-          const Icon(Icons.lock_outline_rounded,
-              color: AppColors.textSecondary, size: 16),
+          const Icon(
+            Icons.lock_outline_rounded,
+            color: AppColors.textSecondary,
+            size: 16,
+          ),
         ],
       ),
     );
@@ -364,7 +374,8 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
   Widget _buildCurrentFile() {
     final isVideo = _originalType == 'video';
     final filePath = widget.materi['file_path']?.toString() ?? '';
-    final fileName = widget.materi['file_name']?.toString() ??
+    final fileName =
+        widget.materi['file_name']?.toString() ??
         (filePath.isEmpty ? 'File materi' : filePath.split('/').last);
 
     return Container(
@@ -384,7 +395,9 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
-              isVideo ? Icons.play_circle_outline_rounded : Icons.picture_as_pdf_rounded,
+              isVideo
+                  ? Icons.play_circle_outline_rounded
+                  : Icons.picture_as_pdf_rounded,
               color: AppColors.primary,
             ),
           ),
@@ -621,7 +634,9 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
     if (materiId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('ID materi tidak ditemukan. Buka ulang dari daftar materi.'),
+          content: Text(
+            'ID materi tidak ditemukan. Buka ulang dari daftar materi.',
+          ),
           backgroundColor: AppColors.error,
         ),
       );
@@ -629,18 +644,26 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
     }
 
     final linkValue = _linkController.text.trim();
-    if (_selectedType == 'link' && linkValue.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Link URL wajib diisi'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
+    if (_selectedType == 'link') {
+      final uri = Uri.tryParse(linkValue);
+      if (uri == null ||
+          !uri.hasScheme ||
+          !['http', 'https'].contains(uri.scheme)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Masukkan URL http:// atau https:// yang valid.'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
     }
+    final hasCurrentFile =
+        (widget.materi['file_path']?.toString() ?? '').isNotEmpty;
     if ((_selectedType == 'pdf' || _selectedType == 'video') &&
-        _selectedType != _originalType && _pickedFile == null) {
+        (_selectedType != _originalType || !hasCurrentFile) &&
+        _pickedFile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Pilih file baru untuk tipe materi yang dipilih.'),
@@ -668,47 +691,72 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
           ..fields['judul'] = _judulController.text.trim()
           ..fields['deskripsi'] = _deskripsiController.text.trim()
           ..fields['tipe'] = _selectedType
-          ..files.add(http.MultipartFile.fromBytes(
-            'file',
-            _pickedFile!.bytes!,
-            filename: _pickedFile!.name,
-          ));
+          ..files.add(
+            http.MultipartFile.fromBytes(
+              'file',
+              _pickedFile!.bytes!,
+              filename: _pickedFile!.name,
+            ),
+          );
         final sent = await request.send().timeout(ApiConfig.timeout);
-        response = await http.Response.fromStream(sent);
-      } else {
-        response = await http.put(
-          uri,
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $token',
-          },
-          body: jsonEncode({
-            'judul': _judulController.text.trim(),
-            'deskripsi': _deskripsiController.text.trim(),
-            'tipe': _selectedType,
-            'link': _selectedType == 'link'
-                ? linkValue
-                : (_pickedFile == null && _selectedType == _originalType
-                    ? widget.materi['link']
-                    : null),
-          }),
+        response = await http.Response.fromStream(
+          sent,
         ).timeout(ApiConfig.timeout);
+      } else {
+        response = await http
+            .put(
+              uri,
+              headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $token',
+              },
+              body: jsonEncode({
+                'judul': _judulController.text.trim(),
+                'deskripsi': _deskripsiController.text.trim(),
+                'tipe': _selectedType,
+                'link': _selectedType == 'link'
+                    ? linkValue
+                    : (_pickedFile == null && _selectedType == _originalType
+                          ? widget.materi['link']
+                          : null),
+              }),
+            )
+            .timeout(ApiConfig.timeout);
       }
 
-      final decoded = jsonDecode(response.body);
-      if (response.statusCode < 200 || response.statusCode >= 300 ||
-          decoded is! Map || decoded['success'] != true) {
-        final message = decoded is Map
-            ? decoded['message']?.toString() ?? 'Materi gagal diperbarui.'
-            : 'Materi gagal diperbarui.';
+      dynamic decoded;
+      try {
+        decoded = jsonDecode(response.body);
+      } catch (_) {
+        decoded = null;
+      }
+      if (response.statusCode < 200 ||
+          response.statusCode >= 300 ||
+          decoded is! Map ||
+          decoded['success'] != true) {
+        var message = 'Materi gagal diperbarui (HTTP ${response.statusCode}).';
+        if (decoded is Map) {
+          final errors = decoded['errors'];
+          if (errors is Map && errors.isNotEmpty) {
+            final first = errors.values.first;
+            if (first is List && first.isNotEmpty) {
+              message = first.first.toString();
+            }
+          }
+          if (message.startsWith('Materi gagal diperbarui')) {
+            message = decoded['message']?.toString() ?? message;
+          }
+        }
         throw Exception(message);
       }
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(decoded['message']?.toString() ?? 'Materi berhasil diperbarui.'),
+          content: Text(
+            decoded['message']?.toString() ?? 'Materi berhasil diperbarui.',
+          ),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
         ),
@@ -727,5 +775,4 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
       if (mounted) setState(() => _isLoading = false);
     }
   }
-
 }

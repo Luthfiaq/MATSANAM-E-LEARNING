@@ -71,7 +71,7 @@ class FileUploadArea extends StatelessWidget {
             ),
           ),
         ),
-        
+
         // Files List
         if (files.isNotEmpty) ...[
           const SizedBox(height: AppDimens.spacingMedium),
@@ -89,7 +89,8 @@ class FileUploadArea extends StatelessWidget {
   }
 
   String _buildHintText() {
-    final formats = acceptedFormats?.join(', ').toUpperCase() ?? 'PDF, DOCX, PPTX';
+    final formats =
+        acceptedFormats?.join(', ').toUpperCase() ?? 'PDF, DOCX, PPTX';
     final size = maxSizeMB ?? 50;
     return 'Mendukung $formats (Maks $size MB)';
   }
@@ -118,14 +119,10 @@ class FileUploadArea extends StatelessWidget {
               color: fileColor.withOpacity(0.12),
               borderRadius: BorderRadius.circular(AppDimens.radiusSmall),
             ),
-            child: Icon(
-              fileIcon,
-              color: fileColor,
-              size: 20,
-            ),
+            child: Icon(fileIcon, color: fileColor, size: 20),
           ),
           const SizedBox(width: AppDimens.spacingMedium),
-          
+
           // File Info
           Expanded(
             child: Column(
@@ -142,10 +139,7 @@ class FileUploadArea extends StatelessWidget {
                 const SizedBox(height: 2),
                 Row(
                   children: [
-                    Text(
-                      fileSize,
-                      style: AppTypography.caption,
-                    ),
+                    Text(fileSize, style: AppTypography.caption),
                     const SizedBox(width: 8),
                     Text(
                       '• Siap diunduh',
@@ -158,7 +152,7 @@ class FileUploadArea extends StatelessWidget {
               ],
             ),
           ),
-          
+
           // Delete Button
           IconButton(
             onPressed: () => onRemoveFile(index),

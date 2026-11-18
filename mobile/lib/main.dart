@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'utils/constants.dart';
 import 'views/splash_gate.dart';
@@ -25,8 +27,11 @@ import 'views/guru/tugas/tugas_per_mapel_screen.dart';
 import 'views/siswa/dashboard/dashboard_siswa_page.dart';
 import 'views/siswa/pengaturan/profil_siswa_screen.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Several task, material, and grade screens format dates using id_ID.
+  // Load locale symbols before the first widget build to avoid LocaleDataException.
+  await initializeDateFormatting('id_ID');
   runApp(const MatsanamApp());
 }
 
@@ -47,11 +52,44 @@ class MatsanamApp extends StatefulWidget {
 class _MatsanamAppState extends State<MatsanamApp> {
   ThemeMode _themeMode = MatsanamApp.currentThemeMode;
 
+  @override
+  void initState() {
+    super.initState();
+    _restoreThemePreference();
+  }
+
+  Future<void> _restoreThemePreference() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString('siswa_theme') ?? 'Terang';
+      final restored = switch (saved) {
+        'Gelap' => ThemeMode.dark,
+        'Sistem' => ThemeMode.system,
+        _ => ThemeMode.light,
+      };
+      if (!mounted) return;
+      setState(() {
+        _themeMode = restored;
+        MatsanamApp.currentThemeMode = restored;
+      });
+    } catch (_) {
+      // Keep the safe light-theme default if local preferences are unavailable.
+    }
+  }
+
   void ubahTema(ThemeMode mode) {
     setState(() {
       _themeMode = mode;
       MatsanamApp.currentThemeMode = mode;
     });
+    final preference = switch (mode) {
+      ThemeMode.dark => 'Gelap',
+      ThemeMode.system => 'Sistem',
+      _ => 'Terang',
+    };
+    SharedPreferences.getInstance().then(
+      (prefs) => prefs.setString('siswa_theme', preference),
+    );
   }
 
   ThemeData _theme(Brightness brightness) {
@@ -59,14 +97,33 @@ class _MatsanamAppState extends State<MatsanamApp> {
     const primary = Color(0xFF2563EB);
     final background = dark ? const Color(0xFF0F172A) : AppColors.background;
     final surface = dark ? const Color(0xFF1E293B) : AppColors.surface;
+    final colorScheme =
+        ColorScheme.fromSeed(
+          seedColor: primary,
+          brightness: brightness,
+          surface: surface,
+        ).copyWith(
+          primary: dark ? const Color(0xFF60A5FA) : primary,
+          onPrimary: dark ? const Color(0xFF0F172A) : Colors.white,
+          primaryContainer: dark
+              ? const Color(0xFF1E3A8A)
+              : const Color(0xFFEFF6FF),
+          onPrimaryContainer: dark
+              ? const Color(0xFFDBEAFE)
+              : const Color(0xFF1E40AF),
+          surface: surface,
+          onSurface: dark ? const Color(0xFFF8FAFC) : AppColors.textPrimary,
+          onSurfaceVariant: dark
+              ? const Color(0xFFCBD5E1)
+              : AppColors.textSecondary,
+          outline: dark ? const Color(0xFF475569) : AppColors.border,
+          outlineVariant: dark ? const Color(0xFF334155) : AppColors.border,
+          error: AppColors.error,
+        );
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: primary,
-        brightness: brightness,
-        surface: surface,
-      ),
+      colorScheme: colorScheme,
       scaffoldBackgroundColor: background,
       appBarTheme: AppBarTheme(
         backgroundColor: surface,
@@ -77,7 +134,7 @@ class _MatsanamAppState extends State<MatsanamApp> {
       cardTheme: CardThemeData(
         color: surface,
         elevation: 1,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: surface,
@@ -124,8 +181,6 @@ class _MatsanamAppState extends State<MatsanamApp> {
         // Tugas Guru
         '/guru/tugas': (_) => const PilihMapelKelasTugasScreen(),
         '/guru/tugas/pilih-mapel': (_) => const PilihMapelKelasTugasScreen(),
-        '/guru/tugas/tambah': (_) => const TambahTugasScreen(),
-        '/guru/tambah-tugas': (_) => const TambahTugasScreen(),
 
         // Absensi Guru
         '/guru/absensi/pilih-mapel': (_) => const PilihMapelKelasScreen(),
@@ -134,7 +189,8 @@ class _MatsanamAppState extends State<MatsanamApp> {
         '/guru/absensi/rekap': (_) => const RekapPresensiGuruScreen(),
         '/guru/absensi/rekap-presensi': (_) => const RekapPresensiGuruScreen(),
         '/guru/absensi/verifikasi': (_) => const VerifikasiSuratGuruScreen(),
-        '/guru/absensi/verifikasi-surat': (_) => const VerifikasiSuratGuruScreen(),
+        '/guru/absensi/verifikasi-surat': (_) =>
+            const VerifikasiSuratGuruScreen(),
 
         // Nilai Guru
         '/guru/nilai': (_) => const NilaiPilihMapelKelasScreen(),
@@ -146,6 +202,13 @@ class _MatsanamAppState extends State<MatsanamApp> {
       onGenerateRoute: (settings) {
         final args = _args(settings);
         final name = settings.name ?? '';
+
+        if (name == '/guru/tambah-tugas' || name == '/guru/tugas/tambah') {
+          return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => TambahTugasScreen(initialSchedule: args),
+          );
+        }
 
         if (name == '/guru/tambah-materi' || name == '/guru/materi/tambah') {
           return MaterialPageRoute(
@@ -205,9 +268,13 @@ class _MatsanamAppState extends State<MatsanamApp> {
           );
         }
 
-        final materiEdit = RegExp(r'^/guru/materi/(\d+)/edit$').firstMatch(name);
+        final materiEdit = RegExp(
+          r'^/guru/materi/(\d+)/edit$',
+        ).firstMatch(name);
         if (materiEdit != null) {
-          final materi = <String, dynamic>{'id': int.parse(materiEdit.group(1)!)}..addAll(args);
+          final materi = <String, dynamic>{
+            'id': int.parse(materiEdit.group(1)!),
+          }..addAll(args);
           return MaterialPageRoute(
             settings: settings,
             builder: (_) => EditMateriScreen(materi: materi),
@@ -216,16 +283,20 @@ class _MatsanamAppState extends State<MatsanamApp> {
 
         final tugasEdit = RegExp(r'^/guru/tugas/(\d+)/edit$').firstMatch(name);
         if (tugasEdit != null) {
-          final tugas = <String, dynamic>{'id': int.parse(tugasEdit.group(1)!)}..addAll(args);
+          final tugas = <String, dynamic>{'id': int.parse(tugasEdit.group(1)!)}
+            ..addAll(args);
           return MaterialPageRoute(
             settings: settings,
             builder: (_) => EditTugasScreen(tugas: tugas),
           );
         }
 
-        final tugasSiswa = RegExp(r'^/guru/tugas/(\d+)/siswa$').firstMatch(name);
+        final tugasSiswa = RegExp(
+          r'^/guru/tugas/(\d+)/siswa$',
+        ).firstMatch(name);
         if (tugasSiswa != null) {
-          final tugas = <String, dynamic>{'id': int.parse(tugasSiswa.group(1)!)}..addAll(args);
+          final tugas = <String, dynamic>{'id': int.parse(tugasSiswa.group(1)!)}
+            ..addAll(args);
           return MaterialPageRoute(
             settings: settings,
             builder: (_) => DaftarSiswaMengumpulkanScreen(tugas: tugas),
@@ -236,7 +307,9 @@ class _MatsanamAppState extends State<MatsanamApp> {
       onUnknownRoute: (settings) => MaterialPageRoute(
         builder: (_) => Scaffold(
           appBar: AppBar(title: const Text('Halaman tidak ditemukan')),
-          body: Center(child: Text('Route ${settings.name ?? '-'} belum terdaftar.')),
+          body: Center(
+            child: Text('Route ${settings.name ?? '-'} belum terdaftar.'),
+          ),
         ),
       ),
     );

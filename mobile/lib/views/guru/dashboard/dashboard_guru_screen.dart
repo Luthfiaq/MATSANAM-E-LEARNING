@@ -10,10 +10,7 @@ class DashboardGuruScreen extends StatelessWidget {
 
   void _showMessage(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-      ),
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
     );
   }
 
@@ -53,8 +50,7 @@ class DashboardGuruScreen extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            onPressed: () =>
-                _showMessage(context, 'Belum ada notifikasi baru'),
+            onPressed: () => _showMessage(context, 'Belum ada notifikasi baru'),
             icon: const Icon(Icons.notifications_none_rounded),
           ),
           IconButton(
@@ -132,11 +128,7 @@ class DashboardGuruScreen extends StatelessWidget {
           SizedBox(height: 6),
           Row(
             children: [
-              Icon(
-                Icons.assignment_outlined,
-                color: Colors.white70,
-                size: 14,
-              ),
+              Icon(Icons.assignment_outlined, color: Colors.white70, size: 14),
               SizedBox(width: 6),
               Text(
                 '12 tugas menunggu dinilai',
@@ -263,8 +255,7 @@ class DashboardGuruScreen extends StatelessWidget {
                 'Mata Pelajaran & Kelas',
                 primary,
                 const Color(0xFFEFF6FF),
-                onTap: () =>
-                    Navigator.pushReplacementNamed(context, '/materi'),
+                onTap: () => Navigator.pushReplacementNamed(context, '/materi'),
               ),
             ),
             const SizedBox(width: 10),
@@ -277,10 +268,8 @@ class DashboardGuruScreen extends StatelessWidget {
                 const Color(0xFF2563EB),
                 const Color(0xFFEFF6FF),
                 badge: '12',
-                onTap: () => _showMessage(
-                  context,
-                  'Halaman Tugas sedang disiapkan',
-                ),
+                onTap: () =>
+                    _showMessage(context, 'Halaman Tugas sedang disiapkan'),
               ),
             ),
           ],
@@ -296,10 +285,8 @@ class DashboardGuruScreen extends StatelessWidget {
                 'Presensi & QR Code',
                 green,
                 const Color(0xFFECFDF5),
-                onTap: () => _showMessage(
-                  context,
-                  'Halaman Absensi sedang disiapkan',
-                ),
+                onTap: () =>
+                    _showMessage(context, 'Halaman Absensi sedang disiapkan'),
               ),
             ),
             const SizedBox(width: 10),
@@ -442,10 +429,7 @@ class DashboardGuruScreen extends StatelessWidget {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 6,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 decoration: BoxDecoration(
                   color: colors.tertiaryContainer,
                   borderRadius: BorderRadius.circular(5),
@@ -482,10 +466,7 @@ class DashboardGuruScreen extends StatelessWidget {
           const SizedBox(height: 8),
           const ClipRRect(
             borderRadius: BorderRadius.all(Radius.circular(5)),
-            child: LinearProgressIndicator(
-              value: 0.87,
-              minHeight: 5,
-            ),
+            child: LinearProgressIndicator(value: 0.87, minHeight: 5),
           ),
           const SizedBox(height: 12),
           Divider(color: colors.outlineVariant),
@@ -530,9 +511,7 @@ class DashboardGuruScreen extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       'Selesai di-generate QR',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: green,
-                      ),
+                      style: theme.textTheme.bodySmall?.copyWith(color: green),
                     ),
                   ],
                 ),
@@ -543,10 +522,7 @@ class DashboardGuruScreen extends StatelessWidget {
           const SizedBox(height: 14),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 12,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
             decoration: BoxDecoration(
               color: colors.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(8),
@@ -643,10 +619,7 @@ class DashboardGuruScreen extends StatelessWidget {
     );
   }
 
-  Widget _activityCard(
-    BuildContext context, {
-    required Widget child,
-  }) {
+  Widget _activityCard(BuildContext context, {required Widget child}) {
     final colors = Theme.of(context).colorScheme;
 
     return Container(
@@ -661,11 +634,7 @@ class DashboardGuruScreen extends StatelessWidget {
     );
   }
 
-  Widget _activityIcon(
-    IconData icon,
-    Color background,
-    Color foreground,
-  ) {
+  Widget _activityIcon(IconData icon, Color background, Color foreground) {
     return Container(
       width: 40,
       height: 40,
@@ -735,13 +704,7 @@ class DashboardGuruScreen extends StatelessWidget {
         children: [
           Icon(icon, color: color, size: 14),
           const SizedBox(width: 5),
-          Text(
-            label,
-            style: TextStyle(
-              color: colors.onSurface,
-              fontSize: 10,
-            ),
-          ),
+          Text(label, style: TextStyle(color: colors.onSurface, fontSize: 10)),
         ],
       ),
     );

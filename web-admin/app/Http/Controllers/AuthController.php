@@ -15,9 +15,10 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
-            'device_name' => 'nullable|string',
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string'],
+            'device_name' => ['nullable', 'string', 'max:100'],
+            'remember' => ['nullable', 'boolean'],
         ]);
 
         $user = User::where('email', $request->email)->first();
@@ -35,10 +36,17 @@ class AuthController extends Controller
             ], 403);
         }
 
-        $user->forceFill(['last_login_at' => now()])->save();
-        $token = $user->createToken($request->device_name ?? 'mobile-app')->plainTextToken;
+        // The mobile application is reserved for Guru and Siswa. Admin uses
+        // the separate web-session login at /login.
+        if (! in_array($user->role, ['guru', 'siswa'], true)) {
+            return response()->json([
+                'success' => false,
+                'code' => 'ROLE_NOT_SUPPORTED',
+                'message' => 'Akun administrator hanya dapat digunakan melalui portal web.',
+            ], 403);
+        }
 
-        // Determine role and get profile data
+        // Determine role and get profile data before creating a token.
         $role = $user->role;
         $profile = null;
         $profileId = null;
@@ -55,7 +63,7 @@ class AuthController extends Controller
                 $profileId = $guru->id;
             }
         } elseif ($role === 'siswa') {
-            $siswa = Siswa::where('user_id', $user->id)->first();
+            $siswa = Siswa::with('kelas')->where('user_id', $user->id)->first();
             if ($siswa) {
                 $profile = [
                     'id' => $siswa->id,
@@ -68,6 +76,27 @@ class AuthController extends Controller
                 $profileId = $siswa->id;
             }
         }
+
+        if ($profile === null || $profileId === null) {
+            return response()->json([
+                'success' => false,
+                'code' => 'PROFILE_NOT_FOUND',
+                'message' => 'Profil akun tidak ditemukan. Hubungi Admin TU Madrasah.',
+            ], 403);
+        }
+
+        $user->forceFill(['last_login_at' => now()])->save();
+
+        // A non-remembered session gets a shorter server-side lifetime as a
+        // fallback if the client disappears without calling the logout API.
+        $maxLifetime = max(1, (int) config('sanctum.expiration', 43200));
+        $lifetime = $request->boolean('remember') ? $maxLifetime : min($maxLifetime, 720);
+        $expiresAt = now()->addMinutes($lifetime);
+        $token = $user->createToken(
+            $request->device_name ?? 'matsanam-mobile',
+            ['*'],
+            $expiresAt
+        )->plainTextToken;
 
         return response()->json([
             'success' => true,
@@ -107,6 +136,16 @@ class AuthController extends Controller
             'must_change_password' => false,
             'last_password_reset_at' => now(),
         ]);
+
+        // A password change invalidates other devices. Keep the token used by
+        // this request so the current user does not get unexpectedly logged out.
+        $currentToken = $user->currentAccessToken();
+        if ($currentToken instanceof \Laravel\Sanctum\PersonalAccessToken) {
+            $user->tokens()->where('id', '!=', $currentToken->getKey())->delete();
+        } else {
+            $user->tokens()->delete();
+        }
+
         UserAccountLog::create([
             'actor_id' => $user->id,
             'target_user_id' => $user->id,
@@ -122,7 +161,10 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        $token = $request->user()?->currentAccessToken();
+        if ($token && method_exists($token, 'delete')) {
+            $token->delete();
+        }
 
         return response()->json([
             'success' => true,

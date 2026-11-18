@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import '../../utils/constants.dart';
 
 class ClassSelectorChips extends StatelessWidget {
-  final List<Map<String, dynamic>> classes; // [{id: '9a', name: '9A', studentCount: 32}]
+  final List<Map<String, dynamic>>
+  classes; // [{id: '9a', name: '9A', studentCount: 32}]
   final Set<String> selectedClassIds;
   final Function(String classId) onClassToggle;
 

@@ -20,6 +20,11 @@
     <p class="text-sm text-green-700">✓ {{ session('success') }}</p>
 </div>
 @endif
+@if(session('error'))
+<div class="mb-4 rounded-lg bg-red-50 border border-red-200 p-4">
+    <p class="text-sm text-red-700">{{ session('error') }}</p>
+</div>
+@endif
 
 <div class="bg-white rounded-lg shadow-sm overflow-hidden">
     <div class="border-b border-gray-200 px-6 py-4 flex flex-col md:flex-row md:items-center gap-4">
@@ -64,7 +69,7 @@
                         </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {{ $item->deadline->format('d M Y H:i') }}
+                        {{ $item->deadline->copy()->timezone('Asia/Jakarta')->format('d M Y H:i') }} WIB
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         {{ $item->bobot }}

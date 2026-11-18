@@ -1,1133 +1,1039 @@
 import 'package:flutter/material.dart';
-
+import '../../../services/siswa_learning_service.dart';
 import '../../../utils/constants.dart';
 
 class RekapAbsensiScreen extends StatefulWidget {
-  const RekapAbsensiScreen({
-    super.key,
-  });
+  const RekapAbsensiScreen({super.key});
 
   @override
-  State<RekapAbsensiScreen> createState() =>
-      _RekapAbsensiScreenState();
+  State<RekapAbsensiScreen> createState() => _RekapAbsensiScreenState();
 }
 
 class _RekapAbsensiScreenState extends State<RekapAbsensiScreen> {
-  String _selectedFilter = 'Semua';
+  final _service = SiswaLearningService();
+
+  DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
+  String _filter = 'semua';
+  Map<String, dynamic> _result = {};
+  List<Map<String, dynamic>> _items = [];
+  bool _loading = true;
+  bool _loadingMore = false;
+  bool _hasMore = false;
+  int _page = 1;
+  String? _error;
+
+  String _isoDate(DateTime value) =>
+      '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
+
+  DateTime get _monthStart =>
+      DateTime(_selectedMonth.year, _selectedMonth.month, 1);
+  DateTime get _monthEnd =>
+      DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0);
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load({bool loadMore = false}) async {
+    if (loadMore && (!_hasMore || _loadingMore || _loading)) return;
+
+    if (loadMore) {
+      setState(() => _loadingMore = true);
+    } else {
+      setState(() {
+        _loading = true;
+        _error = null;
+        _page = 1;
+      });
+    }
+
+    final requestedPage = loadMore ? _page + 1 : 1;
+    try {
+      final data = await _service.riwayatAbsensi(
+        dari: _isoDate(_monthStart),
+        sampai: _isoDate(_monthEnd),
+        status: _filter,
+        page: requestedPage,
+      );
+      final paginator = data['data'] is Map
+          ? Map<String, dynamic>.from(data['data'])
+          : <String, dynamic>{};
+      final raw = paginator['data'];
+      final nextItems = raw is List
+          ? raw
+                .whereType<Map>()
+                .map((e) => Map<String, dynamic>.from(e))
+                .toList()
+          : <Map<String, dynamic>>[];
+
+      if (!mounted) return;
+      setState(() {
+        _result = data;
+        _items = loadMore ? [..._items, ...nextItems] : nextItems;
+        _page = requestedPage;
+        _hasMore = paginator['next_page_url'] != null;
+        _loading = false;
+        _loadingMore = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = error.toString();
+        _loading = false;
+        _loadingMore = false;
+      });
+    }
+  }
+
+  Future<void> _pickMonth() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedMonth,
+      firstDate: DateTime(2020, 1),
+      lastDate: DateTime(now.year, now.month, now.day),
+      helpText: 'Pilih bulan riwayat',
+      fieldLabelText: 'Tanggal dalam bulan',
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: Theme.of(
+            context,
+          ).colorScheme.copyWith(primary: AppColors.primary),
+        ),
+        child: child!,
+      ),
+    );
+
+    if (picked == null) return;
+    setState(() {
+      _selectedMonth = DateTime(picked.year, picked.month);
+      _filter = 'semua';
+    });
+    await _load();
+  }
+
+  Future<void> _setFilter(String value) async {
+    if (_filter == value) return;
+    setState(() => _filter = value);
+    await _load();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final summary = _result['summary'] is Map
+        ? Map<String, dynamic>.from(_result['summary'])
+        : <String, dynamic>{};
+    final profile = _result['profile'] is Map
+        ? Map<String, dynamic>.from(_result['profile'])
+        : <String, dynamic>{};
+
     return Scaffold(
-      backgroundColor: AppColors.background,
-
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        centerTitle: false,
-
-        leading: IconButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: AppColors.textPrimary,
-            size: 20,
-          ),
-        ),
-
-        title: const Text(
-          'Rekap Histori Presensi',
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-
+        title: const Text('Riwayat Absensi'),
         actions: [
           IconButton(
-            onPressed: () {
-              _showHelpDialog();
-            },
-            icon: const Icon(
-              Icons.help_outline_rounded,
-              color: AppColors.textSecondary,
-              size: 22,
-            ),
+            tooltip: 'Muat ulang',
+            onPressed: _loading ? null : () => _load(),
+            icon: const Icon(Icons.refresh_rounded),
           ),
-
-          Container(
-            width: 36,
-            height: 36,
-            margin: const EdgeInsets.only(
-              right: 16,
-            ),
-            decoration: const BoxDecoration(
-              color: AppColors.primary,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.person_outline_rounded,
-              color: Colors.white,
-              size: 20,
-            ),
-          ),
+          const SizedBox(width: 4),
         ],
       ),
-
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(
-            24,
-            16,
-            24,
-            24,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildPeriodSelector(),
-
-              const SizedBox(height: 16),
-
-              _buildAttendanceSummary(),
-
-              const SizedBox(height: 16),
-
-              _buildFilterTabs(),
-
-              const SizedBox(height: 16),
-
-              _buildAttendanceList(),
-
-              const SizedBox(height: 20),
-
-              _buildDownloadButton(),
-
-              const SizedBox(height: 12),
-
-              _buildSyncText(),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ============================================================
-  // PERIOD SELECTOR
-  // ============================================================
-
-  Widget _buildPeriodSelector() {
-    return Container(
-      width: double.infinity,
-      height: 60,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 14,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(9),
-        border: Border.all(
-          color: AppColors.border,
-        ),
-      ),
-      child: Row(
-        children: [
-          // Bulan
-          Expanded(
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.calendar_month_outlined,
-                  color: AppColors.primary,
-                  size: 17,
-                ),
-
-                const SizedBox(width: 8),
-
-                const Column(
-                  mainAxisAlignment:
-                      MainAxisAlignment.center,
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Bulan',
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 10,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'September 2026',
-                      style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-
-                const Spacer(),
-
-                const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: AppColors.textSecondary,
-                  size: 18,
-                ),
-              ],
-            ),
-          ),
-
-          Container(
-            width: 1,
-            height: 36,
-            margin: const EdgeInsets.symmetric(
-              horizontal: 10,
-            ),
-            color: AppColors.border,
-          ),
-
-          // Semester
-          Expanded(
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.school_outlined,
-                  color: AppColors.success,
-                  size: 18,
-                ),
-
-                const SizedBox(width: 8),
-
-                const Column(
-                  mainAxisAlignment:
-                      MainAxisAlignment.center,
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Semester',
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 10,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Ganjil 26/27',
-                      style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-
-                const Spacer(),
-
-                const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: AppColors.textSecondary,
-                  size: 18,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ============================================================
-  // ATTENDANCE SUMMARY
-  // ============================================================
-
-  Widget _buildAttendanceSummary() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(
-        16,
-        16,
-        16,
-        16,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.border,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration:
-                              const BoxDecoration(
-                            color: AppColors.success,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-
-                        const SizedBox(width: 7),
-
-                        const Text(
-                          'TINGKAT KEHADIRAN',
-                          style: TextStyle(
-                            color:
-                                AppColors.textSecondary,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            letterSpacing: 0.4,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 3),
-
-                    Row(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.center,
-                      children: [
-                        const Text(
-                          '96.2%',
-                          style: TextStyle(
-                            color:
-                                AppColors.textPrimary,
-                            fontSize: 32,
-                            fontWeight: FontWeight.w800,
-                            height: 1,
-                          ),
-                        ),
-
-                        const SizedBox(width: 10),
-
-                        Container(
-                          padding:
-                              const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color:
-                                AppColors.successLight,
-                            borderRadius:
-                                BorderRadius.circular(6),
-                          ),
-                          child: const Text(
-                            'Sangat Baik',
-                            style: TextStyle(
-                              color:
-                                  AppColors.success,
-                              fontSize: 10,
-                              fontWeight:
-                                  FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 9,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.successLight,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.verified_rounded,
-                      color: AppColors.success,
-                      size: 14,
-                    ),
-                    SizedBox(width: 4),
-                    Text(
-                      'Predikat Disiplin',
-                      style: TextStyle(
-                        color: AppColors.success,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // Minimum requirement
-          Row(
-            children: [
-              const Text(
-                'Syarat Minimum (85%)',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 11,
-                ),
-              ),
-
-              const Spacer(),
-
-              const Icon(
-                Icons.check_circle_outline_rounded,
-                color: AppColors.success,
-                size: 15,
-              ),
-
-              const SizedBox(width: 4),
-
-              const Text(
-                'Aman',
-                style: TextStyle(
-                  color: AppColors.success,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 7),
-
-          // Progress
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: SizedBox(
-              height: 8,
-              child: Stack(
+      body: _loading && _items.isEmpty
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null && _items.isEmpty
+          ? _ErrorState(message: _error!, onRetry: _load)
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
                 children: [
-                  Container(
-                    color: AppColors.primaryLight,
+                  _StudentSummaryHeader(
+                    name: profile['nama_lengkap']?.toString() ?? 'Siswa',
+                    className:
+                        profile['kelas']?.toString() ??
+                        'Kelas belum ditetapkan',
                   ),
-
-                  FractionallySizedBox(
-                    widthFactor: 0.962,
-                    child: Container(
-                      color: AppColors.success,
+                  const SizedBox(height: 14),
+                  _MonthSelector(
+                    label: _formatMonth(_selectedMonth),
+                    onTap: _pickMonth,
+                  ),
+                  const SizedBox(height: 14),
+                  GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 2,
+                    childAspectRatio: 2.25,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                    children: [
+                      _SummaryCard(
+                        label: 'Hadir',
+                        value: summary['hadir'] ?? 0,
+                        color: AppColors.success,
+                        icon: Icons.check_circle_outline_rounded,
+                      ),
+                      _SummaryCard(
+                        label: 'Izin',
+                        value: summary['izin'] ?? 0,
+                        color: AppColors.primary,
+                        icon: Icons.event_note_outlined,
+                      ),
+                      _SummaryCard(
+                        label: 'Sakit',
+                        value: summary['sakit'] ?? 0,
+                        color: AppColors.warning,
+                        icon: Icons.medical_services_outlined,
+                      ),
+                      _SummaryCard(
+                        label: 'Alpa',
+                        value: summary['alpa'] ?? 0,
+                        color: AppColors.error,
+                        icon: Icons.cancel_outlined,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Riwayat Kehadiran',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-
-                  Positioned(
-                    left: 0,
-                    right: 0,
+                  const SizedBox(height: 10),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        const Spacer(
-                          flex: 85,
+                        _StatusFilter(
+                          label: 'Semua',
+                          value: 'semua',
+                          selected: _filter,
+                          onTap: _setFilter,
                         ),
-                        Container(
-                          width: 2,
-                          height: 8,
-                          color: AppColors.textSecondary
-                              .withOpacity(0.45),
+                        _StatusFilter(
+                          label: 'Hadir',
+                          value: 'hadir',
+                          selected: _filter,
+                          onTap: _setFilter,
                         ),
-                        const Spacer(
-                          flex: 15,
+                        _StatusFilter(
+                          label: 'Izin',
+                          value: 'izin',
+                          selected: _filter,
+                          onTap: _setFilter,
+                        ),
+                        _StatusFilter(
+                          label: 'Sakit',
+                          value: 'sakit',
+                          selected: _filter,
+                          onTap: _setFilter,
+                        ),
+                        _StatusFilter(
+                          label: 'Alpa',
+                          value: 'alpa',
+                          selected: _filter,
+                          onTap: _setFilter,
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 20),
-
-          // Statistics
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatisticCard(
-                  title: 'Hadir',
-                  value: '25',
-                  subtitle: 'Hari',
-                  valueColor: AppColors.textPrimary,
-                ),
-              ),
-
-              const SizedBox(width: 8),
-
-              Expanded(
-                child: _buildStatisticCard(
-                  title: 'Sakit',
-                  value: '1',
-                  subtitle: 'Surat',
-                  valueColor: AppColors.warning,
-                ),
-              ),
-
-              const SizedBox(width: 8),
-
-              Expanded(
-                child: _buildStatisticCard(
-                  title: 'Izin',
-                  value: '0',
-                  subtitle: 'Hari',
-                  valueColor: AppColors.textPrimary,
-                ),
-              ),
-
-              const SizedBox(width: 8),
-
-              Expanded(
-                child: _buildStatisticCard(
-                  title: 'Alfa',
-                  value: '0',
-                  subtitle: 'Hari',
-                  valueColor: AppColors.error,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ============================================================
-  // STATISTIC CARD
-  // ============================================================
-
-  Widget _buildStatisticCard({
-    required String title,
-    required String value,
-    required String subtitle,
-    required Color valueColor,
-  }) {
-    return Container(
-      height: 80,
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(9),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 10,
-            ),
-          ),
-
-          const SizedBox(height: 4),
-
-          Text(
-            value,
-            style: TextStyle(
-              color: valueColor,
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-
-          const SizedBox(height: 1),
-
-          Text(
-            subtitle,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 9,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ============================================================
-  // FILTER
-  // ============================================================
-
-  Widget _buildFilterTabs() {
-    return Row(
-      children: [
-        _buildFilterButton(
-          label: 'Semua (26)',
-          value: 'Semua',
-        ),
-
-        const SizedBox(width: 8),
-
-        _buildFilterButton(
-          label: 'Hadir (25)',
-          value: 'Hadir',
-        ),
-
-        const SizedBox(width: 8),
-
-        _buildFilterButton(
-          label: 'Sakit / Izin (1)',
-          value: 'Sakit / Izin',
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFilterButton({
-    required String label,
-    required String value,
-  }) {
-    final bool selected =
-        _selectedFilter == value;
-
-    return Expanded(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          setState(() {
-            _selectedFilter = value;
-          });
-        },
-        child: Container(
-          height: 32,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: selected
-                ? AppColors.primary
-                : AppColors.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: selected
-                ? null
-                : Border.all(
-                    color: AppColors.border,
-                  ),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: selected
-                  ? Colors.white
-                  : AppColors.textPrimary,
-              fontSize: 11,
-              fontWeight: selected
-                  ? FontWeight.w600
-                  : FontWeight.w500,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ============================================================
-  // ATTENDANCE LIST
-  // ============================================================
-
-  Widget _buildAttendanceList() {
-    if (_selectedFilter == 'Hadir') {
-      return Column(
-        children: [
-          _buildAttendanceItem(
-            date: 'Sabtu, 20 Sep 2026',
-            subject: 'Upacara & Bimbingan',
-            time: '07:05 WIB',
-            status: 'Hadir',
-            isPresent: true,
-          ),
-          const SizedBox(height: 8),
-          _buildAttendanceItem(
-            date: 'Jumat, 19 Sep 2026',
-            subject: 'PAI & Fiqih',
-            time: '07:30 WIB',
-            status: 'Hadir',
-            isPresent: true,
-          ),
-          const SizedBox(height: 8),
-          _buildAttendanceItem(
-            date: 'Kamis, 18 Sep 2026',
-            subject: 'Bahasa Inggris',
-            time: '09:45 WIB',
-            status: 'Hadir',
-            isPresent: true,
-          ),
-          const SizedBox(height: 8),
-          _buildAttendanceItem(
-            date: 'Selasa, 16 Sep 2026',
-            subject: 'IPA Terpadu',
-            time: '08:00 WIB',
-            status: 'Hadir',
-            isPresent: true,
-          ),
-        ],
-      );
-    }
-
-    if (_selectedFilter == 'Sakit / Izin') {
-      return _buildAttendanceItem(
-        date: 'Rabu, 17 Sep 2026',
-        subject: 'Matematika',
-        time: '',
-        status: 'Sakit',
-        isPresent: false,
-        showLetter: true,
-      );
-    }
-
-    return Column(
-      children: [
-        _buildAttendanceItem(
-          date: 'Sabtu, 20 Sep 2026',
-          subject: 'Upacara & Bimbingan',
-          time: '07:05 WIB',
-          status: 'Hadir',
-          isPresent: true,
-        ),
-
-        const SizedBox(height: 8),
-
-        _buildAttendanceItem(
-          date: 'Jumat, 19 Sep 2026',
-          subject: 'PAI & Fiqih',
-          time: '07:30 WIB',
-          status: 'Hadir',
-          isPresent: true,
-        ),
-
-        const SizedBox(height: 8),
-
-        _buildAttendanceItem(
-          date: 'Kamis, 18 Sep 2026',
-          subject: 'Bahasa Inggris',
-          time: '09:45 WIB',
-          status: 'Hadir',
-          isPresent: true,
-        ),
-
-        const SizedBox(height: 8),
-
-        _buildAttendanceItem(
-          date: 'Rabu, 17 Sep 2026',
-          subject: 'Matematika',
-          time: '',
-          status: 'Sakit',
-          isPresent: false,
-          showLetter: true,
-        ),
-
-        const SizedBox(height: 8),
-
-        _buildAttendanceItem(
-          date: 'Selasa, 16 Sep 2026',
-          subject: 'IPA Terpadu',
-          time: '08:00 WIB',
-          status: 'Hadir',
-          isPresent: true,
-        ),
-      ],
-    );
-  }
-
-  // ============================================================
-  // ATTENDANCE ITEM
-  // ============================================================
-
-  Widget _buildAttendanceItem({
-    required String date,
-    required String subject,
-    required String time,
-    required String status,
-    required bool isPresent,
-    bool showLetter = false,
-  }) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: AppColors.border,
-        ),
-      ),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              14,
-              14,
-              14,
-              12,
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: isPresent
-                        ? AppColors.successLight
-                        : AppColors.warningLight,
-                    borderRadius:
-                        BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    isPresent
-                        ? Icons.check_rounded
-                        : Icons.medical_services_outlined,
-                    color: isPresent
-                        ? AppColors.success
-                        : AppColors.warning,
-                    size: 19,
-                  ),
-                ),
-
-                const SizedBox(width: 12),
-
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        date,
-                        style: const TextStyle(
-                          color:
-                              AppColors.textPrimary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-
-                      const SizedBox(height: 4),
-
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              subject,
-                              overflow:
-                                  TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: AppColors
-                                    .textSecondary,
-                                fontSize: 10,
-                              ),
+                  const SizedBox(height: 12),
+                  if (_error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _InlineError(message: _error!, onRetry: _load),
+                    ),
+                  if (_items.isEmpty)
+                    _EmptyHistory(monthLabel: _formatMonth(_selectedMonth))
+                  else ...[
+                    ..._items.map(
+                      (item) => Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _AttendanceRow(
+                          item: item,
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  DetailRiwayatAbsensiScreen(absensi: item),
                             ),
                           ),
-
-                          if (isPresent) ...[
-                            const Padding(
-                              padding:
-                                  EdgeInsets.symmetric(
-                                horizontal: 5,
-                              ),
-                              child: Text(
-                                '•',
-                                style: TextStyle(
-                                  color: AppColors
-                                      .textSecondary,
-                                  fontSize: 10,
-                                ),
-                              ),
-                            ),
-
-                            const Icon(
-                              Icons.qr_code_2_rounded,
-                              color:
-                                  AppColors.textSecondary,
-                              size: 13,
-                            ),
-
-                            const SizedBox(width: 3),
-
-                            const Text(
-                              'QR Code',
-                              style: TextStyle(
-                                color: AppColors
-                                    .textSecondary,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-
-                Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.end,
-                  children: [
-                    Container(
-                      padding:
-                          const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isPresent
-                            ? AppColors.successLight
-                            : AppColors.warningLight,
-                        borderRadius:
-                            BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        status,
-                        style: TextStyle(
-                          color: isPresent
-                              ? AppColors.success
-                              : AppColors.warning,
-                          fontSize: 10,
-                          fontWeight:
-                              FontWeight.w600,
                         ),
                       ),
                     ),
-
-                    if (time.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        time,
-                        style: const TextStyle(
-                          color:
-                              AppColors.textSecondary,
-                          fontSize: 9,
+                    if (_hasMore)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4, bottom: 12),
+                        child: OutlinedButton.icon(
+                          onPressed: _loadingMore
+                              ? null
+                              : () => _load(loadMore: true),
+                          icon: _loadingMore
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.expand_more_rounded),
+                          label: Text(
+                            _loadingMore
+                                ? 'Memuat…'
+                                : 'Muat Riwayat Berikutnya',
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(44),
+                          ),
+                        ),
+                      )
+                    else
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8, bottom: 8),
+                        child: Text(
+                          'Semua riwayat pada periode ini sudah ditampilkan.',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: colorScheme.onSurfaceVariant),
                         ),
                       ),
-                    ],
                   ],
+                ],
+              ),
+            ),
+    );
+  }
+}
+
+class DetailRiwayatAbsensiScreen extends StatelessWidget {
+  final Map<String, dynamic> absensi;
+  const DetailRiwayatAbsensiScreen({super.key, required this.absensi});
+
+  @override
+  Widget build(BuildContext context) {
+    final status = (absensi['status'] ?? '-').toString();
+    final statusColor = _statusColor(status);
+    final hasLetter = absensi['surat_id'] != null;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Detail Riwayat')),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+        children: [
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: colorScheme.outlineVariant),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: .12),
+                        borderRadius: BorderRadius.circular(13),
+                      ),
+                      child: Icon(_statusIcon(status), color: statusColor),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        absensi['mapel']?.toString() ?? 'Mata pelajaran',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                _StatusPill(status: status, color: statusColor),
+                const SizedBox(height: 12),
+                Text(
+                  _formatDate(absensi['tanggal']),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
           ),
-
-          if (showLetter)
+          const SizedBox(height: 14),
+          _DetailTile(label: 'Tanggal', value: _formatDate(absensi['tanggal'])),
+          _DetailTile(
+            label: 'Waktu presensi',
+            value: _formatTime(absensi['waktu_absen']),
+          ),
+          _DetailTile(label: 'Kelas siswa', value: _value(absensi['kelas'])),
+          _DetailTile(label: 'Guru pengampu', value: _value(absensi['guru'])),
+          _DetailTile(
+            label: 'Jam pelajaran',
+            value: _value(absensi['jam_mulai']),
+          ),
+          _DetailTile(
+            label: 'Metode presensi',
+            value: _method(absensi['metode']),
+          ),
+          _DetailTile(
+            label: 'Keterangan',
+            value: _value(absensi['keterangan']),
+          ),
+          if (hasLetter) ...[
+            const SizedBox(height: 8),
             Container(
-              width: double.infinity,
-              padding:
-                  const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 11,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: colorScheme.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: colorScheme.outlineVariant),
               ),
-              decoration: const BoxDecoration(
-                color: AppColors.primaryLight,
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(8),
-                  bottomRight: Radius.circular(8),
-                ),
-              ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(
-                    Icons.description_outlined,
-                    color: AppColors.textSecondary,
-                    size: 16,
-                  ),
-
-                  const SizedBox(width: 6),
-
-                  const Expanded(
-                    child: Text(
-                      'Surat Dokter (Disetujui)',
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-
-                  InkWell(
-                    onTap: () {
-                      _showLetterDialog();
-                    },
-                    child: const Text(
-                      'Lihat Surat',
-                      style: TextStyle(
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.description_outlined,
                         color: AppColors.primary,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Surat pendukung',
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ],
                   ),
+                  const SizedBox(height: 12),
+                  _DetailLine(
+                    label: 'Jenis',
+                    value: _title(absensi['surat_jenis']),
+                  ),
+                  _DetailLine(
+                    label: 'Status verifikasi',
+                    value: _title(absensi['surat_status_verifikasi']),
+                  ),
+                  _DetailLine(
+                    label: 'Tanggal verifikasi',
+                    value: _formatDateTime(absensi['surat_tanggal_verifikasi']),
+                  ),
+                  _DetailLine(
+                    label: 'Diverifikasi oleh',
+                    value: _value(absensi['surat_verifikator']),
+                  ),
+                  if ((absensi['surat_catatan_verifikasi'] ?? '')
+                      .toString()
+                      .trim()
+                      .isNotEmpty)
+                    _DetailLine(
+                      label: 'Catatan verifikator',
+                      value: absensi['surat_catatan_verifikasi'].toString(),
+                    ),
                 ],
               ),
             ),
+          ],
         ],
-      ),
-    );
-  }
-
-  // ============================================================
-  // DOWNLOAD BUTTON
-  // ============================================================
-
-  Widget _buildDownloadButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 50,
-      child: ElevatedButton(
-        onPressed: () {
-          _showDownloadMessage();
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(9),
-          ),
-        ),
-        child: const Row(
-          mainAxisAlignment:
-              MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.download_outlined,
-              size: 19,
-            ),
-            SizedBox(width: 8),
-            Text(
-              'Unduh Rekap Presensi PDF',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ============================================================
-  // SYNC TEXT
-  // ============================================================
-
-  Widget _buildSyncText() {
-    return const Center(
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.sync_rounded,
-            color: Color(0xFF94A3B8),
-            size: 14,
-          ),
-
-          SizedBox(width: 5),
-
-          Text(
-            'Tersinkronisasi dengan Sistem Absensi Digital Kemenag RI',
-            style: TextStyle(
-              color: Color(0xFF94A3B8),
-              fontSize: 9,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ============================================================
-  // DIALOGS
-  // ============================================================
-
-  void _showHelpDialog() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text(
-            'Rekap Presensi',
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          content: const Text(
-            'Halaman ini menampilkan riwayat kehadiran siswa berdasarkan bulan dan semester yang dipilih.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text(
-                'Mengerti',
-                style: TextStyle(
-                  color: AppColors.primary,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showLetterDialog() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text(
-            'Surat Dokter',
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          content: const Text(
-            'Surat dokter untuk ketidakhadiran pada Rabu, 17 September 2026 telah disetujui.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text(
-                'Tutup',
-                style: TextStyle(
-                  color: AppColors.primary,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showDownloadMessage() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Fitur unduh PDF akan dihubungkan ke API.',
-        ),
-        backgroundColor: AppColors.success,
       ),
     );
   }
 }
+
+class _StudentSummaryHeader extends StatelessWidget {
+  final String name;
+  final String className;
+  const _StudentSummaryHeader({required this.name, required this.className});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final initials = name.trim().isEmpty
+        ? 'S'
+        : name
+              .trim()
+              .split(RegExp(r'\s+'))
+              .take(2)
+              .map((part) => part[0])
+              .join()
+              .toUpperCase();
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: scheme.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: .10),
+              shape: BoxShape.circle,
+            ),
+            child: Text(
+              initials,
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  className,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MonthSelector extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+  const _MonthSelector({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: scheme.surface,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: scheme.outlineVariant),
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.calendar_month_rounded,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Periode',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      label,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.keyboard_arrow_down_rounded),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SummaryCard extends StatelessWidget {
+  final String label;
+  final dynamic value;
+  final Color color;
+  final IconData icon;
+  const _SummaryCard({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: scheme.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: .12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, size: 20, color: color),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '$value',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusFilter extends StatelessWidget {
+  final String label;
+  final String value;
+  final String selected;
+  final ValueChanged<String> onTap;
+  const _StatusFilter({
+    required this.label,
+    required this.value,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final active = selected == value;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ChoiceChip(
+        label: Text(label),
+        selected: active,
+        onSelected: (_) => onTap(value),
+        showCheckmark: false,
+        selectedColor: AppColors.primary,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        side: BorderSide(
+          color: active
+              ? AppColors.primary
+              : Theme.of(context).colorScheme.outlineVariant,
+        ),
+        labelStyle: TextStyle(
+          color: active
+              ? Colors.white
+              : Theme.of(context).colorScheme.onSurface,
+          fontWeight: FontWeight.w700,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
+}
+
+class _AttendanceRow extends StatelessWidget {
+  final Map<String, dynamic> item;
+  final VoidCallback onTap;
+  const _AttendanceRow({required this.item, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final status = item['status']?.toString() ?? '-';
+    final color = _statusColor(status);
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: scheme.surface,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: scheme.outlineVariant),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: Icon(_statusIcon(status), color: color),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item['mapel']?.toString() ?? 'Mata pelajaran',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${_formatDate(item['tanggal'])} • ${item['guru'] ?? 'Guru'}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    if (item['surat_id'] != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          'Terkait surat pengajuan',
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(color: AppColors.primary),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  _StatusPill(status: status, color: color),
+                  const SizedBox(height: 4),
+                  Text(
+                    _formatTime(item['waktu_absen']),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: scheme.onSurfaceVariant,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  final String status;
+  final Color color;
+  const _StatusPill({required this.status, required this.color});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: .12),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Text(
+      _title(status),
+      style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 11),
+    ),
+  );
+}
+
+class _DetailTile extends StatelessWidget {
+  final String label;
+  final String value;
+  const _DetailTile({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsets.only(bottom: 9),
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.surface,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          value,
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+        ),
+      ],
+    ),
+  );
+}
+
+class _DetailLine extends StatelessWidget {
+  final String label;
+  final String value;
+  const _DetailLine({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 132,
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _EmptyHistory extends StatelessWidget {
+  final String monthLabel;
+  const _EmptyHistory({required this.monthLabel});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 34),
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.surface,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+    ),
+    child: Column(
+      children: [
+        const Icon(
+          Icons.event_busy_outlined,
+          size: 42,
+          color: AppColors.textMuted,
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'Belum ada catatan absensi',
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          'Belum ada riwayat untuk $monthLabel. Coba pilih periode lain.',
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _ErrorState extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+  const _ErrorState({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.cloud_off_outlined,
+            size: 42,
+            color: AppColors.error,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Riwayat belum dapat dimuat',
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 14),
+          FilledButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('Coba Lagi'),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _InlineError extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+  const _InlineError({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: AppColors.error.withValues(alpha: .08),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Row(
+      children: [
+        const Icon(Icons.error_outline_rounded, color: AppColors.error),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(message, style: Theme.of(context).textTheme.bodySmall),
+        ),
+        TextButton(onPressed: onRetry, child: const Text('Ulangi')),
+      ],
+    ),
+  );
+}
+
+Color _statusColor(String value) => switch (value) {
+  'hadir' => AppColors.success,
+  'izin' => AppColors.primary,
+  'sakit' => AppColors.warning,
+  'alpa' => AppColors.error,
+  _ => AppColors.textSecondary,
+};
+
+IconData _statusIcon(String value) => switch (value) {
+  'hadir' => Icons.check_rounded,
+  'izin' => Icons.event_note_outlined,
+  'sakit' => Icons.medical_services_outlined,
+  'alpa' => Icons.close_rounded,
+  _ => Icons.event_available_outlined,
+};
+
+String _title(dynamic value) {
+  final text = value?.toString().trim() ?? '';
+  if (text.isEmpty) return '-';
+  return '${text[0].toUpperCase()}${text.substring(1)}';
+}
+
+String _value(dynamic value) {
+  final text = value?.toString().trim() ?? '';
+  return text.isEmpty ? '-' : text;
+}
+
+const _monthNames = <String>[
+  'Januari',
+  'Februari',
+  'Maret',
+  'April',
+  'Mei',
+  'Juni',
+  'Juli',
+  'Agustus',
+  'September',
+  'Oktober',
+  'November',
+  'Desember',
+];
+
+String _formatMonth(DateTime date) =>
+    '${_monthNames[date.month - 1]} ${date.year}';
+
+String _formatDate(dynamic value) {
+  final date = DateTime.tryParse(value?.toString() ?? '');
+  if (date == null) return '-';
+  final local = date.toLocal();
+  return '${local.day} ${_monthNames[local.month - 1]} ${local.year}';
+}
+
+String _formatDateTime(dynamic value) {
+  final date = DateTime.tryParse(value?.toString() ?? '');
+  if (date == null) return '-';
+  final local = date.toLocal();
+  final hour = local.hour.toString().padLeft(2, '0');
+  final minute = local.minute.toString().padLeft(2, '0');
+  return '${local.day} ${_monthNames[local.month - 1]} ${local.year}, $hour:$minute';
+}
+
+String _formatTime(dynamic value) {
+  final text = value?.toString().trim() ?? '';
+  if (text.isEmpty) return '—';
+  return text.length >= 5 ? text.substring(0, 5) : text;
+}
+
+String _method(dynamic value) => switch (value?.toString()) {
+  'qr' => 'QR Code',
+  'manual' => 'Pencatatan manual',
+  _ => _value(value),
+};

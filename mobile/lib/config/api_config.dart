@@ -1,10 +1,11 @@
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 
 /// Central API configuration.
 ///
 /// Default URL targets the local Laravel server when running Flutter Web.
 /// For Android Emulator run with:
-///   --dart-define=API_BASE_URL=http://10.0.2.2:8000/api
+///   --dart-define=API_BASE_URL=http://192.168.1.4/api
 /// For a physical phone use the computer's LAN IP in API_BASE_URL.
 class ApiConfig {
   static const String _configuredBaseUrl = String.fromEnvironment(
@@ -24,7 +25,7 @@ class ApiConfig {
       return 'http://127.0.0.1:8000/api';
     }
     // Android Emulator reaches the host machine through 10.0.2.2.
-    return 'http://10.0.2.2:8000/api';
+    return 'http://127.0.0.1:8000/api';
   }
 
   static String get guruDashboard => '$baseUrl/guru/dashboard';
@@ -43,11 +44,20 @@ class ApiConfig {
   static const Duration timeout = Duration(seconds: 30);
 
   static Map<String, String> headers([String? token]) => {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
-      };
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+    if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+  };
 
   static String get siswaDashboard => '$baseUrl/siswa/dashboard';
   static String get siswaPengajuanIzin => '$baseUrl/siswa/pengajuan-izin';
+  static String get siswaMapel => '$baseUrl/siswa/mapel';
+  static String get siswaMateri => '$baseUrl/siswa/materi';
+  static String get siswaTugas => '$baseUrl/siswa/tugas';
+  static String get siswaNilai => '$baseUrl/siswa/nilai';
+  static String get siswaJadwal => '$baseUrl/siswa/jadwal';
+  static String get siswaRiwayatAbsensi => '$baseUrl/siswa/absensi/riwayat';
+  static String get siswaScanQr => '$baseUrl/siswa/absensi/scan';
+  static String get siswaSuratIzin => '$baseUrl/siswa/surat-izin';
+  static String get changePassword => '$baseUrl/auth/change-password';
 }
