@@ -5,11 +5,26 @@
             @php($activePeriod = \App\Models\PeriodeAkademik::where('is_active', true)->first())
             <span>{{ $activePeriod?->nama ?? 'Periode akademik belum diatur' }}</span>
         </div>
-        <div class="hidden md:flex items-center bg-slate-50 dark:bg-slate-700 py-2 px-3 gap-2 rounded-lg border border-slate-200 dark:border-slate-600 min-w-[260px]">
+        <div class="hidden md:flex items-center min-w-[260px]">
+    @if(request()->routeIs('admin.absensi.verifikasi'))
+        {{-- Search bar aktif khusus di halaman Verifikasi Surat --}}
+        <form action="{{ route('admin.absensi.verifikasi') }}" method="GET" class="w-full relative flex items-center">
+            @if(request('status'))
+                <input type="hidden" name="status" value="{{ request('status') }}">
+            @endif
+            <span class="absolute left-3 text-slate-400">⌕</span>
+            <input type="text" name="siswa" value="{{ request('siswa') }}" 
+                placeholder="Cari nama siswa atau NISN..." 
+                class="w-full rounded-lg border border-slate-200 bg-slate-50 dark:bg-slate-700 py-1.5 pl-9 pr-3 text-xs text-slate-800 dark:text-white focus:border-blue-500 focus:bg-white focus:outline-none">
+        </form>
+    @else
+        {{-- Tampilan standar untuk halaman admin lainnya --}}
+        <div class="flex items-center bg-slate-50 dark:bg-slate-700 py-2 px-3 gap-2 rounded-lg border border-slate-200 dark:border-slate-600 w-full">
             <span class="text-slate-400">⌕</span>
             <span class="text-xs text-slate-400">MATSANAM Admin Portal</span>
         </div>
-    </div>
+    @endif
+</div>
 
     <div class="flex items-center gap-3 md:gap-6">
         @php($adminUnreadNotifications = \Illuminate\Support\Facades\Schema::hasTable('notifications') ? Auth::user()->unreadNotifications()->count() : 0)
