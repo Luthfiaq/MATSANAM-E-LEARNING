@@ -218,7 +218,6 @@ class SiswaLearningController extends Controller
                     default => true,
                 };
             })->values();
-
             $periode = $this->periodeAktif();
 
             return response()->json([
@@ -232,7 +231,6 @@ class SiswaLearningController extends Controller
                 ],
             ]);
         }
-
     public function tugasShow(Request $request, int $id)
     {
         $siswa = $this->siswa($request);
