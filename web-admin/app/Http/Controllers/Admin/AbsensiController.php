@@ -212,26 +212,72 @@ class AbsensiController extends Controller
         ));
     }
 
-    public function historiSurat(Request $request): View
-    {
-        $query = SuratAbsensi::with(['siswa.kelas', 'verifikator'])->latest();
 
-        if ($request->filled('status') && strtolower((string) $request->status) !== 'semua') {
-            $query->whereRaw('LOWER(status_verifikasi) = ?', [strtolower((string) $request->status)]);
-        }
 
-        $surats = $query->paginate(15)->withQueryString();
-        $totalPending = SuratAbsensi::whereRaw('LOWER(status_verifikasi) = ?', ['pending'])->count();
-        $totalDisetujui = SuratAbsensi::whereRaw('LOWER(status_verifikasi) = ?', ['disetujui'])->count();
-        $totalDitolak = SuratAbsensi::whereRaw('LOWER(status_verifikasi) = ?', ['ditolak'])->count();
+public function historiSurat(Request $request): View
+{
+    $query = SuratAbsensi::with(['siswa.kelas', 'verifikator'])
+        ->latest();
 
-        return view('admin.absensi.histori', compact(
-            'surats',
-            'totalPending',
-            'totalDisetujui',
-            'totalDitolak'
-        ));
+    // Pencarian nama siswa dan NISN
+    if ($request->filled('q')) {
+        $search = trim($request->q);
+
+        $query->whereHas('siswa', function ($studentQuery) use ($search) {
+            $studentQuery->where(function ($q) use ($search) {
+                $q->where('nama_lengkap', 'like', "%{$search}%")
+                    ->orWhere('nisn', 'like', "%{$search}%");
+            });
+        });
     }
+
+    // Filter status
+    if (in_array($request->status, ['disetujui', 'ditolak', 'pending'], true)) {
+        $query->where('status_verifikasi', $request->status);
+    }
+
+    // Filter kelas
+    if ($request->filled('kelas')) {
+        $query->whereHas('siswa.kelas', function ($kelasQuery) use ($request) {
+            $kelasQuery->whereKey($request->kelas);
+        });
+    }
+
+    // Filter semester berdasarkan bulan tanggal mulai surat
+    if ($request->semester === '1') {
+        $query->whereMonth('tanggal_mulai', '>=', 7)
+            ->whereMonth('tanggal_mulai', '<=', 12);
+    } elseif ($request->semester === '2') {
+        $query->whereMonth('tanggal_mulai', '>=', 1)
+            ->whereMonth('tanggal_mulai', '<=', 6);
+    }
+
+    // Filter jenis surat
+    if ($request->filled('jenis')) {
+        $query->where('jenis', $request->jenis);
+    }
+
+    $surats = $query->paginate(10)->withQueryString();
+
+    // Statistik keseluruhan
+    $totalSemua = SuratAbsensi::count();
+    $totalPending = SuratAbsensi::where('status_verifikasi', 'pending')->count();
+    $totalDisetujui = SuratAbsensi::where('status_verifikasi', 'disetujui')->count();
+    $totalDitolak = SuratAbsensi::where('status_verifikasi', 'ditolak')->count();
+
+    $kelasList = Kelas::orderBy('tingkat')
+        ->orderBy('nama_kelas')
+        ->get();
+
+    return view('admin.absensi.histori', compact(
+        'surats',
+        'totalSemua',
+        'totalPending',
+        'totalDisetujui',
+        'totalDitolak',
+        'kelasList'
+    ));
+}
 
     public function exportPresensi(Request $request)
     {
