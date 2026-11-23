@@ -10,7 +10,8 @@ import '../../../widgets/common/siswa_bottom_navigation.dart';
 import '../../auth/login_screen.dart';
 import '../absensi/absensi_screen.dart';
 import '../jadwal/siswa_jadwal_screen.dart';
-import '../materi/siswa_materi_screen.dart';
+import '../materi/pilih_mapel_kelas_guru_screen.dart';
+import '../materi/siswa_materi_detail_screen.dart';
 import '../nilai/siswa_nilai_screen.dart';
 import '../notifikasi/siswa_notifikasi_screen.dart';
 import '../pengaturan/profil_siswa_screen.dart';
@@ -73,16 +74,16 @@ class _DashboardSiswaPageState extends State<DashboardSiswaPage> {
   }
 
   void _bukaTugas() => Navigator.of(
-    context,
-  ).push(MaterialPageRoute(builder: (_) => const SiswaTugasScreen()));
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const SiswaTugasScreen()));
 
   void _bukaMateri() => Navigator.of(
-    context,
-  ).push(MaterialPageRoute(builder: (_) => const SiswaMateriScreen()));
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const PilihMapelKelasGuruScreen()));
 
   void _bukaNilai() => Navigator.of(
-    context,
-  ).push(MaterialPageRoute(builder: (_) => const SiswaNilaiScreen()));
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const SiswaNilaiScreen()));
 
   Future<void> _muatUnreadCount() async {
     try {
@@ -119,13 +120,13 @@ class _DashboardSiswaPageState extends State<DashboardSiswaPage> {
   }
 
   void _bukaJadwal() => Navigator.of(
-    context,
-  ).push(MaterialPageRoute(builder: (_) => const SiswaJadwalScreen()));
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const SiswaJadwalScreen()));
 
   void _tab(int index) {
     final Widget page = switch (index) {
       0 => const DashboardSiswaPage(),
-      1 => const SiswaMateriScreen(),
+      1 => const PilihMapelKelasGuruScreen(),
       2 => const SiswaTugasScreen(),
       3 => const SiswaNilaiScreen(),
       _ => const ProfilSiswaScreen(),
@@ -199,9 +200,9 @@ class _DashboardSiswaPageState extends State<DashboardSiswaPage> {
             title: 'Jadwal & Presensi Hari Ini',
             trailing: GestureDetector(
               onTap: _bukaJadwal,
-              child: Text(
+              child: const Text(
                 'Lihat Semua',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12.5,
                   color: AppColors.primary,
                 ),
@@ -301,36 +302,9 @@ class _DashboardSiswaPageState extends State<DashboardSiswaPage> {
       ),
     );
   }
-
-  static String _labelTanggal(String? hari, DateTime now) {
-    const bln = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'Mei',
-      'Jun',
-      'Jul',
-      'Agu',
-      'Sep',
-      'Okt',
-      'Nov',
-      'Des',
-    ];
-    const namaHari = [
-      'Senin',
-      'Selasa',
-      'Rabu',
-      'Kamis',
-      'Jumat',
-      'Sabtu',
-      'Minggu',
-    ];
-    return '${hari ?? namaHari[now.weekday - 1]}, ${now.day} ${bln[now.month - 1]}';
-  }
 }
 
-/* ===================== App bar & bottom nav ===================== */
+/* ===================== App bar ===================== */
 
 class _AppBar extends StatelessWidget implements PreferredSizeWidget {
   final int jumlahNotifikasi;
@@ -441,66 +415,6 @@ class _AppBar extends StatelessWidget implements PreferredSizeWidget {
                 ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BottomNav extends StatelessWidget {
-  final ValueChanged<int> onTap;
-  const _BottomNav({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    const items = [
-      (Icons.home_rounded, 'Beranda'),
-      (Icons.menu_book_rounded, 'Materi'),
-      (Icons.assignment_outlined, 'Tugas'),
-      (Icons.bar_chart_rounded, 'Nilai'),
-      (Icons.person_outline_rounded, 'Profil'),
-    ];
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 62,
-          child: Row(
-            children: List.generate(items.length, (i) {
-              final aktif = i == 0; // halaman ini = Beranda
-              final warna = aktif ? AppColors.primary : const Color(0xFF475569);
-              return Expanded(
-                child: InkWell(
-                  onTap: () => onTap(i),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(items[i].$1, size: 24, color: warna),
-                      const SizedBox(height: 3),
-                      Text(
-                        items[i].$2,
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: aktif ? FontWeight.w800 : FontWeight.w600,
-                          color: warna,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
           ),
         ),
       ),
@@ -981,16 +895,16 @@ class _SectionHeader extends StatelessWidget {
 }
 
 BoxDecoration _kartu() => BoxDecoration(
-  color: Colors.white,
-  borderRadius: BorderRadius.circular(18),
-  boxShadow: [
-    BoxShadow(
-      color: Colors.black.withValues(alpha: 0.04),
-      blurRadius: 8,
-      offset: const Offset(0, 2),
-    ),
-  ],
-);
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.04),
+          blurRadius: 8,
+          offset: const Offset(0, 2),
+        ),
+      ],
+    );
 
 class _EmptyCard extends StatelessWidget {
   final IconData icon;
@@ -1037,20 +951,20 @@ class _JadwalCard extends StatelessWidget {
     final fase = jadwal.faseSekarang(now);
     final (chipText, chipBg, chipFg) = switch (fase) {
       JadwalFase.berlangsung => (
-        'Sedang Berlangsung',
-        AppColors.successLight,
-        AppColors.success,
-      ),
+          'Sedang Berlangsung',
+          AppColors.successLight,
+          AppColors.success,
+        ),
       JadwalFase.akan => (
-        'Akan Datang',
-        AppColors.infoLight,
-        AppColors.primaryDark,
-      ),
+          'Akan Datang',
+          AppColors.infoLight,
+          AppColors.primaryDark,
+        ),
       JadwalFase.selesai => (
-        'Selesai',
-        const Color(0xFFE2E8F0),
-        AppColors.textSecondary,
-      ),
+          'Selesai',
+          const Color(0xFFE2E8F0),
+          AppColors.textSecondary,
+        ),
     };
 
     final matematika = jadwal.mapel.toLowerCase().contains('matematika');
@@ -1229,9 +1143,8 @@ class _AksiPresensi extends StatelessWidget {
   Widget build(BuildContext context) {
     if (jadwal.sudahAbsen) {
       final s = (jadwal.statusAbsen ?? '').trim().toLowerCase();
-      final label = s.isEmpty
-          ? 'Tercatat'
-          : '${s[0].toUpperCase()}${s.substring(1)}';
+      final label =
+          s.isEmpty ? 'Tercatat' : '${s[0].toUpperCase()}${s.substring(1)}';
       final ok = s == 'hadir';
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
