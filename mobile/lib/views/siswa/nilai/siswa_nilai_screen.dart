@@ -1,31 +1,47 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../../../services/api_exception.dart';
 import '../../../services/siswa_learning_service.dart';
 import '../../../utils/constants.dart';
 import '../../../widgets/common/siswa_bottom_navigation.dart';
+import '../../auth/login_screen.dart';
 import '../dashboard/dashboard_siswa_page.dart';
-import '../materi/siswa_materi_screen.dart';
+import '../materi/pilih_mapel_kelas_guru_screen.dart';
 import '../pengaturan/profil_siswa_screen.dart';
 import '../tugas/siswa_tugas_screen.dart';
+import 'siswa_nilai_mapel_screen.dart';
 
 class SiswaNilaiScreen extends StatefulWidget {
   const SiswaNilaiScreen({super.key});
+
   @override
   State<SiswaNilaiScreen> createState() => _SiswaNilaiScreenState();
 }
 
 class _SiswaNilaiScreenState extends State<SiswaNilaiScreen> {
   final _service = SiswaLearningService();
+  final _searchController = TextEditingController();
+
   List<Map<String, dynamic>> _items = [];
   bool _loading = true;
   String? _error;
+  String _query = '';
 
   @override
   void initState() {
     super.initState();
+    _searchController.addListener(() {
+      if (mounted) {
+        setState(() => _query = _searchController.text.trim().toLowerCase());
+      }
+    });
     _load();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -35,409 +51,504 @@ class _SiswaNilaiScreenState extends State<SiswaNilaiScreen> {
     });
     try {
       final items = await _service.nilai();
-      if (mounted)
-        setState(() {
-          _items = items;
-          _loading = false;
-        });
+      if (!mounted) return;
+      setState(() {
+        _items = items;
+        _loading = false;
+      });
     } on ApiException catch (e) {
-      if (mounted)
-        setState(() {
-          _error = e.message;
-          _loading = false;
-        });
+      if (!mounted) return;
+      setState(() {
+        _error = e.message;
+        _loading = false;
+      });
+      if (e.unauthorized) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (_) => false,
+        );
+      }
     } catch (_) {
-      if (mounted)
-        setState(() {
-          _error = 'Gagal memuat nilai.';
-          _loading = false;
-        });
+      if (!mounted) return;
+      setState(() {
+        _error = 'Gagal memuat nilai.';
+        _loading = false;
+      });
     }
   }
 
   void _tab(int index) {
     final Widget page = switch (index) {
       0 => const DashboardSiswaPage(),
-      1 => const SiswaMateriScreen(),
+      1 => const PilihMapelKelasGuruScreen(),
       2 => const SiswaTugasScreen(),
       3 => const SiswaNilaiScreen(),
       _ => const ProfilSiswaScreen(),
     };
-    Navigator.of(
-      context,
-    ).pushReplacement(MaterialPageRoute(builder: (_) => page));
+    Navigator.of(context)
+        .pushReplacement(MaterialPageRoute(builder: (_) => page));
   }
 
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Matsanam Siswa',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-          ),
-          Text(
-            'Nilai Akademik',
-            style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-          ),
-        ],
+  List<Map<String, dynamic>> get _filteredItems {
+    if (_query.isEmpty) return _items;
+    return _items.where((item) {
+      final nama = (item['mapel'] ?? item['nama'] ?? '').toString().toLowerCase();
+      final guru = (item['guru'] ?? '').toString().toLowerCase();
+      return nama.contains(_query) || guru.contains(_query);
+    }).toList();
+  }
+
+  void _onUnduhRekapPdf() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Unduh PDF rekap nilai semester sedang disiapkan.'),
       ),
-    ),
-    body: _loading
-        ? const Center(child: CircularProgressIndicator())
-        : _error != null
-        ? _Empty(
-            icon: Icons.cloud_off_outlined,
-            title: 'Gagal memuat nilai',
-            subtitle: _error!,
-            action: _load,
-          )
-        : _items.isEmpty
-        ? const _Empty(
-            icon: Icons.bar_chart_outlined,
-            title: 'Belum ada nilai',
-            subtitle:
-                'Nilai akan tampil setelah Guru menyelesaikan penilaian tugas.',
-          )
-        : RefreshIndicator(
-            onRefresh: _load,
-            child: ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: _items.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
-              itemBuilder: (context, index) {
-                final item = _items[index];
-                final avg = (item['rata_rata'] as num?)?.toDouble();
-                final kkm = (item['kkm'] as num?)?.toDouble() ?? 0;
-                return _Card(
-                  child: ListTile(
-                    leading: const CircleAvatar(
-                      backgroundColor: AppColors.primaryLight,
-                      child: Icon(
-                        Icons.menu_book_rounded,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    title: Text(
-                      '${item['mapel'] ?? '-'}',
-                      style: const TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                    subtitle: Text(
-                      '${item['jumlah_dinilai'] ?? 0} penilaian • KKM $kkm',
-                    ),
-                    trailing: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          avg == null ? '-' : avg.toStringAsFixed(1),
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                        const Text(
-                          'Rata-rata tugas',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => SiswaNilaiMapelScreen(
-                          mapelId: (item['mapel_id'] as num).toInt(),
-                          namaMapel: item['mapel']?.toString(),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-    bottomNavigationBar: SiswaBottomNavigationBar(currentIndex: 3, onTap: _tab),
-  );
-}
-
-class SiswaNilaiMapelScreen extends StatefulWidget {
-  final int mapelId;
-  final String? namaMapel;
-  const SiswaNilaiMapelScreen({
-    super.key,
-    required this.mapelId,
-    this.namaMapel,
-  });
-  @override
-  State<SiswaNilaiMapelScreen> createState() => _SiswaNilaiMapelScreenState();
-}
-
-class _SiswaNilaiMapelScreenState extends State<SiswaNilaiMapelScreen> {
-  final _service = SiswaLearningService();
-  Map<String, dynamic> _data = {};
-  bool _loading = true;
-  String? _error;
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    try {
-      final value = await _service.nilaiMapel(widget.mapelId);
-      if (mounted)
-        setState(() {
-          _data = value;
-          _loading = false;
-        });
-    } catch (e) {
-      if (mounted)
-        setState(() {
-          _error = e.toString();
-          _loading = false;
-        });
-    }
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final mapel = _data['mapel'] is Map
-        ? Map<String, dynamic>.from(_data['mapel'])
-        : <String, dynamic>{};
-    final hasil = _data['hasil'] is List
-        ? (_data['hasil'] as List)
-              .whereType<Map>()
-              .map((e) => Map<String, dynamic>.from(e))
-              .toList()
-        : <Map<String, dynamic>>[];
+    final filtered = _filteredItems;
+    final palette = [
+      (const Color(0xFFEFF6FF), const Color(0xFF1D4ED8), Icons.straighten_rounded),
+      (const Color(0xFFECFDF5), const Color(0xFF059669), Icons.biotech_rounded),
+      (const Color(0xFFEEF2FF), const Color(0xFF4F46E5), Icons.menu_book_rounded),
+      (const Color(0xFFFFF7ED), const Color(0xFFEA580C), Icons.public_rounded),
+      (const Color(0xFFECFDF5), const Color(0xFF047857), Icons.mosque_rounded),
+      (const Color(0xFFF0FDF4), const Color(0xFF15803D), Icons.auto_stories_rounded),
+    ];
+
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: Text(
-          widget.namaMapel ?? mapel['nama']?.toString() ?? 'Detail Nilai',
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        titleSpacing: 16,
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Nilai Pilih Mapel',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+            Text(
+              'Matsanam E-Learning',
+              style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Tidak ada notifikasi baru.')),
+              );
+            },
+            icon: const Icon(
+              Icons.notifications_none_rounded,
+              color: Color(0xFF1E293B),
+              size: 24,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 14),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => _tab(4),
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1D4ED8),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.person_outline_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+            ),
+          ),
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(height: 1, color: const Color(0xFFE2E8F0)),
         ),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(_error!),
-              ),
-            )
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                _Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${mapel['nama'] ?? widget.namaMapel ?? '-'}',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                              Text(
-                                'KKM: ${mapel['kkm'] ?? '-'}',
-                                style: const TextStyle(
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
+              ? _EmptyState(
+                  icon: Icons.cloud_off_outlined,
+                  title: 'Gagal memuat nilai',
+                  subtitle: _error!,
+                  onRetry: _load,
+                )
+              : RefreshIndicator(
+                  onRefresh: _load,
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                    children: [
+                      TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: 'Cari nama mata pelajaran...',
+                          hintStyle: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF94A3B8),
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.search_rounded,
+                            color: Color(0xFF94A3B8),
+                            size: 20,
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 12),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide:
+                                const BorderSide(color: Color(0xFFE2E8F0)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide:
+                                const BorderSide(color: Color(0xFF2563EB)),
                           ),
                         ),
-                        Text(
-                          _data['rata_rata'] == null
-                              ? '-'
-                              : ((_data['rata_rata'] as num).toDouble())
-                                    .toStringAsFixed(1),
-                          style: const TextStyle(
-                            fontSize: 25,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.primary,
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        children: [
+                          Container(
+                            width: 4,
+                            height: 18,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2563EB),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
                           ),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text(
+                              'Pilih Mata Pelajaran',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF0F172A),
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEEF2FF),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '${filtered.length} Mapel Terdaftar',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF3730A3),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      if (filtered.isEmpty)
+                        Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              'Belum ada nilai atau mata pelajaran yang cocok.',
+                              style: TextStyle(color: AppColors.textSecondary),
+                            ),
+                          ),
+                        )
+                      else
+                        GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: filtered.length,
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: 0.92,
+                          ),
+                          itemBuilder: (context, index) {
+                            final item = filtered[index];
+                            final style = palette[index % palette.length];
+                            final namaMapel =
+                                (item['mapel'] ?? item['nama'] ?? '-')
+                                    .toString();
+                            final guru =
+                                (item['guru'] ?? 'Guru Mata Pelajaran')
+                                    .toString();
+                            final avg = (item['rata_rata'] as num?)?.toDouble();
+                            final rerataText = avg == null
+                                ? 'Rerata: -'
+                                : 'Rerata: ${avg.toStringAsFixed(1)}';
+                            final mapelId =
+                                (item['mapel_id'] ?? item['id'] as num?)
+                                        ?.toInt() ??
+                                    0;
+
+                            return InkWell(
+                              borderRadius: BorderRadius.circular(16),
+                              onTap: mapelId <= 0
+                                  ? null
+                                  : () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => SiswaNilaiMapelScreen(
+                                            mapelId: mapelId,
+                                            namaMapel: namaMapel,
+                                            namaGuru: guru,
+                                            rataRataAwal: avg,
+                                          ),
+                                        ),
+                                      ),
+                              child: Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: const Color(0xFFE2E8F0),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Container(
+                                          width: 38,
+                                          height: 38,
+                                          decoration: BoxDecoration(
+                                            color: style.$1,
+                                            borderRadius:
+                                                BorderRadius.circular(11),
+                                          ),
+                                          child: Icon(
+                                            style.$3,
+                                            color: style.$2,
+                                            size: 20,
+                                          ),
+                                        ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: style.$1,
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                          ),
+                                          child: Text(
+                                            rerataText,
+                                            style: TextStyle(
+                                              fontSize: 10.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: style.$2,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const Spacer(),
+                                    Text(
+                                      namaMapel,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w800,
+                                        color: Color(0xFF0F172A),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      guru,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 11.5,
+                                        color: Color(0xFF64748B),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'Lihat Nilai',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: style.$2,
+                                          ),
+                                        ),
+                                        Icon(
+                                          Icons.arrow_forward_rounded,
+                                          size: 15,
+                                          color: style.$2,
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
                         ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                if (hasil.isEmpty)
-                  const _Empty(
-                    icon: Icons.hourglass_empty_rounded,
-                    title: 'Belum ada penilaian',
-                    subtitle:
-                        'Pengumpulan tugas pada mata pelajaran ini belum dinilai.',
-                  ),
-                ...hasil.map((item) {
-                  final score = (item['nilai'] as num?)?.toDouble();
-                  final status =
-                      item['status_ketuntasan']?.toString() ??
-                      'menunggu_penilaian';
-                  final complete = status == 'tuntas';
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: _Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Row(
                           children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    '${item['judul_tugas'] ?? '-'}',
-                                    style: const TextStyle(
+                            Container(
+                              width: 42,
+                              height: 42,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEFF6FF),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.description_outlined,
+                                color: Color(0xFF2563EB),
+                                size: 22,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Rekap Nilai Semester',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 13.5,
                                       fontWeight: FontWeight.w800,
+                                      color: Color(0xFF0F172A),
                                     ),
                                   ),
-                                ),
-                                Text(
-                                  score == null
-                                      ? 'Menunggu'
-                                      : score.toStringAsFixed(1),
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w800,
-                                    color: score == null
-                                        ? AppColors.warning
-                                        : AppColors.primary,
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'Semester Aktif • Rapor',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      color: Color(0xFF64748B),
+                                    ),
                                   ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton.icon(
+                              onPressed: _onUnduhRekapPdf,
+                              icon: const Icon(
+                                Icons.download_rounded,
+                                size: 15,
+                              ),
+                              label: const Text(
+                                'Unduh PDF',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
                                 ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              '${item['jenis'] ?? 'Tugas'} • ${_date(item['tanggal_penilaian'])}',
-                              style: const TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 12,
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF2563EB),
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(11),
+                                ),
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            _Pill(
-                              label: status == 'tuntas'
-                                  ? 'Tuntas'
-                                  : status == 'belum_tuntas'
-                                  ? 'Belum Tuntas'
-                                  : 'Menunggu Penilaian',
-                              color: score == null
-                                  ? AppColors.warning
-                                  : complete
-                                  ? AppColors.success
-                                  : AppColors.error,
-                            ),
-                            if ((item['catatan'] ?? '')
-                                .toString()
-                                .trim()
-                                .isNotEmpty) ...[
-                              const Divider(height: 20),
-                              const Text(
-                                'Feedback Guru',
-                                style: TextStyle(fontWeight: FontWeight.w800),
-                              ),
-                              const SizedBox(height: 4),
-                              Text('${item['catatan']}'),
-                            ],
                           ],
                         ),
                       ),
-                    ),
-                  );
-                }),
-              ],
-            ),
+                    ],
+                  ),
+                ),
+      bottomNavigationBar: SiswaBottomNavigationBar(currentIndex: 3, onTap: _tab),
     );
   }
-
-  String _date(dynamic value) {
-    final d = DateTime.tryParse(value?.toString() ?? '');
-    return d == null
-        ? 'Belum dinilai'
-        : DateFormat('dd MMM yyyy', 'id_ID').format(d.toLocal());
-  }
 }
 
-class _Card extends StatelessWidget {
-  final Widget child;
-  const _Card({required this.child});
-  @override
-  Widget build(BuildContext context) => Container(
-    decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.surface,
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(
-        color: Theme.of(context).dividerColor.withValues(alpha: .5),
-      ),
-    ),
-    child: child,
-  );
-}
-
-class _Pill extends StatelessWidget {
-  final String label;
-  final Color color;
-  const _Pill({required this.label, required this.color});
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: .1),
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: Text(
-      label,
-      style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 11),
-    ),
-  );
-}
-
-class _Empty extends StatelessWidget {
+class _EmptyState extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
-  final VoidCallback? action;
-  const _Empty({
+  final VoidCallback? onRetry;
+
+  const _EmptyState({
     required this.icon,
     required this.title,
     required this.subtitle,
-    this.action,
+    this.onRetry,
   });
+
   @override
   Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(28),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 42, color: AppColors.textMuted),
-          const SizedBox(height: 12),
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-          const SizedBox(height: 6),
-          Text(
-            subtitle,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.textSecondary),
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 42, color: AppColors.textMuted),
+              const SizedBox(height: 12),
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 6),
+              Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
+              if (onRetry != null)
+                TextButton(onPressed: onRetry, child: const Text('Coba Lagi')),
+            ],
           ),
-          if (action != null)
-            TextButton(onPressed: action, child: const Text('Coba Lagi')),
-        ],
-      ),
-    ),
-  );
+        ),
+      );
 }
