@@ -6,7 +6,6 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Dashboard') - MATSANAM E-Learning</title>
     <script>
-        // Set Tailwind class mode before the CDN initializes and restore preferences on every page.
         window.tailwind = window.tailwind || {};
         window.tailwind.config = { darkMode: 'class' };
         (function () {
@@ -48,7 +47,6 @@
         .dark .border-gray-100, .dark .border-slate-100, .dark .border-slate-200 { border-color:#334155!important; }
         .dark .shadow-sm, .dark .shadow-md { box-shadow: 0 1px 3px rgba(0,0,0,.24), 0 1px 2px rgba(0,0,0,.18); }
 
-        /* Sidebar theme is driven by the persisted application preference, not browser defaults. */
         html[data-theme="light"] #adminSidebar {
             background-color: #ffffff !important;
             color: #334155 !important;
@@ -97,7 +95,6 @@
         }
         html[data-theme="dark"] #adminSidebar .bg-slate-50 { background-color: #334155 !important; }
 
-        /* Header/topbar follows the same persisted theme as the page and sidebar. */
         html[data-theme="light"] #adminTopbar {
             background-color: #ffffff !important;
             color: #1e293b !important;
@@ -132,21 +129,43 @@
             border-color: #475569 !important;
             color: #bfdbfe !important;
         }
+
+        #adminTopbar input[type="search"],
+        #adminTopbar input[type="text"],
+        #adminTopbar input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]) {
+            color: #0f172a !important;
+            caret-color: #0f172a !important;
+        }
+        #adminTopbar input:-webkit-autofill,
+        #adminTopbar input:-webkit-autofill:hover,
+        #adminTopbar input:-webkit-autofill:focus {
+            -webkit-text-fill-color: #0f172a !important;
+        }
+        .dark #adminTopbar input[type="search"],
+        .dark #adminTopbar input[type="text"],
+        .dark #adminTopbar input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]) {
+            color: #f1f5f9 !important;
+            caret-color: #f1f5f9 !important;
+        }
+        .dark #adminTopbar input:-webkit-autofill,
+        .dark #adminTopbar input:-webkit-autofill:hover,
+        .dark #adminTopbar input:-webkit-autofill:focus {
+            -webkit-text-fill-color: #f1f5f9 !important;
+        }
     </style>
     @stack('styles')
 </head>
 <body class="h-full bg-slate-50 dark:bg-slate-900">
     <div class="flex h-screen overflow-hidden">
-        @include('layouts.partials.sidebar')
+        @includeIf('layouts.partials.sidebar')
         <div class="flex-1 flex min-w-0 flex-col overflow-hidden">
-            @include('layouts.partials.header')
+            @includeIf('layouts.partials.header')
             <main class="flex-1 overflow-y-auto p-4 md:p-6 theme-bg">
                 @yield('content')
             </main>
         </div>
     </div>
     <script>
-        // Keep the sidebar's own scroll position while navigating between server-rendered pages.
         (function () {
             const storageKey = 'matsanam.admin.sidebar.scrollTop';
             function restoreSidebarPosition() {
@@ -160,7 +179,7 @@
                         requestAnimationFrame(() => { sidebar.scrollTop = position; });
                         setTimeout(() => { sidebar.scrollTop = position; }, 80);
                     }
-                } catch (error) { /* Storage can be disabled in private browser contexts. */ }
+                } catch (error) {}
             }
             function saveSidebarPosition() {
                 const sidebar = document.getElementById('adminSidebar');

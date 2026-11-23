@@ -7,24 +7,21 @@
 @php
     $suratRows = collect($suratAbsensi ?? []);
     $currentStatus = request('status', 'semua');
-    
-    // Perbaikan logika filter agar akurat membaca status database
-    $filteredRows = $suratRows->filter(function($item) use ($currentStatus) {
+
+    $filteredRows = $suratRows->filter(function ($item) use ($currentStatus) {
         $status = strtolower(trim($item->status_verifikasi ?? 'pending'));
-        
+
         if ($currentStatus === 'disetujui') {
             return in_array($status, ['disetujui', 'approved', 'valid']);
         }
         if ($currentStatus === 'ditolak') {
             return in_array($status, ['ditolak', 'rejected', 'invalid']);
         }
-        
-        // Untuk "Semua / Pending", tampilkan yang statusnya pending / belum diputuskan
+
         return in_array($status, ['pending', 'menunggu', '']);
     });
 
-    // Jika filter aktif kosong, fallback ke semua data agar list kiri tidak pernah kosong melompong
-    if ($filteredRows->isEmpty() && $currentStatus === 'semua') {
+    if ($filteredRows->isEmpty() && $currentStatus === 'semua' && !request()->filled('siswa')) {
         $filteredRows = $suratRows;
     }
 
@@ -45,7 +42,7 @@
             <div class="grid grid-cols-2 gap-3 sm:min-w-[400px]">
                 <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
                     <p class="text-xs font-medium text-slate-500">Antrean Validasi</p>
-                    <p class="mt-1 text-lg font-bold text-orange-600">{{ count($suratAbsensi) }} Surat Ditampilkan</p>
+                    <p id="antreanValidasiCount" class="mt-1 text-lg font-bold text-orange-600">{{ count($suratAbsensi) }} Surat Ditampilkan</p>
                 </div>
                 <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
                     <p class="text-xs font-medium text-slate-500">Selesai Diverifikasi</p>
@@ -57,27 +54,27 @@
 
     {{-- SPLIT VIEW UTAMA: 2 Kolom Sejajar --}}
     <main class="mx-auto grid max-w-[1600px] grid-cols-1 gap-5 px-4 sm:px-6 lg:grid-cols-12 lg:px-8 items-start">
-        
+
         {{-- KOLOM KIRI: Daftar Antrean Surat --}}
         <section class="lg:col-span-4 space-y-3">
             <div class="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
                 <div class="grid grid-cols-3 gap-1.5" role="tablist">
-                    <a href="{{ route('admin.absensi.verifikasi', ['status' => 'semua']) }}" 
+                    <a href="{{ route('admin.absensi.verifikasi', ['status' => 'semua', 'siswa' => request('siswa')]) }}"
                         class="{{ $currentStatus === 'semua' ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }} rounded-lg px-2 py-2 text-center text-xs font-semibold transition">
                         Semua / Pending
                     </a>
-                    <a href="{{ route('admin.absensi.verifikasi', ['status' => 'disetujui']) }}" 
+                    <a href="{{ route('admin.absensi.verifikasi', ['status' => 'disetujui', 'siswa' => request('siswa')]) }}"
                         class="{{ $currentStatus === 'disetujui' ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }} rounded-lg px-2 py-2 text-center text-xs font-semibold transition">
                         Disetujui
                     </a>
-                    <a href="{{ route('admin.absensi.verifikasi', ['status' => 'ditolak']) }}" 
+                    <a href="{{ route('admin.absensi.verifikasi', ['status' => 'ditolak', 'siswa' => request('siswa')]) }}"
                         class="{{ $currentStatus === 'ditolak' ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }} rounded-lg px-2 py-2 text-center text-xs font-semibold transition">
                         Ditolak
                     </a>
                 </div>
             </div>
 
-            <div class="space-y-2.5">
+            <div id="suratListContainer" class="space-y-2.5">
                 @forelse($filteredRows as $item)
                     @php
                         $namaSiswa = $item->siswa->nama_lengkap ?? 'Siswa';
@@ -90,7 +87,7 @@
                         $tglUpload = $item->created_at ? $item->created_at->format('d M Y, H:i') . ' WIB' : '-';
                         $isActive = (int)$item->id === (int)$selectedId;
                     @endphp
-                    <a href="{{ route('admin.absensi.verifikasi', ['status' => $currentStatus, 'selected' => $item->id]) }}"
+                    <a href="{{ route('admin.absensi.verifikasi', ['status' => $currentStatus, 'siswa' => request('siswa'), 'selected' => $item->id]) }}"
                         class="block w-full rounded-xl border p-3.5 text-left shadow-sm transition cursor-pointer {{ $isActive ? 'border-blue-600 bg-white ring-2 ring-blue-100 shadow-md' : 'border-slate-200 bg-white hover:border-blue-200' }}">
                         <div class="flex items-start gap-3">
                             <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-600 text-white text-sm font-bold shadow-sm">{{ $initials }}</span>
@@ -100,7 +97,7 @@
                                     <span class="rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-semibold text-orange-600">{{ $jenisSurat }}</span>
                                 </div>
                                 <p class="text-[11px] text-slate-500 mt-0.5">Kelas {{ $namaKelas }} • NISN: {{ $nisnSiswa }}</p>
-                                
+
                                 <div class="mt-2.5 flex items-center justify-between text-[11px] text-slate-600 border-t border-slate-100 pt-2">
                                     <span class="font-medium text-slate-700">{{ $tglMulai }}</span>
                                     <span class="text-blue-600 font-semibold">{{ $item->file_surat ? '1 Dokumen Terlampir' : 'Surat Tertulis' }}</span>
@@ -114,14 +111,14 @@
                     </a>
                 @empty
                     <div class="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500 bg-white">
-                        Tidak ada surat yang sesuai dengan filter ini.
+                        Tidak ada surat yang sesuai dengan pencarian atau filter ini.
                     </div>
                 @endforelse
             </div>
         </section>
 
         {{-- KOLOM KANAN: Detail & Pratinjau Dokumen Berdasarkan Item yang Dipilih --}}
-        <section class="min-w-0 lg:col-span-8">
+        <section id="suratDetailColumn" class="min-w-0 lg:col-span-8">
             @if($selectedItem)
                 @php
                     $namaSiswa = $selectedItem->siswa->nama_lengkap ?? 'Siswa';
@@ -141,7 +138,7 @@
                     $isPdf = $selectedItem->file_surat && strtolower(pathinfo($selectedItem->file_surat, PATHINFO_EXTENSION)) === 'pdf';
                 @endphp
                 <div id="suratDecisionPanel" class="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                    
+
                     {{-- Header Detail Siswa --}}
                     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4">
                         <div class="flex items-center gap-3.5">
@@ -246,7 +243,7 @@
                                 <p class="text-xs font-bold text-emerald-900">Form Konfirmasi Persetujuan Surat Absensi</p>
                                 <span class="rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">Status: {{ $statusVerif }}</span>
                             </div>
-                            
+
                             <div>
                                 <label class="block text-[11px] font-bold text-slate-700 mb-1">Pilih Kategori Keterangan Absensi Master:</label>
                                 <div class="flex flex-wrap items-center gap-6 text-xs font-medium text-slate-800">
@@ -269,7 +266,7 @@
                             @csrf
                             <p class="text-xs font-bold text-rose-900">Alasan Penolakan / Catatan Perbaikan Dokumen:</p>
                             <textarea name="catatan" rows="2" required placeholder="Tulis catatan penolakan untuk wali murid..." class="w-full rounded-lg border border-slate-300 p-2.5 text-xs bg-white focus:ring-2 focus:ring-rose-500 focus:outline-none"></textarea>
-                            
+
                             <button type="submit" class="w-full rounded-xl bg-rose-600 hover:bg-rose-700 px-4 py-2.5 text-xs font-bold text-white shadow transition flex items-center justify-center gap-2 cursor-pointer">
                                 <span>📤 Simpan Penolakan dan Catatan</span>
                             </button>
@@ -295,9 +292,10 @@
 
 @push('scripts')
 <script>
-(function () {
+window.initSuratDecisionPanel = function () {
     const panel = document.getElementById('suratDecisionPanel');
-    if (!panel) return;
+    if (!panel || panel.dataset.bound === '1') return;
+    panel.dataset.bound = '1';
 
     const buttons = Array.from(panel.querySelectorAll('[data-decision-choice]'));
     const approvalForm = panel.querySelector('#approvalForm');
@@ -330,7 +328,16 @@
         if (!window.confirm('Tolak surat ini dan simpan catatan perbaikan?')) event.preventDefault();
     });
     selectDecision('valid');
-})();
+};
+
+document.addEventListener('DOMContentLoaded', function () {
+    if (typeof window.initSuratDecisionPanel === 'function') {
+        window.initSuratDecisionPanel();
+    }
+});
+if (document.readyState !== 'loading' && typeof window.initSuratDecisionPanel === 'function') {
+    window.initSuratDecisionPanel();
+}
 </script>
 <style>
 .decision-choice { background:#fff; border-color:#e2e8f0; }

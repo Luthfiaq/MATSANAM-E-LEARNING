@@ -6,25 +6,30 @@
             <span>{{ $activePeriod?->nama ?? 'Periode akademik belum diatur' }}</span>
         </div>
         <div class="hidden md:flex items-center min-w-[260px]">
-    @if(request()->routeIs('admin.absensi.verifikasi'))
-        {{-- Search bar aktif khusus di halaman Verifikasi Surat --}}
-        <form action="{{ route('admin.absensi.verifikasi') }}" method="GET" class="w-full relative flex items-center">
-            @if(request('status'))
-                <input type="hidden" name="status" value="{{ request('status') }}">
+            @if(request()->routeIs('admin.absensi.verifikasi'))
+                <form id="verifikasiSearchForm" action="{{ route('admin.absensi.verifikasi') }}" method="GET" class="w-full relative flex items-center">
+                    @if(request('status'))
+                        <input type="hidden" name="status" value="{{ request('status') }}">
+                    @endif
+                    <span class="absolute left-3 text-slate-400 pointer-events-none">⌕</span>
+                    <input
+                        id="verifikasiSearchInput"
+                        type="text"
+                        name="siswa"
+                        value="{{ request('siswa') }}"
+                        autocomplete="off"
+                        placeholder="Cari nama siswa atau NISN..."
+                        style="background-color: #ffffff; color: #0f172a; caret-color: #0f172a;"
+                        class="w-full rounded-lg border border-slate-200 py-1.5 pl-9 pr-3 text-xs font-medium placeholder:text-slate-400 focus:border-blue-500 focus:outline-none">
+                </form>
+            @else
+                <div class="flex items-center bg-slate-50 dark:bg-slate-700 py-2 px-3 gap-2 rounded-lg border border-slate-200 dark:border-slate-600 w-full">
+                    <span class="text-slate-400">⌕</span>
+                    <span class="text-xs text-slate-400">MATSANAM Admin Portal</span>
+                </div>
             @endif
-            <span class="absolute left-3 text-slate-400">⌕</span>
-            <input type="text" name="siswa" value="{{ request('siswa') }}" 
-                placeholder="Cari nama siswa atau NISN..." 
-                class="w-full rounded-lg border border-slate-200 bg-slate-50 dark:bg-slate-700 py-1.5 pl-9 pr-3 text-xs text-slate-800 dark:text-white focus:border-blue-500 focus:bg-white focus:outline-none">
-        </form>
-    @else
-        {{-- Tampilan standar untuk halaman admin lainnya --}}
-        <div class="flex items-center bg-slate-50 dark:bg-slate-700 py-2 px-3 gap-2 rounded-lg border border-slate-200 dark:border-slate-600 w-full">
-            <span class="text-slate-400">⌕</span>
-            <span class="text-xs text-slate-400">MATSANAM Admin Portal</span>
         </div>
-    @endif
-</div>
+    </div>
 
     <div class="flex items-center gap-3 md:gap-6">
         @php($adminUnreadNotifications = \Illuminate\Support\Facades\Schema::hasTable('notifications') ? Auth::user()->unreadNotifications()->count() : 0)
@@ -55,6 +60,20 @@
     </div>
 </header>
 
+<style>
+#verifikasiSearchInput {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    caret-color: #0f172a !important;
+}
+#verifikasiSearchInput:-webkit-autofill,
+#verifikasiSearchInput:-webkit-autofill:hover,
+#verifikasiSearchInput:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+</style>
+
 @push('scripts')
 <script>
 function toggleUserMenu() {
@@ -67,5 +86,68 @@ document.addEventListener('click', function (event) {
     const button = event.target.closest('[onclick="toggleUserMenu()"]');
     if (!button && !event.target.closest('#userMenu')) menu.classList.add('hidden');
 });
+
+(function () {
+    const searchForm = document.getElementById('verifikasiSearchForm');
+    const searchInput = document.getElementById('verifikasiSearchInput');
+    if (!searchForm || !searchInput) return;
+
+    function getCards() {
+        const explicit = Array.from(document.querySelectorAll('#suratListContainer [data-surat-item]'));
+        if (explicit.length > 0) return explicit;
+        const container = document.getElementById('suratListContainer');
+        if (!container) return [];
+        return Array.from(container.children).filter(function (el) {
+            return el.id !== 'suratSearchEmpty' && !el.hasAttribute('data-empty-filter');
+        });
+    }
+
+    function filterSuratCards(selectFirstMatch) {
+        const cards = getCards();
+        const emptyState = document.getElementById('suratSearchEmpty');
+        const keyword = (searchInput.value || '').trim().toLowerCase();
+        let firstVisible = null;
+        let shown = 0;
+
+        cards.forEach(function (card) {
+            const hay = (card.dataset.search || card.textContent || '').toLowerCase();
+            const isMatch = keyword === '' || hay.includes(keyword);
+            card.style.display = isMatch ? '' : 'none';
+            if (isMatch) {
+                shown++;
+                if (!firstVisible) firstVisible = card;
+            }
+        });
+
+        if (emptyState) {
+            emptyState.hidden = shown > 0;
+        }
+
+        if (selectFirstMatch && keyword !== '' && firstVisible && typeof firstVisible.click === 'function') {
+            firstVisible.click();
+        }
+    }
+
+    searchForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        filterSuratCards(true);
+    });
+
+    searchInput.addEventListener('input', function () {
+        filterSuratCards(false);
+    });
+    searchInput.addEventListener('keyup', function () {
+        filterSuratCards(false);
+    });
+    searchInput.addEventListener('change', function () {
+        filterSuratCards(false);
+    });
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () { filterSuratCards(false); });
+    } else {
+        filterSuratCards(false);
+    }
+})();
 </script>
 @endpush
