@@ -168,7 +168,10 @@ class _RekapAbsensiScreenState extends State<RekapAbsensiScreen> {
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     crossAxisCount: 2,
-                    childAspectRatio: 2.25,
+                    childAspectRatio: 
+                    MediaQuery.of(context).size.width <400
+                    ? 1.8
+                    : 2.25,
                     crossAxisSpacing: 10,
                     mainAxisSpacing: 10,
                     children: [
