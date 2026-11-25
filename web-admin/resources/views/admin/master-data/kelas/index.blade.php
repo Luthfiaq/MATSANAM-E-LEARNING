@@ -31,6 +31,40 @@
     </div>
 
 
+    <form method="GET" action="{{ route('admin.master-data.kelas.index') }}" class="mb-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4 xl:items-end">
+            <div>
+                <label for="q" class="mb-1 block text-xs font-semibold text-slate-600">Pencarian</label>
+                <input id="q" name="q" type="search" value="{{ $search }}" placeholder="Cari nama kelas atau wali kelas..."
+                       class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
+            </div>
+            <div>
+                <label for="tingkat" class="mb-1 block text-xs font-semibold text-slate-600">Tingkat</label>
+                <select id="tingkat" name="tingkat" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-800 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
+                    <option value="">Semua Tingkat</option>
+                    <option value="7" {{ ($tingkat) == '7' ? 'selected' : '' }}>Kelas 7</option>
+                    <option value="8" {{ ($tingkat) == '8' ? 'selected' : '' }}>Kelas 8</option>
+                    <option value="9" {{ ($tingkat) == '9' ? 'selected' : '' }}>Kelas 9</option>
+                </select>
+            </div>
+            <div>
+                <label for="wali_kelas" class="mb-1 block text-xs font-semibold text-slate-600">Wali Kelas</label>
+                <select id="wali_kelas" name="wali_kelas" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-800 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
+                    <option value="">Semua Wali Kelas</option>
+                    @foreach($waliKelasList as $waliOption)
+                        <option value="{{ $waliOption->id }}" {{ (string) $waliKelasFilter === (string) $waliOption->id ? 'selected' : '' }}>{{ $waliOption->nama_lengkap }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="flex gap-2">
+                <button type="submit" class="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">Terapkan</button>
+                <a href="{{ route('admin.master-data.kelas.index') }}" class="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">Reset</a>
+            </div>
+        </div>
+    </form>
+
+
     {{-- SUCCESS MESSAGE --}}
     @if(session('success'))
 
@@ -73,7 +107,7 @@
             </h2>
 
             <p class="text-sm text-slate-500 mt-1">
-                Total {{ $kelas->count() }} kelas
+                Menampilkan {{ $kelas->total() }} kelas
             </p>
 
         </div>
@@ -123,7 +157,7 @@
                         <tr class="hover:bg-slate-50">
 
                             <td class="px-6 py-4">
-                                {{ $loop->iteration }}
+                                {{ $kelas->firstItem() + $loop->index }}
                             </td>
 
                             <td class="px-6 py-4 font-semibold text-slate-700">
@@ -190,7 +224,7 @@
                                 </div>
 
                                 <p class="text-slate-600 font-semibold">
-                                    Belum ada data kelas
+                                    Tidak ada data kelas yang cocok dengan pencarian atau filter
                                 </p>
 
                                 <p class="text-slate-400 text-sm mt-1">

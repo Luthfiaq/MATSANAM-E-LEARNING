@@ -114,7 +114,6 @@ class PrimaryButton extends StatelessWidget {
           'foreground': AppColors.primary,
         };
       case ButtonVariant.primary:
-      default:
         return {'background': AppColors.primary, 'foreground': Colors.white};
     }
   }

@@ -479,7 +479,6 @@ class _HistoriSesiScreenState extends State<HistoriSesiScreen> {
     final active = session['status'] == 'aktif';
     final className = (schedule['kelas'] ?? '-').toString();
     final subject = (schedule['mapel'] ?? 'Mata Pelajaran').toString();
-    final sessionId = session['id']?.toString() ?? '';
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),

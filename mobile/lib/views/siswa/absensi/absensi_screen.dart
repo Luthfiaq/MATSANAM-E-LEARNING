@@ -69,12 +69,19 @@ class _AbsensiScreenState extends State<AbsensiScreen> {
     await _scannerController.stop();
 
     try {
-      final position = await _getCurrentPosition();
+      // QR payload is signed by a server-stored one-time token. The server still
+      // decides the real location mode; this flag only avoids asking for GPS
+      // when the active session is configured as unrestricted.
+      final locationMode = decoded['mode_lokasi']?.toString() ?? 'mts';
+      Position? position;
+      if (locationMode != 'bebas') {
+        position = await _getCurrentPosition();
+      }
       final response = await _service.scanQr(
         qrData: rawValue,
-        latitude: position.latitude,
-        longitude: position.longitude,
-        accuracy: position.accuracy,
+        latitude: position?.latitude,
+        longitude: position?.longitude,
+        accuracy: position?.accuracy,
       );
       final data = response['data'] is Map
           ? Map<String, dynamic>.from(response['data'] as Map)

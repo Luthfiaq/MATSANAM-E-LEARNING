@@ -20,7 +20,7 @@ class ProfilSiswaScreen extends StatefulWidget {
 }
 
 class _ProfilSiswaScreenState extends State<ProfilSiswaScreen> {
-  static const blue = Color(0xFF0755D9);
+  Color get blue => Theme.of(context).colorScheme.primary;
   Map<String, dynamic> profile = {}, user = {};
   bool loading = true,
       tugas = true,
@@ -118,7 +118,7 @@ class _ProfilSiswaScreenState extends State<ProfilSiswaScreen> {
       value,
     );
     if (mounted) {
-      MatsanamApp.ubahTema(
+      await MatsanamApp.ubahTema(
         context,
         value == 'Gelap'
             ? ThemeMode.dark
@@ -249,11 +249,11 @@ class _ProfilSiswaScreenState extends State<ProfilSiswaScreen> {
             },
             tooltip: 'Notifikasi Siswa',
           ),
-          const Padding(
-            padding: EdgeInsets.only(right: 14),
+          Padding(
+            padding: const EdgeInsets.only(right: 14),
             child: CircleAvatar(
               backgroundColor: blue,
-              child: Icon(Icons.person_outline, color: Colors.white),
+              child: const Icon(Icons.person_outline, color: Colors.white),
             ),
           ),
         ],

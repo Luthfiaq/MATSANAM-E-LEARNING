@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import '../../utils/constants.dart';
-import '../common/status_badge.dart';
 
 class FileUploadArea extends StatelessWidget {
   final List<File> files;

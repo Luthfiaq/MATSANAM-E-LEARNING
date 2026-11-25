@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\GlobalSearchController;
 use App\Http\Controllers\Admin\PenugasanController;
 use App\Http\Controllers\Admin\AbsensiController;
 use App\Http\Controllers\Admin\MateriController;
@@ -33,6 +34,7 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 // Admin routes (protected)
 Route::middleware(['auth', App\Http\Middleware\EnsureUserIsAdmin::class, App\Http\Middleware\LogAdminActivity::class])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/search', GlobalSearchController::class)->name('global-search');
 
     // Notification Center Admin
     Route::get('/notifications', [NotificationCenterController::class, 'index'])->name('notifications.index');
@@ -145,11 +147,14 @@ Route::middleware(['auth', App\Http\Middleware\EnsureUserIsAdmin::class, App\Htt
     // Nilai routes
     Route::get('/nilai', [NilaiController::class, 'index'])->name('nilai.index');
     Route::get('/nilai/{tugas_id}', [NilaiController::class, 'detail'])->name('nilai.detail');
+    Route::get('/nilai/pengumpulan/{submissionId}/file', [NilaiController::class, 'submissionFile'])->name('nilai.submission-file');
+    Route::get('/nilai/pengumpulan/{submissionId}/lampiran/{fileId}', [NilaiController::class, 'submissionAttachmentFile'])->name('nilai.submission-attachment-file');
     Route::post('/nilai', [NilaiController::class, 'store'])->name('nilai.store');
 
     // Absensi routes
     Route::get('/absensi/verifikasi', [AbsensiController::class, 'verifikasiSurat'])->name('absensi.verifikasi');
     Route::get('/absensi/histori', [AbsensiController::class, 'historiSurat'])->name('absensi.histori');
+    Route::get('/absensi/histori/export', [AbsensiController::class, 'exportHistoriSurat'])->name('absensi.histori.export');
     Route::get('/absensi/surat/{id}/file', [AbsensiController::class, 'fileSurat'])->name('absensi.surat.file');
     Route::post('/absensi/surat/{id}/approve', [AbsensiController::class, 'approveSurat'])->name('absensi.surat.approve');
     Route::post('/absensi/surat/{id}/reject', [AbsensiController::class, 'rejectSurat'])->name('absensi.surat.reject');

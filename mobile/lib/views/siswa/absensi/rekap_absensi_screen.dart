@@ -168,7 +168,7 @@ class _RekapAbsensiScreenState extends State<RekapAbsensiScreen> {
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     crossAxisCount: 2,
-                    childAspectRatio: 2.25,
+                    mainAxisExtent: 88,
                     crossAxisSpacing: 10,
                     mainAxisSpacing: 10,
                     children: [

@@ -226,69 +226,86 @@ class _PilihMapelKelasGuruScreenState extends State<PilihMapelKelasGuruScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
-      builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 12, 18, 22),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 42,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: _border,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Text(
-                subject,
-                style: TextStyle(
-                  color: _primaryText,
-                  fontSize: 19,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Pilih kelas untuk melihat dan mengelola materi.',
-                style: TextStyle(color: _secondaryText, fontSize: 13),
-              ),
-              const SizedBox(height: 12),
-              ...schedules.map(
-                (schedule) => ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const CircleAvatar(
-                    backgroundColor: AppColors.primaryLight,
-                    child: Icon(
-                      Icons.groups_outlined,
-                      color: AppColors.primary,
+      builder: (sheetContext) {
+        final maxSheetHeight = MediaQuery.sizeOf(sheetContext).height * .82;
+        return SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: maxSheetHeight),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 12, 18, 22),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 42,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: _border,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
-                  title: Text(
-                    _prettyClass(schedule['kelas']?.toString() ?? ''),
+                  const SizedBox(height: 18),
+                  Text(
+                    subject,
                     style: TextStyle(
                       color: _primaryText,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 19,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  subtitle: Text(
-                    '${schedule['hari'] ?? '-'} • ${schedule['jam_mulai'] ?? ''} - ${schedule['jam_selesai'] ?? ''}',
+                  const SizedBox(height: 4),
+                  Text(
+                    'Pilih kelas untuk melihat dan mengelola materi.',
+                    style: TextStyle(color: _secondaryText, fontSize: 13),
                   ),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-                    _openSchedule(schedule);
-                  },
-                ),
+                  const SizedBox(height: 12),
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: schedules.length,
+                      separatorBuilder: (_, __) => Divider(
+                        height: 1,
+                        color: _border,
+                      ),
+                      itemBuilder: (context, index) {
+                        final schedule = schedules[index];
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const CircleAvatar(
+                            backgroundColor: AppColors.primaryLight,
+                            child: Icon(
+                              Icons.groups_outlined,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          title: Text(
+                            _prettyClass(schedule['kelas']?.toString() ?? ''),
+                            style: TextStyle(
+                              color: _primaryText,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          subtitle: Text(
+                            '${schedule['hari'] ?? '-'} • ${schedule['jam_mulai'] ?? ''} - ${schedule['jam_selesai'] ?? ''}',
+                          ),
+                          trailing: const Icon(Icons.chevron_right_rounded),
+                          onTap: () {
+                            Navigator.pop(sheetContext);
+                            _openSchedule(schedule);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 

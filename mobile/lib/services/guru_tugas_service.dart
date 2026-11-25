@@ -1,15 +1,19 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/api_config.dart';
+import 'multipart_upload.dart';
 
-/// API client for teacher assignment CRUD operations.
+/// API client for Teacher assignment CRUD and its individual attachments.
 class GuruTugasService {
-  // Date pickers select the school's wall-clock time (WIB). Store UTC timestamps
-  // using a fixed UTC+7 conversion instead of relying on the device timezone.
+  static const int maxFileBytes = 20 * 1024 * 1024;
+  static const int maxFilesPerUpload = 20;
+  static const Duration uploadTimeout = Duration(minutes: 5);
+
   DateTime _schoolTimeToUtc(DateTime schoolWallClock) => DateTime.utc(
     schoolWallClock.year,
     schoolWallClock.month,
@@ -61,7 +65,10 @@ class GuruTugasService {
     required String jenis,
     required DateTime deadline,
     required int bobot,
+    List<PlatformFile> files = const [],
     PlatformFile? file,
+    String? clientRequestId,
+    UploadProgressCallback? onProgress,
   }) async {
     final decoded = await _send(
       method: 'POST',
@@ -72,8 +79,11 @@ class GuruTugasService {
         'jenis': jenis,
         'deadline': _schoolTimeToUtc(deadline).toIso8601String(),
         'bobot': bobot.toString(),
+        if (clientRequestId != null) 'client_request_id': clientRequestId,
       },
-      file: file,
+      files: files,
+      legacyFile: file,
+      onProgress: onProgress,
     );
     return _message(decoded, 'Tugas berhasil dibuat.');
   }
@@ -85,7 +95,10 @@ class GuruTugasService {
     required String jenis,
     required DateTime deadline,
     required int bobot,
+    List<PlatformFile> files = const [],
     PlatformFile? file,
+    String? attachmentBatchId,
+    UploadProgressCallback? onProgress,
   }) async {
     final decoded = await _send(
       method: 'PUT',
@@ -96,10 +109,70 @@ class GuruTugasService {
         'jenis': jenis,
         'deadline': _schoolTimeToUtc(deadline).toIso8601String(),
         'bobot': bobot.toString(),
+        if (attachmentBatchId != null) 'attachment_batch_id': attachmentBatchId,
       },
-      file: file,
+      files: files,
+      legacyFile: file,
+      onProgress: onProgress,
     );
     return _message(decoded, 'Tugas berhasil diperbarui.');
+  }
+
+  Future<Uint8List> downloadTaskAttachment({
+    required int taskId,
+    required String fileId,
+  }) async {
+    final token = await _requireToken();
+    final uri = Uri.parse('${ApiConfig.guruTugas}/$taskId/files/$fileId');
+    final response = await http
+        .get(uri, headers: {'Accept': '*/*', 'Authorization': 'Bearer $token'})
+        .timeout(ApiConfig.timeout);
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final decoded = _decode(response);
+      throw Exception(
+        _message(
+          decoded,
+          'Lampiran gagal diunduh (HTTP ${response.statusCode}).',
+        ),
+      );
+    }
+    return response.bodyBytes;
+  }
+
+  Future<String> deleteTaskAttachment({
+    required int taskId,
+    required String fileId,
+  }) async {
+    final decoded = await _delete(
+      Uri.parse('${ApiConfig.guruTugas}/$taskId/files/$fileId'),
+      'Lampiran gagal dihapus.',
+    );
+    return _message(decoded, 'Lampiran berhasil dihapus.');
+  }
+
+  Future<String> deleteAllTaskAttachments(int taskId) async {
+    final decoded = await _delete(
+      Uri.parse('${ApiConfig.guruTugas}/$taskId/files/all'),
+      'Semua lampiran gagal dihapus.',
+    );
+    return _message(decoded, 'Semua lampiran berhasil dihapus.');
+  }
+
+  Future<Map<String, dynamic>> _delete(Uri uri, String fallback) async {
+    final token = await _requireToken();
+    final response = await http
+        .delete(uri, headers: ApiConfig.headers(token))
+        .timeout(ApiConfig.timeout);
+    final decoded = _decode(response);
+    if (response.statusCode < 200 ||
+        response.statusCode >= 300 ||
+        decoded['success'] != true) {
+      throw Exception(
+        _message(decoded, '$fallback (HTTP ${response.statusCode}).'),
+      );
+    }
+    return decoded;
   }
 
   Future<String> deleteTask(int taskId) async {
@@ -126,8 +199,18 @@ class GuruTugasService {
     required String method,
     int? taskId,
     required Map<String, String> fields,
-    PlatformFile? file,
+    List<PlatformFile> files = const [],
+    PlatformFile? legacyFile,
+    UploadProgressCallback? onProgress,
   }) async {
+    if (files.length > maxFilesPerUpload) {
+      throw Exception('Maksimal 20 file dapat diunggah dalam satu proses.');
+    }
+    for (final file in files) {
+      _validateFile(file);
+    }
+    if (legacyFile != null) _validateFile(legacyFile);
+
     final token = await _requireToken();
     final baseUri = Uri.parse(ApiConfig.guruTugas);
     final uri = taskId == null
@@ -135,20 +218,38 @@ class GuruTugasService {
         : baseUri.replace(path: '${baseUri.path}/$taskId');
     late http.Response response;
 
-    if (file != null) {
-      if (file.bytes == null) {
-        throw Exception('File tidak dapat dibaca. Silakan pilih ulang.');
-      }
+    if (files.isNotEmpty || legacyFile != null) {
       final request = http.MultipartRequest('POST', uri)
         ..headers['Accept'] = 'application/json'
         ..headers['Authorization'] = 'Bearer $token'
         ..fields.addAll(fields);
       if (method == 'PUT') request.fields['_method'] = 'PUT';
-      request.files.add(
-        http.MultipartFile.fromBytes('file', file.bytes!, filename: file.name),
+
+      for (final file in files) {
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'files[]',
+            file.bytes!,
+            filename: file.name,
+          ),
+        );
+      }
+      // Backward compatibility with previous app builds using `file`.
+      if (legacyFile != null) {
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'file',
+            legacyFile.bytes!,
+            filename: legacyFile.name,
+          ),
+        );
+      }
+
+      response = await sendMultipartWithProgress(
+        request,
+        timeout: uploadTimeout,
+        onProgress: onProgress,
       );
-      final streamed = await request.send().timeout(ApiConfig.timeout);
-      response = await http.Response.fromStream(streamed);
     } else {
       final headers = ApiConfig.headers(token);
       final body = jsonEncode(fields);
@@ -156,6 +257,7 @@ class GuruTugasService {
           ? http.put(uri, headers: headers, body: body)
           : http.post(uri, headers: headers, body: body);
       response = await request.timeout(ApiConfig.timeout);
+      onProgress?.call(1.0);
     }
 
     final decoded = _decode(response);
@@ -172,12 +274,23 @@ class GuruTugasService {
     return decoded;
   }
 
+  void _validateFile(PlatformFile file) {
+    if (file.size > maxFileBytes) {
+      throw Exception('File "${file.name}" melebihi batas maksimal 20 MB.');
+    }
+    if (file.bytes == null) {
+      throw Exception(
+        'File "${file.name}" tidak dapat dibaca. Silakan pilih ulang.',
+      );
+    }
+  }
+
   Map<String, dynamic> _decode(http.Response response) {
     try {
       final decoded = jsonDecode(response.body);
       if (decoded is Map) return Map<String, dynamic>.from(decoded);
     } on FormatException {
-      // Return a useful fallback below for non-JSON responses (for example 500 HTML).
+      // A non-JSON response (for example an HTML 500 page) uses the fallback below.
     }
     return <String, dynamic>{};
   }

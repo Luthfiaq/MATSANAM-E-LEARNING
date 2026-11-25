@@ -17,6 +17,8 @@ class Penugasan extends Model
         'deadline',
         'file_materi',
         'bobot',
+        'client_request_id',
+        'last_attachment_batch_id',
     ];
 
     protected $casts = [
@@ -36,5 +38,10 @@ class Penugasan extends Model
     public function pengumpulan()
     {
         return $this->hasMany(PengumpulanTugas::class, 'penugasan_id');
+    }
+
+    public function files()
+    {
+        return $this->hasMany(PenugasanFile::class, 'penugasan_id')->orderBy('id');
     }
 }

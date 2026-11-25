@@ -143,58 +143,75 @@ class _PilihMapelKelasTugasScreenState
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
-      builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 12, 18, 22),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 42,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.border,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Text(subject, style: AppTypography.heading3),
-              const SizedBox(height: 4),
-              const Text(
-                'Pilih kelas untuk melihat dan mengelola tugas.',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-              ),
-              const SizedBox(height: 12),
-              ...schedules.map(
-                (schedule) => ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const CircleAvatar(
-                    backgroundColor: AppColors.primaryLight,
-                    child: Icon(
-                      Icons.school_outlined,
-                      color: AppColors.primary,
+      builder: (sheetContext) {
+        final maxSheetHeight = MediaQuery.sizeOf(sheetContext).height * .82;
+        return SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: maxSheetHeight),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 12, 18, 22),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 42,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.border,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
-                  title: Text(
-                    _prettyClass(schedule['kelas']?.toString() ?? ''),
+                  const SizedBox(height: 18),
+                  Text(subject, style: AppTypography.heading3),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Pilih kelas untuk melihat dan mengelola tugas.',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
                   ),
-                  subtitle: Text(
-                    '${schedule['hari'] ?? '-'} • ${schedule['jam_mulai'] ?? ''}',
+                  const SizedBox(height: 12),
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: schedules.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final schedule = schedules[index];
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const CircleAvatar(
+                            backgroundColor: AppColors.primaryLight,
+                            child: Icon(
+                              Icons.school_outlined,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          title: Text(
+                            _prettyClass(schedule['kelas']?.toString() ?? ''),
+                          ),
+                          subtitle: Text(
+                            '${schedule['hari'] ?? '-'} • ${schedule['jam_mulai'] ?? ''}',
+                          ),
+                          trailing: const Icon(Icons.chevron_right_rounded),
+                          onTap: () {
+                            Navigator.pop(sheetContext);
+                            _openSchedule(schedule);
+                          },
+                        );
+                      },
+                    ),
                   ),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-                    _openSchedule(schedule);
-                  },
-                ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 

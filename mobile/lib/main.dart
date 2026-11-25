@@ -40,9 +40,9 @@ class MatsanamApp extends StatefulWidget {
 
   static ThemeMode currentThemeMode = ThemeMode.light;
 
-  static void ubahTema(BuildContext context, ThemeMode mode) {
+  static Future<void> ubahTema(BuildContext context, ThemeMode mode) async {
     final state = context.findAncestorStateOfType<_MatsanamAppState>();
-    state?.ubahTema(mode);
+    await state?.ubahTema(mode);
   }
 
   @override
@@ -77,7 +77,7 @@ class _MatsanamAppState extends State<MatsanamApp> {
     }
   }
 
-  void ubahTema(ThemeMode mode) {
+  Future<void> ubahTema(ThemeMode mode) async {
     setState(() {
       _themeMode = mode;
       MatsanamApp.currentThemeMode = mode;
@@ -87,9 +87,8 @@ class _MatsanamAppState extends State<MatsanamApp> {
       ThemeMode.system => 'Sistem',
       _ => 'Terang',
     };
-    SharedPreferences.getInstance().then(
-      (prefs) => prefs.setString('siswa_theme', preference),
-    );
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('siswa_theme', preference);
   }
 
   ThemeData _theme(Brightness brightness) {

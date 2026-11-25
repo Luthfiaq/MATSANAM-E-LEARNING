@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -22,12 +21,12 @@ class BukaSesiScreen extends StatefulWidget {
 }
 
 class _BukaSesiScreenState extends State<BukaSesiScreen> {
-  String _locationMode = 'gps';
-  double? _locationLatitude;
-  double? _locationLongitude;
-  bool _readingLocation = false;
-  final _manualLatitudeController = TextEditingController();
-  final _manualLongitudeController = TextEditingController();
+  static const double _schoolLatitude = -7.6722077;
+  static const double _schoolLongitude = 112.0538249;
+
+  String _locationMode = 'mts';
+  double? _locationLatitude = _schoolLatitude;
+  double? _locationLongitude = _schoolLongitude;
   int _radius = 150;
   bool _toleransi = false;
   bool _loading = false;
@@ -63,8 +62,6 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
   void dispose() {
     _refreshTimer?.cancel();
     _attendanceTimer?.cancel();
-    _manualLatitudeController.dispose();
-    _manualLongitudeController.dispose();
     super.dispose();
   }
 
@@ -184,16 +181,33 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
       );
       final nextTotal =
           (data['total_students'] as num?)?.toInt() ?? _totalStudents;
-      final savedLocationMode = data['mode_lokasi']?.toString() ?? 'mts';
-      final savedLatitude = (data['lokasi_latitude'] as num?)?.toDouble();
-      final savedLongitude = (data['lokasi_longitude'] as num?)?.toDouble();
-      final savedRadius = (data['radius_meter'] as num?)?.toInt();
+      final savedLocationMode = data['mode_lokasi']?.toString() == 'bebas'
+          ? 'bebas'
+          : 'mts';
+      final savedLatitude = double.tryParse(
+        data['lokasi_latitude']?.toString() ?? '',
+      );
+      final savedLongitude = double.tryParse(
+        data['lokasi_longitude']?.toString() ?? '',
+      );
+      final savedRadius = int.tryParse(data['radius_meter']?.toString() ?? '');
+      final nextLatitude = savedLocationMode == 'bebas'
+          ? null
+          : (savedLatitude ?? _schoolLatitude);
+      final nextLongitude = savedLocationMode == 'bebas'
+          ? null
+          : (savedLongitude ?? _schoolLongitude);
+      final nextRadius = savedRadius ?? 150;
       final changed =
           _sessionActive != nextActive ||
           _sessionId != nextId ||
           _qrData != nextQr ||
           _expiredAt != nextExpiry ||
           _totalStudents != nextTotal ||
+          _locationMode != savedLocationMode ||
+          _locationLatitude != nextLatitude ||
+          _locationLongitude != nextLongitude ||
+          _radius != nextRadius ||
           _loading;
       if (changed) {
         setState(() {
@@ -202,14 +216,10 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
           _qrData = nextQr;
           _expiredAt = nextExpiry;
           _totalStudents = nextTotal;
-          if (savedLatitude != null && savedLongitude != null) {
-            _locationLatitude = savedLatitude;
-            _locationLongitude = savedLongitude;
-            _locationMode = savedLocationMode == 'bebas' ? 'gps' : 'manual';
-            if (savedRadius != null) _radius = savedRadius;
-            _manualLatitudeController.text = savedLatitude.toStringAsFixed(6);
-            _manualLongitudeController.text = savedLongitude.toStringAsFixed(6);
-          }
+          _locationMode = savedLocationMode;
+          _locationLatitude = nextLatitude;
+          _locationLongitude = nextLongitude;
+          _radius = nextRadius;
           _loading = false;
         });
       }
@@ -297,10 +307,9 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
 
     try {
       final scheduleId = widget.jadwal['jadwal_id'] ?? widget.jadwal['id'];
-      if (_locationLatitude == null || _locationLongitude == null) {
-        throw Exception(
-          'Tentukan lokasi presensi terlebih dahulu. Gunakan GPS saat berada di tempat presensi atau masukkan koordinat resmi madrasah.',
-        );
+      if (_locationMode == 'mts' &&
+          (_locationLatitude == null || _locationLongitude == null)) {
+        throw Exception('Lokasi sekolah belum tersedia. Muat ulang halaman.');
       }
       if (scheduleId == null || int.tryParse(scheduleId.toString()) == null) {
         throw Exception(
@@ -322,14 +331,14 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
             },
             body: json.encode({
               'jadwal_id': int.parse(scheduleId.toString()),
-              'mode_lokasi': _locationMode == 'gps' ? 'bebas' : 'mts',
+              'mode_lokasi': _locationMode,
               'mata_pelajaran': widget.jadwal['mata_pelajaran'] ?? 'Matematika',
               'kelas': widget.jadwal['kelas'] ?? '9A',
               'session_id': _sessionId,
               'qr_data': _qrData,
-              'lokasi_latitude': _locationLatitude,
-              'lokasi_longitude': _locationLongitude,
-              'radius_meter': _radius,
+              'lokasi_latitude': _locationMode == 'mts' ? _schoolLatitude : null,
+              'lokasi_longitude': _locationMode == 'mts' ? _schoolLongitude : null,
+              'radius_meter': _locationMode == 'mts' ? _radius : null,
               'toleransi_keterlambatan': _toleransi,
               'expired_at': _expiredAt?.toIso8601String(),
             }),
@@ -821,88 +830,9 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
     );
   }
 
-  Future<void> _ambilLokasiSaatIni() async {
-    setState(() => _readingLocation = true);
-    try {
-      if (!await Geolocator.isLocationServiceEnabled()) {
-        throw Exception(
-          'Aktifkan layanan lokasi/GPS perangkat terlebih dahulu.',
-        );
-      }
-      var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        throw Exception(
-          'Izin lokasi belum diberikan. Izinkan akses lokasi pada perangkat atau browser.',
-        );
-      }
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 25),
-        ),
-      );
-      if (position.accuracy > _radius) {
-        throw Exception(
-          'Akurasi GPS ±${position.accuracy.toStringAsFixed(0)} m masih lebih besar dari radius $_radius m. Coba lagi di area terbuka.',
-        );
-      }
-      if (!mounted) return;
-      setState(() {
-        _locationLatitude = position.latitude;
-        _locationLongitude = position.longitude;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Lokasi perangkat berhasil dibaca (akurasi ±${position.accuracy.toStringAsFixed(0)} m).',
-          ),
-        ),
-      );
-    } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error.toString().replaceFirst('Exception: ', '')),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _readingLocation = false);
-    }
-  }
-
-  void _simpanLokasiManual() {
-    final latitude = double.tryParse(_manualLatitudeController.text.trim());
-    final longitude = double.tryParse(_manualLongitudeController.text.trim());
-    if (latitude == null ||
-        longitude == null ||
-        latitude < -90 ||
-        latitude > 90 ||
-        longitude < -180 ||
-        longitude > 180) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Masukkan koordinat latitude dan longitude yang valid.',
-          ),
-        ),
-      );
-      return;
-    }
-    setState(() {
-      _locationLatitude = latitude;
-      _locationLongitude = longitude;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Titik lokasi khusus berhasil dipilih.')),
-    );
-  }
-
   Widget _buildLocationSection() {
+    final isSchoolMode = _locationMode == 'mts';
+
     return Container(
       padding: AppDimens.paddingLarge,
       decoration: BoxDecoration(
@@ -923,7 +853,7 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
                   borderRadius: BorderRadius.circular(AppDimens.radiusMedium),
                 ),
                 child: const Icon(
-                  Icons.my_location_rounded,
+                  Icons.location_on_rounded,
                   color: AppColors.primary,
                   size: 22,
                 ),
@@ -935,23 +865,17 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
                   children: [
                     Text('Lokasi Absensi', style: AppTypography.labelLarge),
                     Text(
-                      _locationLatitude == null
-                          ? 'Lokasi belum ditentukan'
-                          : (_sessionActive
-                                ? 'Lokasi sesi tersimpan'
-                                : (_locationMode == 'gps'
-                                      ? 'Lokasi perangkat saat ini'
-                                      : 'Titik lokasi khusus / madrasah')),
+                      isSchoolMode
+                          ? 'Validasi di area MTsN 6 Nganjuk'
+                          : 'Siswa dapat melakukan absensi dari mana saja',
                       style: AppTypography.bodySmall,
                     ),
                   ],
                 ),
               ),
               StatusBadge(
-                text: _locationLatitude == null ? 'Pilih lokasi' : 'Siap',
-                type: _locationLatitude == null
-                    ? BadgeType.warning
-                    : BadgeType.success,
+                text: 'Siap',
+                type: BadgeType.success,
               ),
             ],
           ),
@@ -959,105 +883,46 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
           RadioListTile<String>(
             contentPadding: EdgeInsets.zero,
             dense: true,
-            value: 'gps',
+            value: 'bebas',
             groupValue: _locationMode,
             onChanged: _sessionActive
                 ? null
                 : (value) => setState(() {
-                    _locationMode = value ?? 'gps';
+                    _locationMode = value ?? 'bebas';
                     _locationLatitude = null;
                     _locationLongitude = null;
                   }),
             title: const Text(
-              'Gunakan lokasi perangkat saat ini',
+              'Dimana Saja',
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
             ),
             subtitle: const Text(
-              'Pilih ini saat Guru sudah berada di titik presensi.',
+              'Tidak ada pembatasan jarak atau pemeriksaan lokasi sekolah.',
               style: TextStyle(fontSize: 11),
             ),
           ),
-          if (_locationMode == 'gps' && !_sessionActive) ...[
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _readingLocation ? null : _ambilLokasiSaatIni,
-                icon: _readingLocation
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.my_location_rounded),
-                label: Text(
-                  _readingLocation ? 'Mengambil lokasi…' : 'Ambil Lokasi GPS',
-                ),
-              ),
-            ),
-          ],
           RadioListTile<String>(
             contentPadding: EdgeInsets.zero,
             dense: true,
-            value: 'manual',
+            value: 'mts',
             groupValue: _locationMode,
             onChanged: _sessionActive
                 ? null
                 : (value) => setState(() {
-                    _locationMode = value ?? 'manual';
-                    _locationLatitude = null;
-                    _locationLongitude = null;
+                    _locationMode = value ?? 'mts';
+                    _locationLatitude = _schoolLatitude;
+                    _locationLongitude = _schoolLongitude;
                   }),
             title: const Text(
-              'Tentukan lokasi khusus / madrasah',
+              'Lokasi Sekolah MTsN 6 Nganjuk',
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
             ),
             subtitle: const Text(
-              'Masukkan koordinat resmi yang diberikan Admin madrasah.',
+              'Siswa harus berada dalam radius lokasi sekolah untuk melakukan absensi.',
               style: TextStyle(fontSize: 11),
             ),
           ),
-          if (_locationMode == 'manual' && !_sessionActive) ...[
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _manualLatitudeController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                      signed: true,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'Latitude',
-                      hintText: '-7.xxxxxx',
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextField(
-                    controller: _manualLongitudeController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                      signed: true,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'Longitude',
-                      hintText: '111.xxxxxx',
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: _simpanLokasiManual,
-                icon: const Icon(Icons.check_rounded),
-                label: const Text('Gunakan koordinat ini'),
-              ),
-            ),
-          ],
-          if (_locationLatitude != null && _locationLongitude != null)
+          if (isSchoolMode) ...[
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(10),
@@ -1065,38 +930,41 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
                 color: AppColors.successLight,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Text(
-                'Titik presensi: ${_locationLatitude!.toStringAsFixed(6)}, ${_locationLongitude!.toStringAsFixed(6)}',
-                style: const TextStyle(
+              child: const Text(
+                'Koordinat sekolah: -7.6722077, 112.0538249',
+                style: TextStyle(
                   color: AppColors.success,
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                 ),
               ),
             ),
-          const SizedBox(height: AppDimens.spacingLarge),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Radius', style: AppTypography.labelLarge),
-              Text(
-                '$_radius meter',
-                style: AppTypography.labelLarge.copyWith(
-                  color: AppColors.primary,
+            const SizedBox(height: AppDimens.spacingLarge),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Radius absensi', style: AppTypography.labelLarge),
+                Text(
+                  '$_radius meter',
+                  style: AppTypography.labelLarge.copyWith(
+                    color: AppColors.primary,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppDimens.spacingSmall),
-          Slider(
-            value: _radius.toDouble(),
-            min: 50,
-            max: 500,
-            divisions: 9,
-            activeColor: AppColors.primary,
-            label: '$_radius m',
-            onChanged: (value) => setState(() => _radius = value.toInt()),
-          ),
+              ],
+            ),
+            const SizedBox(height: AppDimens.spacingSmall),
+            Slider(
+              value: _radius.toDouble(),
+              min: 50,
+              max: 500,
+              divisions: 9,
+              activeColor: AppColors.primary,
+              label: '$_radius m',
+              onChanged: _sessionActive
+                  ? null
+                  : (value) => setState(() => _radius = value.toInt()),
+            ),
+          ],
         ],
       ),
     );

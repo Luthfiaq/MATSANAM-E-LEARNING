@@ -1,4 +1,5 @@
 import 'package:file_picker/file_picker.dart';
+import '../../../utils/camera_task_attachment.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -9,6 +10,8 @@ import '../../../widgets/common/siswa_bottom_navigation.dart';
 import '../dashboard/dashboard_siswa_page.dart';
 import '../materi/siswa_materi_screen.dart';
 import '../nilai/siswa_nilai_screen.dart';
+import '../nilai/detail_hasil_penilaian_screen.dart';
+import 'status_pengumpulan_screen.dart';
 import '../pengaturan/profil_siswa_screen.dart';
 
 class SiswaTugasScreen extends StatefulWidget {
@@ -243,8 +246,14 @@ class _SiswaTugasDetailScreenState extends State<SiswaTugasDetailScreen> {
   final _service = SiswaLearningService();
   final _answer = TextEditingController();
   Map<String, dynamic> _data = {};
-  PlatformFile? _file;
+  final List<PlatformFile> _files = [];
   bool _loading = true, _sending = false, _removeExistingFile = false;
+  bool _uploadFailed = false;
+  double? _uploadProgress;
+  String _uploadBatchId = DateTime.now().microsecondsSinceEpoch.toRadixString(
+    36,
+  );
+  String? _lastUploadFingerprint;
   String? _error;
 
   @override
@@ -282,50 +291,192 @@ class _SiswaTugasDetailScreenState extends State<SiswaTugasDetailScreen> {
   }
 
   Future<void> _pickFile() async {
+    const allowed = [
+      'pdf',
+      'doc',
+      'docx',
+      'xls',
+      'xlsx',
+      'ppt',
+      'pptx',
+      'jpg',
+      'jpeg',
+      'png',
+      'txt',
+      'zip',
+    ];
+    const maxFileBytes = 20 * 1024 * 1024;
+
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: const [
-        'pdf',
-        'doc',
-        'docx',
-        'xls',
-        'xlsx',
-        'ppt',
-        'pptx',
-        'jpg',
-        'jpeg',
-        'png',
-        'txt',
-        'zip',
-      ],
+      allowedExtensions: allowed,
+      allowMultiple: true,
       withData: true,
     );
     if (result == null || result.files.isEmpty) return;
-    final selected = result.files.single;
-    if (selected.bytes == null) {
-      _snack('File tidak dapat dibaca.', error: true);
+
+    if (_files.length + result.files.length > 20) {
+      _snack('Maksimal 20 file dalam satu pengumpulan.', error: true);
       return;
     }
-    if (selected.size > 10 * 1024 * 1024) {
-      _snack('Ukuran file maksimal 10 MB.', error: true);
+
+    final tooLarge = result.files.where((file) => file.size > maxFileBytes);
+    if (tooLarge.isNotEmpty) {
+      final names = tooLarge.map((file) => file.name).join(', ');
+      _snack(
+        'Setiap file maksimal 20 MB. Ukuran terlalu besar: $names',
+        error: true,
+      );
       return;
     }
+
+    final unreadable = result.files.where((file) => file.bytes == null);
+    if (unreadable.isNotEmpty) {
+      _snack(
+        'Ada file yang tidak dapat dibaca. Silakan pilih ulang.',
+        error: true,
+      );
+      return;
+    }
+
     setState(() {
-      _file = selected;
-      _removeExistingFile = false;
+      _files.addAll(result.files);
     });
   }
 
-  Future<void> _downloadLampiran(String? url, String fileName) async {
+  Future<void> _capturePhoto() async {
+    try {
+      final photo = await captureTaskPhoto(namePrefix: 'jawaban_tugas');
+      if (photo == null || !mounted) return;
+      if (photo.size > 20 * 1024 * 1024) {
+        _snack('Foto melebihi batas 20 MB dan tidak ditambahkan.', error: true);
+        return;
+      }
+      if (photo.bytes == null) {
+        _snack('Foto tidak dapat dibaca. Silakan ambil ulang.', error: true);
+        return;
+      }
+      if (_files.length >= 20) {
+        _snack('Maksimal 20 file dalam satu pengumpulan.', error: true);
+        return;
+      }
+      final duplicate = _files.any(
+        (file) => file.name == photo.name && file.size == photo.size,
+      );
+      if (duplicate) return;
+      setState(() => _files.add(photo));
+      _snack('Foto berhasil ditambahkan sebagai lampiran.');
+    } catch (error) {
+      _snack('Gagal mengambil foto: $error', error: true);
+    }
+  }
+
+  List<Map<String, dynamic>> _taskAttachmentFiles() {
+    final rawFiles = _data['lampiran_files'];
+    if (rawFiles is List && rawFiles.isNotEmpty) {
+      return rawFiles.whereType<Map>().map((item) {
+        final file = Map<String, dynamic>.from(item);
+        return <String, dynamic>{
+          'id': file['id'],
+          'name': file['file_name'] ?? 'Lampiran dari Guru',
+          'url': file['file_url'],
+          'size_bytes': file['size_bytes'],
+          'available': file['available'] != false,
+        };
+      }).toList();
+    }
+
+    // Legacy single-file response from older backend builds.
+    if (_data['lampiran_url'] != null && _data['lampiran_nama_file'] != null) {
+      return [
+        {
+          'name': _data['lampiran_nama_file'],
+          'url': _data['lampiran_url'],
+          'size_bytes': null,
+          'available': true,
+        },
+      ];
+    }
+    return [];
+  }
+
+  List<Map<String, dynamic>> _existingSubmissionFiles(
+    Map<String, dynamic> submission,
+  ) {
+    final rawFiles = submission['files'];
+    if (rawFiles is List && rawFiles.isNotEmpty) {
+      return rawFiles.whereType<Map>().map((item) {
+        final file = Map<String, dynamic>.from(item);
+        return <String, dynamic>{
+          'name': file['file_name'] ?? file['name'] ?? 'Lampiran',
+          'url': file['file_url'] ?? file['url'],
+          'size_bytes': file['size_bytes'],
+        };
+      }).toList();
+    }
+
+    if (submission['file_name'] != null && submission['file_url'] != null) {
+      return [
+        {
+          'name': submission['file_name'],
+          'url': submission['file_url'],
+          'size_bytes': null,
+        },
+      ];
+    }
+    return [];
+  }
+
+  String _formatFileSize(int bytes) {
+    if (bytes >= 1024 * 1024) {
+      return '${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB';
+    }
+    return '${(bytes / 1024).toStringAsFixed(0)} KB';
+  }
+
+  Future<void> _downloadLampiran(String? url, String? fileName) async {
     if (url == null || url.isEmpty) return;
+
+    final resolvedName = fileName?.trim() ?? '';
+    final extensionMatch = RegExp(
+      r'\.([A-Za-z0-9]{1,10})$',
+    ).firstMatch(resolvedName);
+    const allowedExtensions = {
+      'pdf',
+      'doc',
+      'docx',
+      'xls',
+      'xlsx',
+      'ppt',
+      'pptx',
+      'jpg',
+      'jpeg',
+      'png',
+      'txt',
+      'zip',
+      'rar',
+    };
+    final extension = extensionMatch?.group(1)?.toLowerCase();
+
+    if (extension == null || !allowedExtensions.contains(extension)) {
+      _snack(
+        'Nama file lampiran dari server tidak memiliki ekstensi yang valid. Minta Guru memeriksa atau mengunggah ulang lampiran.',
+        error: true,
+      );
+      return;
+    }
+
     try {
       final bytes = await _service.downloadAuthorizedFile(url);
-      await FilePicker.platform.saveFile(
+      final savedPath = await FilePicker.platform.saveFile(
         dialogTitle: 'Simpan lampiran tugas',
-        fileName: fileName,
+        fileName: resolvedName,
         bytes: bytes,
       );
-      if (mounted) _snack('Lampiran siap disimpan.');
+      if (!mounted) return;
+      if (savedPath != null) {
+        _snack('Lampiran berhasil disimpan.');
+      }
     } catch (e) {
       if (mounted) _snack('Gagal mengunduh lampiran: $e', error: true);
     }
@@ -335,30 +486,69 @@ class _SiswaTugasDetailScreenState extends State<SiswaTugasDetailScreen> {
     final submission = _data['pengumpulan'] is Map
         ? Map<String, dynamic>.from(_data['pengumpulan'])
         : <String, dynamic>{};
-    final hasExistingFile =
-        submission['file_url'] != null && !_removeExistingFile;
-    if (_answer.text.trim().isEmpty && _file == null && !hasExistingFile) {
-      _snack('Isi jawaban atau lampirkan berkas terlebih dahulu.', error: true);
+    final existingFiles = _existingSubmissionFiles(submission);
+    final hasExistingFiles = existingFiles.isNotEmpty && !_removeExistingFile;
+
+    if (_answer.text.trim().isEmpty && _files.isEmpty && !hasExistingFiles) {
+      _snack(
+        'Isi jawaban atau lampirkan minimal satu file sebelum mengumpulkan.',
+        error: true,
+      );
       return;
     }
-    setState(() => _sending = true);
+
+    final fingerprint = [
+      widget.tugasId,
+      _answer.text.trim(),
+      _removeExistingFile,
+      ..._files.map(
+        (file) =>
+            '${file.name}:${file.size}:${file.bytes == null ? 0 : Object.hashAll(file.bytes!)}',
+      ),
+    ].join('|');
+    if (_lastUploadFingerprint != fingerprint) {
+      _uploadBatchId = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
+      _lastUploadFingerprint = fingerprint;
+    }
+
+    setState(() {
+      _sending = true;
+      _uploadFailed = false;
+      _uploadProgress = _files.isEmpty ? null : 0;
+    });
     try {
       await _service.kumpulkanTugas(
         tugasId: widget.tugasId,
         jawaban: _answer.text.trim(),
-        fileBytes: _file?.bytes,
-        fileName: _file?.name,
+        files: List<PlatformFile>.from(_files),
         hapusFile: _removeExistingFile,
+        uploadBatchId: _uploadBatchId,
+        onProgress: (progress) {
+          if (!mounted || _files.isEmpty) return;
+          setState(() => _uploadProgress = progress);
+        },
       );
       if (!mounted) return;
       _snack('Pengumpulan tugas berhasil disimpan.');
       await _load();
       setState(() {
-        _file = null;
+        _files.clear();
         _removeExistingFile = false;
+        _uploadFailed = false;
+        _uploadProgress = null;
+        _uploadBatchId = DateTime.now().microsecondsSinceEpoch.toRadixString(
+          36,
+        );
+        _lastUploadFingerprint = null;
       });
     } catch (e) {
-      if (mounted) _snack(e.toString(), error: true);
+      if (mounted) {
+        setState(() => _uploadFailed = _files.isNotEmpty);
+        _snack(
+          '${e.toString()}. File tetap tersimpan di daftar; tekan tombol pengumpulan lagi untuk retry.',
+          error: true,
+        );
+      }
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -459,17 +649,58 @@ class _SiswaTugasDetailScreenState extends State<SiswaTugasDetailScreen> {
                     ),
                   ),
                 ),
-                if (_data['ada_lampiran'] == true) ...[
+                if (_taskAttachmentFiles().isNotEmpty) ...[
                   const SizedBox(height: 12),
                   _Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.attach_file_rounded),
-                      title: const Text('Lampiran dari Guru'),
-                      subtitle: const Text('Unduh file instruksi tugas'),
-                      trailing: const Icon(Icons.download_rounded),
-                      onTap: () => _downloadLampiran(
-                        _data['lampiran_url']?.toString(),
-                        'lampiran-tugas-${widget.tugasId}',
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Lampiran dari Guru',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            'Pilih satu file untuk diunduh.',
+                            style: TextStyle(color: AppColors.textSecondary),
+                          ),
+                          ..._taskAttachmentFiles().map((file) {
+                            final name = file['name']?.toString() ?? 'Lampiran';
+                            final size = file['size_bytes'];
+                            final available = file['available'] != false;
+                            return ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: const Icon(
+                                Icons.insert_drive_file_outlined,
+                              ),
+                              title: Text(
+                                name,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              subtitle: Text(
+                                !available
+                                    ? 'File tidak ditemukan di penyimpanan'
+                                    : size is num
+                                    ? '${_formatFileSize(size.toInt())} • Ketuk untuk mengunduh'
+                                    : 'Ketuk untuk mengunduh file ini',
+                              ),
+                              trailing: const Icon(Icons.download_rounded),
+                              enabled: available,
+                              onTap: available
+                                  ? () => _downloadLampiran(
+                                      file['url']?.toString(),
+                                      name,
+                                    )
+                                  : null,
+                            );
+                          }),
+                        ],
                       ),
                     ),
                   ),
@@ -501,48 +732,138 @@ class _SiswaTugasDetailScreenState extends State<SiswaTugasDetailScreen> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        if (submission['file_name'] != null &&
-                            !_removeExistingFile)
-                          ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: const Icon(
-                              Icons.insert_drive_file_outlined,
-                            ),
-                            title: Text('${submission['file_name']}'),
-                            subtitle: const Text(
-                              'File terkumpul • ketuk untuk mengunduh',
-                            ),
-                            onTap: () => _downloadLampiran(
-                              submission['file_url']?.toString(),
-                              submission['file_name'].toString(),
-                            ),
-                            trailing: locked
-                                ? null
-                                : IconButton(
-                                    icon: const Icon(Icons.close_rounded),
-                                    onPressed: () => setState(
-                                      () => _removeExistingFile = true,
-                                    ),
-                                  ),
+                        if (_existingSubmissionFiles(submission).isNotEmpty &&
+                            !_removeExistingFile) ...[
+                          const Text(
+                            'Lampiran yang sudah dikumpulkan',
+                            style: TextStyle(fontWeight: FontWeight.w700),
                           ),
-                        if (_file != null)
-                          ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: const Icon(Icons.attach_file_rounded),
-                            title: Text(_file!.name),
-                            subtitle: Text(
-                              '${(_file!.size / 1024 / 1024).toStringAsFixed(2)} MB',
+                          ..._existingSubmissionFiles(submission).map((file) {
+                            final name = file['name']?.toString() ?? 'Lampiran';
+                            final size = file['size_bytes'];
+                            return ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: const Icon(
+                                Icons.insert_drive_file_outlined,
+                              ),
+                              title: Text(
+                                name,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              subtitle: Text(
+                                size is num
+                                    ? '${_formatFileSize(size.toInt())} • Ketuk untuk mengunduh'
+                                    : 'File terkumpul • Ketuk untuk mengunduh',
+                              ),
+                              onTap: () => _downloadLampiran(
+                                file['url']?.toString(),
+                                name,
+                              ),
+                            );
+                          }),
+                          if (!locked)
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: TextButton.icon(
+                                onPressed: () =>
+                                    setState(() => _removeExistingFile = true),
+                                icon: const Icon(Icons.delete_outline_rounded),
+                                label: const Text('Hapus semua lampiran lama'),
+                              ),
                             ),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.close),
-                              onPressed: () => setState(() => _file = null),
+                        ],
+                        if (_removeExistingFile)
+                          const Padding(
+                            padding: EdgeInsets.only(bottom: 8),
+                            child: Text(
+                              'Lampiran lama akan dihapus saat pengumpulan diperbarui.',
+                              style: TextStyle(color: AppColors.warning),
                             ),
+                          ),
+                        if (_files.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          const Text(
+                            'File yang akan diunggah',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          ..._files.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final file = entry.value;
+                            return ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: const Icon(Icons.attach_file_rounded),
+                              title: Text(
+                                file.name,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              subtitle: Text(_formatFileSize(file.size)),
+                              trailing: IconButton(
+                                tooltip: 'Hapus pilihan file',
+                                icon: const Icon(Icons.close_rounded),
+                                onPressed: _sending
+                                    ? null
+                                    : () => setState(
+                                        () => _files.removeAt(index),
+                                      ),
+                              ),
+                            );
+                          }),
+                        ],
+                        if (!locked)
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: _sending ? null : _pickFile,
+                                  icon: const Icon(Icons.upload_file_rounded),
+                                  label: const Text('Pilih File'),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: _sending ? null : _capturePhoto,
+                                  icon: const Icon(Icons.camera_alt_outlined),
+                                  label: const Text('Ambil Foto'),
+                                ),
+                              ),
+                            ],
                           ),
                         if (!locked)
-                          OutlinedButton.icon(
-                            onPressed: _pickFile,
-                            icon: const Icon(Icons.upload_file_rounded),
-                            label: const Text('Pilih Berkas (maks. 10 MB)'),
+                          const Padding(
+                            padding: EdgeInsets.only(top: 4),
+                            child: Text(
+                              'Kamu dapat memilih beberapa file sekaligus. Batas 20 MB berlaku untuk setiap file.',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                        if (_sending && _uploadProgress != null) ...[
+                          const SizedBox(height: 10),
+                          LinearProgressIndicator(value: _uploadProgress),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Mengunggah lampiran ${(100 * (_uploadProgress ?? 0)).round()}%',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                        if (_uploadFailed)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 8),
+                            child: Text(
+                              'Pengiriman belum terkonfirmasi. Retry memakai ID yang sama agar lampiran tidak terkirim ganda.',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppColors.warning,
+                              ),
+                            ),
                           ),
                         if (nilai != null) ...[
                           const Divider(height: 24),
@@ -579,9 +900,11 @@ class _SiswaTugasDetailScreenState extends State<SiswaTugasDetailScreen> {
                                     )
                                   : const Icon(Icons.send_rounded),
                               label: Text(
-                                submission.isEmpty
-                                    ? 'Kirim Pengumpulan'
-                                    : 'Perbarui Pengumpulan',
+                                _uploadFailed
+                                    ? 'Coba Kirim Lagi'
+                                    : (submission.isEmpty
+                                          ? 'Kirim Pengumpulan'
+                                          : 'Perbarui Pengumpulan'),
                               ),
                             ),
                           ),
@@ -597,6 +920,35 @@ class _SiswaTugasDetailScreenState extends State<SiswaTugasDetailScreen> {
                     ),
                   ),
                 ),
+                if (submission.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            StatusPengumpulanScreen(tugasId: widget.tugasId),
+                      ),
+                    ),
+                    icon: const Icon(Icons.timeline_rounded),
+                    label: const Text('Lihat Status Pengumpulan'),
+                  ),
+                  if (nilai != null) ...[
+                    const SizedBox(height: 8),
+                    FilledButton.icon(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => DetailHasilPenilaianScreen(
+                            tugasId: widget.tugasId,
+                          ),
+                        ),
+                      ),
+                      icon: const Icon(Icons.assessment_outlined),
+                      label: const Text('Lihat Detail Hasil Penilaian'),
+                    ),
+                  ],
+                ],
               ],
             ),
     );

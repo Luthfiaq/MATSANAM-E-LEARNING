@@ -3,33 +3,67 @@
 @section('title', 'Rekap Presensi Siswa')
 
 @section('content')
-<div class="mb-6 flex items-center justify-between flex-col md:flex-row gap-4">
-    <div>
-        <h1 class="text-2xl font-bold text-gray-900">Rekap Presensi Siswa</h1>
-        <p class="text-sm text-gray-500">Statistik kehadiran siswa berdasarkan periode & kelas</p>
+<div class="mb-6 flex flex-col gap-4">
+    <div class="flex flex-col justify-between gap-2 md:flex-row md:items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Rekap Presensi Siswa</h1>
+            <p class="text-sm text-gray-500">Statistik kehadiran siswa berdasarkan periode, tanggal, dan kelas</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            <a href="{{ route('admin.absensi.export', ['format' => 'excel', 'periode' => $periode, 'tanggal' => $tanggalFilter, 'kelas' => $request->input('kelas'), 'q' => $search, 'semua_periode' => $semuaPeriode ? 1 : null]) }}"
+               class="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700">
+                📊 Unduh Excel
+            </a>
+            <a href="{{ route('admin.absensi.export', ['format' => 'pdf', 'periode' => $periode, 'tanggal' => $tanggalFilter, 'kelas' => $request->input('kelas'), 'q' => $search, 'semua_periode' => $semuaPeriode ? 1 : null]) }}"
+               class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700">
+                🖨️ Cetak / PDF
+            </a>
+        </div>
     </div>
-    <form method="GET" class="flex items-center gap-3 flex-wrap">
-        <input type="month" name="periode" value="{{ $request->periode ?? date('Y-m') }}" 
-               class="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
-        <select name="kelas" class="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
-            <option value="">Semua Kelas</option>
-            @foreach($kelasList as $kelas)
-            <option value="{{ $kelas->id }}" {{ $request->kelas == $kelas->id ? 'selected' : '' }}>
-                {{ $kelas->nama_kelas }}
-            </option>
-            @endforeach
-        </select>
-        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
-            Filter
-        </button>
-        <a href="{{ route('admin.absensi.export', ['format' => 'excel', 'periode' => $request->periode ?? date('Y-m'), 'kelas' => $request->kelas]) }}" 
-           class="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700">
-            📊 Unduh Excel (.xls)
-        </a>
-        <a href="{{ route('admin.absensi.export', ['format' => 'pdf', 'periode' => $request->periode ?? date('Y-m'), 'kelas' => $request->kelas]) }}" 
-           class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700">
-            🖨️ Cetak / PDF
-        </a>
+
+    <form id="rekap-filter-form" method="GET" action="{{ route('admin.absensi.rekap') }}" class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <input type="hidden" name="semua_periode" id="rekap-semua-periode" value="{{ $semuaPeriode ? '1' : '0' }}">
+        <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5 xl:items-end">
+            <div>
+                <label for="rekap-search" class="mb-1.5 block text-xs font-semibold text-gray-600">Cari Nama / NIS / NISN</label>
+                <input id="rekap-search" type="search" name="q" value="{{ $search }}"
+                       placeholder="Masukkan nama atau nomor induk..."
+                       class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
+            </div>
+            <div>
+                <label for="rekap-periode" class="mb-1.5 block text-xs font-semibold text-gray-600">Periode Bulanan</label>
+                <input id="rekap-periode" type="month" name="periode" value="{{ $semuaPeriode ? '' : ($periode ?? '') }}"
+                       class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
+            </div>
+            <div>
+                <label for="rekap-tanggal" class="mb-1.5 block text-xs font-semibold text-gray-600">Tanggal Harian</label>
+                <input id="rekap-tanggal" type="date" name="tanggal" value="{{ $tanggalFilter ?? '' }}"
+                       class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
+            </div>
+            <div>
+                <label for="rekap-kelas" class="mb-1.5 block text-xs font-semibold text-gray-600">Filter Kelas</label>
+                <select id="rekap-kelas" name="kelas"
+                        class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
+                    <option value="">Semua Kelas</option>
+                    @foreach($kelasList as $kelas)
+                        <option value="{{ $kelas->id }}" {{ (string) $request->input('kelas') === (string) $kelas->id ? 'selected' : '' }}>
+                            {{ $kelas->nama_kelas }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="flex gap-2">
+                <button type="submit" class="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">Terapkan</button>
+                <button type="button" id="rekap-reset-all" class="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">Reset</button>
+            </div>
+        </div>
+        <div class="mt-3 flex flex-wrap items-center gap-2">
+            <span class="mr-1 text-xs font-semibold text-gray-500">Filter cepat:</span>
+            <button type="button" id="rekap-hari-ini" class="rounded-lg border border-blue-200 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50">Hari Ini</button>
+            @if($semuaPeriode)
+                <span class="text-xs text-gray-500">Menampilkan semua periode.</span>
+            @endif
+        </div>
     </form>
 </div>
 
@@ -142,11 +176,52 @@
 </div>
 
 <script>
-function exportPresensi(format) {
-    const periode = document.querySelector('input[name="periode"]').value;
-    const kelas = document.querySelector('select[name="kelas"]').value;
-    
-    window.location.href = `/admin/absensi/export?format=${format}&periode=${periode}&kelas=${kelas}`;
-}
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('rekap-filter-form');
+    const searchInput = document.getElementById('rekap-search');
+    const periodeInput = document.getElementById('rekap-periode');
+    const tanggalInput = document.getElementById('rekap-tanggal');
+    const kelasInput = document.getElementById('rekap-kelas');
+    const semuaPeriodeInput = document.getElementById('rekap-semua-periode');
+
+    const localDateValue = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const applyQuickDate = (offsetDays) => {
+        const date = new Date();
+        date.setDate(date.getDate() + offsetDays);
+        const value = localDateValue(date);
+        tanggalInput.value = value;
+        periodeInput.value = value.slice(0, 7);
+        semuaPeriodeInput.value = '0';
+        form.requestSubmit();
+    };
+
+    tanggalInput?.addEventListener('change', function () {
+        if (this.value) {
+            periodeInput.value = this.value.slice(0, 7);
+            semuaPeriodeInput.value = '0';
+        }
+    });
+
+    periodeInput?.addEventListener('change', function () {
+        tanggalInput.value = '';
+        semuaPeriodeInput.value = '0';
+    });
+
+    document.getElementById('rekap-hari-ini')?.addEventListener('click', () => applyQuickDate(0));
+    document.getElementById('rekap-reset-all')?.addEventListener('click', function () {
+        searchInput.value = '';
+        periodeInput.value = '';
+        tanggalInput.value = '';
+        kelasInput.value = '';
+        semuaPeriodeInput.value = '1';
+        form.requestSubmit();
+    });
+});
 </script>
 @endsection

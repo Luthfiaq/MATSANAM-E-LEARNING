@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rekap Absensi {{ $periode }} - MATSANAM</title>
+    <title>Rekap Absensi {{ $tanggal ?: ($semuaPeriode ? 'Semua Periode' : $periode) }} - MATSANAM</title>
     <style>
         * { box-sizing: border-box; }
         body { margin: 24px; color: #0f172a; font-family: Arial, Helvetica, sans-serif; font-size: 12px; }
@@ -29,14 +29,23 @@
 </head>
 <body>
     <div class="toolbar">
-        <a href="{{ route('admin.absensi.rekap', ['periode' => $periode, 'kelas' => $kelas->id ?? null]) }}">Kembali ke Rekap</a>
+        <a href="{{ route('admin.absensi.rekap', ['periode' => $periode, 'tanggal' => $tanggal, 'kelas' => $kelas->id ?? null, 'q' => $search, 'semua_periode' => $semuaPeriode ? 1 : null]) }}">Kembali ke Rekap</a>
         <button type="button" onclick="window.print()">Cetak / Simpan sebagai PDF</button>
     </div>
 
     <header>
         <h1>MTsN 6 NGANJUK</h1>
         <p><strong>LAPORAN REKAPITULASI PRESENSI SISWA</strong></p>
-        <p>Periode: {{ \Carbon\Carbon::createFromFormat('Y-m', $periode)->translatedFormat('F Y') }}</p>
+        @if($tanggal)
+            <p>Tanggal: {{ \Carbon\Carbon::createFromFormat('Y-m-d', $tanggal)->translatedFormat('d F Y') }}</p>
+        @elseif($semuaPeriode)
+            <p>Periode: Semua Data</p>
+        @else
+            <p>Periode: {{ \Carbon\Carbon::createFromFormat('Y-m', $periode)->translatedFormat('F Y') }}</p>
+        @endif
+        @if($search)
+            <p>Pencarian: {{ $search }}</p>
+        @endif
     </header>
 
     <div class="meta">
@@ -75,7 +84,7 @@
                     <td>{{ $absen->keterangan ?: '-' }}</td>
                 </tr>
             @empty
-                <tr><td colspan="10" class="empty">Tidak ada data presensi pada periode dan kelas yang dipilih.</td></tr>
+                <tr><td colspan="10" class="empty">Tidak ada data presensi pada filter yang dipilih.</td></tr>
             @endforelse
         </tbody>
     </table>

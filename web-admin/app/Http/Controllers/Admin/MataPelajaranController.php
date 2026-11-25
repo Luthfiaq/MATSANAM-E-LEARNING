@@ -12,15 +12,37 @@ use Illuminate\View\View;
 
 class MataPelajaranController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $mataPelajaran = MataPelajaran::query()
-            ->withCount(['jadwalPelajaran' => fn ($query) => $query])
-            ->orderBy('kode')
-            ->paginate(20);
-        return view('admin.master-data.mata-pelajaran.index', compact('mataPelajaran'));
-    }
+        $validated = $request->validate([
+            'q' => ['nullable', 'string', 'max:100'],
+            'penggunaan' => ['nullable', Rule::in(['digunakan', 'belum_digunakan'])],
+        ]);
 
+        $search = trim((string) ($validated['q'] ?? ''));
+        $penggunaan = $validated['penggunaan'] ?? '';
+
+        $query = MataPelajaran::query()
+            ->withCount('jadwalPelajaran');
+
+        if ($search !== '') {
+            $query->where(function ($builder) use ($search) {
+                $builder->where('kode', 'like', "%{$search}%")
+                    ->orWhere('nama', 'like', "%{$search}%")
+                    ->orWhere('deskripsi', 'like', "%{$search}%");
+            });
+        }
+
+        if ($penggunaan === 'digunakan') {
+            $query->has('jadwalPelajaran');
+        } elseif ($penggunaan === 'belum_digunakan') {
+            $query->doesntHave('jadwalPelajaran');
+        }
+
+        $mataPelajaran = $query->orderBy('kode')->paginate(20)->withQueryString();
+
+        return view('admin.master-data.mata-pelajaran.index', compact('mataPelajaran', 'search', 'penggunaan'));
+    }
     public function create(): View
     {
         return view('admin.master-data.mata-pelajaran.create');

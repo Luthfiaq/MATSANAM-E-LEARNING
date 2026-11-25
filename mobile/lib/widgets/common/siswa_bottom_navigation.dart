@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../utils/constants.dart';
-
 class SiswaBottomNavigationBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -40,12 +38,12 @@ class SiswaBottomNavigationBar extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: SizedBox(
-          height: 62,
+          height: 64,
           child: Row(
             children: List.generate(_items.length, (index) {
               final selected = index == currentIndex;
               final color = selected
-                  ? AppColors.primary
+                  ? theme.colorScheme.primary
                   : theme.colorScheme.onSurface.withValues(alpha: .6);
               return Expanded(
                 child: InkWell(

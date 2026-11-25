@@ -263,6 +263,7 @@
         const selectedTheme = theme === 'dark' ? 'dark' : 'light';
         document.documentElement.classList.toggle('dark', selectedTheme === 'dark');
         document.documentElement.dataset.theme = selectedTheme;
+        document.documentElement.style.colorScheme = selectedTheme;
         try { localStorage.setItem('theme', selectedTheme); } catch (error) {}
         updateThemeButton();
     }

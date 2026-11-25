@@ -135,7 +135,6 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       case BadgeType.primary:
         return AppColors.primary;
       case BadgeType.neutral:
-      default:
         return AppColors.textSecondary;
     }
   }

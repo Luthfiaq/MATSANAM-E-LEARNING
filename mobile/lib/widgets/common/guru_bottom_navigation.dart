@@ -11,8 +11,8 @@ class GuruBottomNavigation extends StatelessWidget {
   static const List<String> _routes = [
     '/guru/dashboard',
     '/materi',
+    '/guru/tugas/pilih-mapel',
     '/guru/absensi/pilih-mapel',
-    '/guru/nilai',
     '/pengaturan',
   ];
 
@@ -42,12 +42,12 @@ class GuruBottomNavigation extends StatelessWidget {
           label: 'Materi',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.fact_check_outlined),
-          label: 'Presensi',
+          icon: Icon(Icons.assignment_outlined),
+          label: 'Tugas',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.analytics_outlined),
-          label: 'Nilai',
+          icon: Icon(Icons.fact_check_outlined),
+          label: 'Absensi',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.person_outline_rounded),

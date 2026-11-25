@@ -12,17 +12,47 @@ use Illuminate\View\View;
 
 class KelasController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $kelas = Kelas::with('waliKelas')
-            ->withCount(['siswa', 'jadwalPelajaran'])
-            ->orderBy('tingkat')
-            ->orderBy('nama_kelas')
-            ->paginate(20);
+        $validated = $request->validate([
+            'q' => ['nullable', 'string', 'max:100'],
+            'tingkat' => ['nullable', Rule::in(['7', '8', '9'])],
+            'wali_kelas' => ['nullable', 'integer', 'exists:guru,id'],
+        ]);
 
-        return view('admin.master-data.kelas.index', compact('kelas'));
+        $search = trim((string) ($validated['q'] ?? ''));
+        $tingkat = $validated['tingkat'] ?? '';
+        $waliKelasFilter = $validated['wali_kelas'] ?? '';
+
+        $query = Kelas::query()
+            ->with('waliKelas')
+            ->withCount(['siswa', 'jadwalPelajaran']);
+
+        if ($search !== '') {
+            $query->where(function ($builder) use ($search) {
+                $builder->where('nama_kelas', 'like', "%{$search}%")
+                    ->orWhereHas('waliKelas', function ($guruQuery) use ($search) {
+                        $guruQuery->where('nama_lengkap', 'like', "%{$search}%");
+                    });
+                if (ctype_digit($search)) {
+                    $builder->orWhere('tingkat', (int) $search);
+                }
+            });
+        }
+
+        if ($tingkat !== '') {
+            $query->where('tingkat', $tingkat);
+        }
+
+        if ($waliKelasFilter !== '') {
+            $query->where('wali_kelas_id', $waliKelasFilter);
+        }
+
+        $kelas = $query->orderBy('tingkat')->orderBy('nama_kelas')->paginate(20)->withQueryString();
+        $waliKelasList = Guru::whereHas('user')->orderBy('nama_lengkap')->get(['id', 'nama_lengkap']);
+
+        return view('admin.master-data.kelas.index', compact('kelas', 'waliKelasList', 'search', 'tingkat', 'waliKelasFilter'));
     }
-
     public function create(): View
     {
         $guru = Guru::whereHas('user')->orderBy('nama_lengkap')->get();

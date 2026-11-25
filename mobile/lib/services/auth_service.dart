@@ -136,15 +136,15 @@ class AuthService {
       if (data['user'] is! Map) return cachedAuthData();
       return data;
     } on SocketException {
-      return cachedAuthData();
+      return await cachedAuthData();
     } on TimeoutException {
-      return cachedAuthData();
+      return await cachedAuthData();
     } on http.ClientException {
-      return cachedAuthData();
+      return await cachedAuthData();
     } catch (_) {
       // Cache tetap hanya dipakai sebagai fallback tampilan/routing lokal;
       // seluruh request data tetap divalidasi oleh backend dengan token.
-      return cachedAuthData();
+      return await cachedAuthData();
     }
   }
 

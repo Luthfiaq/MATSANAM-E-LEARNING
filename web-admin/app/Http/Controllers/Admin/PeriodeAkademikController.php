@@ -13,12 +13,39 @@ use Illuminate\View\View;
 
 class PeriodeAkademikController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $periode = PeriodeAkademik::orderByDesc('tanggal_mulai')->paginate(20);
-        return view('admin.master-data.periode-akademik.index', compact('periode'));
-    }
+        $validated = $request->validate([
+            'q' => ['nullable', 'string', 'max:100'],
+            'semester' => ['nullable', Rule::in(['ganjil', 'genap'])],
+            'status' => ['nullable', Rule::in(['aktif', 'nonaktif'])],
+        ]);
 
+        $search = trim((string) ($validated['q'] ?? ''));
+        $semester = $validated['semester'] ?? '';
+        $status = $validated['status'] ?? '';
+
+        $query = PeriodeAkademik::query();
+
+        if ($search !== '') {
+            $query->where(function ($builder) use ($search) {
+                $builder->where('nama', 'like', "%{$search}%")
+                    ->orWhere('tahun_ajaran', 'like', "%{$search}%");
+            });
+        }
+
+        if ($semester !== '') {
+            $query->where('semester', $semester);
+        }
+
+        if ($status !== '') {
+            $query->where('is_active', $status === 'aktif');
+        }
+
+        $periode = $query->orderByDesc('tanggal_mulai')->paginate(20)->withQueryString();
+
+        return view('admin.master-data.periode-akademik.index', compact('periode', 'search', 'semester', 'status'));
+    }
     public function create(): View
     {
         return view('admin.master-data.periode-akademik.create');

@@ -21,6 +21,51 @@
 </div>
 @endif
 
+@if(session('error'))
+<div class="mb-4 rounded-lg bg-red-50 border border-red-200 p-4">
+    <p class="text-sm text-red-700">{{ session('error') }}</p>
+</div>
+@endif
+
+<form method="GET" action="{{ route('admin.penugasan.index') }}" class="mb-5 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+    <div class="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto_auto] md:items-end">
+        <div>
+            <label for="penugasan-search" class="mb-1.5 block text-xs font-semibold text-gray-600">Pencarian</label>
+            <input
+                id="penugasan-search"
+                type="search"
+                name="q"
+                value="{{ $filters['q'] ?? '' }}"
+                placeholder="Cari nama/NIP guru, mapel, kelas, hari, atau ruangan..."
+                class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            >
+        </div>
+        <div>
+            <label for="penugasan-kelas" class="mb-1.5 block text-xs font-semibold text-gray-600">Filter Kelas</label>
+            <select
+                id="penugasan-kelas"
+                name="kelas"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            >
+                <option value="">Semua Kelas</option>
+                @foreach($kelasList as $kelas)
+                    <option value="{{ $kelas->id }}" {{ (string) ($filters['kelas'] ?? '') === (string) $kelas->id ? 'selected' : '' }}>
+                        {{ $kelas->nama_kelas }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+        <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700">
+            Cari / Filter
+        </button>
+        @if(!empty($filters['q']) || !empty($filters['kelas']))
+            <a href="{{ route('admin.penugasan.index') }}" class="rounded-lg border border-gray-300 px-4 py-2.5 text-center text-sm font-semibold text-gray-600 transition hover:bg-gray-50">
+                Reset
+            </a>
+        @endif
+    </div>
+</form>
+
 <div class="bg-white rounded-lg shadow-sm overflow-hidden">
     <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
@@ -88,10 +133,15 @@
                     <td colspan="7" class="px-6 py-12 text-center text-gray-500">
                         <div class="flex flex-col items-center gap-2">
                             <span class="text-4xl">📭</span>
-                            <span>Belum ada data penugasan</span>
-                            <a href="{{ route('admin.penugasan.create') }}" class="text-blue-600 hover:text-blue-700 text-sm font-medium">
-                                Tambah Penugasan Baru →
-                            </a>
+                            @if(!empty($filters['q']) || !empty($filters['kelas']))
+                                <span>Tidak ada penugasan yang sesuai dengan pencarian atau filter.</span>
+                                <a href="{{ route('admin.penugasan.index') }}" class="text-blue-600 hover:text-blue-700 text-sm font-medium">Hapus filter →</a>
+                            @else
+                                <span>Belum ada data penugasan</span>
+                                <a href="{{ route('admin.penugasan.create') }}" class="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                                    Tambah Penugasan Baru →
+                                </a>
+                            @endif
                         </div>
                     </td>
                 </tr>

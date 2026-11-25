@@ -8,7 +8,6 @@ import '../../../config/api_config.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/session.dart';
 import '../../../widgets/common/empty_state.dart';
-import '../../../widgets/common/guru_bottom_navigation.dart';
 import '../../../widgets/common/guru_profile_summary_card.dart';
 
 class NilaiPilihMapelKelasScreen extends StatefulWidget {
@@ -250,7 +249,6 @@ class _NilaiPilihMapelKelasScreenState
                 ],
               ),
             ),
-      bottomNavigationBar: const GuruBottomNavigation(currentIndex: 3),
     );
   }
 

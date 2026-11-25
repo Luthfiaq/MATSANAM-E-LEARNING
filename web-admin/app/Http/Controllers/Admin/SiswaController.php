@@ -15,18 +15,46 @@ use Illuminate\View\View;
 
 class SiswaController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $siswa = Siswa::query()
+        $validated = $request->validate([
+            'q' => ['nullable', 'string', 'max:100'],
+            'kelas' => ['nullable', 'integer', 'exists:kelas,id'],
+            'status' => ['nullable', Rule::in(['aktif', 'nonaktif'])],
+        ]);
+
+        $search = trim((string) ($validated['q'] ?? ''));
+        $kelasFilter = $validated['kelas'] ?? '';
+        $status = $validated['status'] ?? '';
+
+        $query = Siswa::query()
             ->whereHas('user')
-            ->with(['user', 'kelas'])
-            ->orderBy('nama_lengkap')
-            ->paginate(15)
-            ->withQueryString();
+            ->with(['user', 'kelas']);
 
-        return view('admin.master-data.siswa.index', compact('siswa'));
+        if ($search !== '') {
+            $query->where(function ($builder) use ($search) {
+                $builder->where('nama_lengkap', 'like', "%{$search}%")
+                    ->orWhere('nis', 'like', "%{$search}%")
+                    ->orWhere('nisn', 'like', "%{$search}%")
+                    ->orWhereHas('user', function ($userQuery) use ($search) {
+                        $userQuery->where('email', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        if ($kelasFilter !== '') {
+            $query->where('kelas_id', $kelasFilter);
+        }
+
+        if ($status !== '') {
+            $query->whereHas('user', fn ($userQuery) => $userQuery->where('is_active', $status === 'aktif'));
+        }
+
+        $siswa = $query->orderBy('nama_lengkap')->paginate(15)->withQueryString();
+        $kelasList = Kelas::orderBy('tingkat')->orderBy('nama_kelas')->get();
+
+        return view('admin.master-data.siswa.index', compact('siswa', 'kelasList', 'search', 'kelasFilter', 'status'));
     }
-
     public function create(): View
     {
         $kelas = Kelas::orderBy('tingkat')->orderBy('nama_kelas')->get();

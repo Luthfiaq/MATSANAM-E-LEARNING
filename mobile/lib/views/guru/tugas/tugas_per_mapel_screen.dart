@@ -99,46 +99,105 @@ class _TugasPerMapelScreenState extends State<TugasPerMapelScreen> {
     }
   }
 
+  List<Map<String, dynamic>> _taskAttachments(Map<String, dynamic> tugas) {
+    final raw = tugas['lampiran_files'];
+    if (raw is List) {
+      final files = raw
+          .whereType<Map>()
+          .map((file) => Map<String, dynamic>.from(file))
+          .toList();
+      if (files.isNotEmpty) return files;
+    }
+
+    // Backward compatibility for responses from an older backend.
+    final legacyPath = tugas['file_materi']?.toString();
+    if (legacyPath == null || legacyPath.isEmpty) return [];
+    return [
+      {
+        'id': 'legacy',
+        'file_name': legacyPath.split('/').last,
+        'available': true,
+      },
+    ];
+  }
+
   Future<void> _downloadAttachment(Map<String, dynamic> tugas) async {
-    final taskId = tugas['id']?.toString();
-    final storedPath = tugas['file_materi']?.toString();
-    if (taskId == null || storedPath == null || storedPath.isEmpty) {
+    final taskId = int.tryParse(tugas['id']?.toString() ?? '');
+    final attachments = _taskAttachments(tugas);
+    if (taskId == null || attachments.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Tugas ini tidak memiliki lampiran.')),
       );
       return;
     }
 
+    // Select exactly one file to download; never download the whole list at once.
+    final selected = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Pilih lampiran yang ingin diunduh',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              ...attachments.map((file) {
+                final name = file['file_name']?.toString() ?? 'Lampiran';
+                final available = file['available'] != false;
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.insert_drive_file_outlined),
+                  title: Text(
+                    name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: const Icon(Icons.download_outlined),
+                  enabled: available,
+                  onTap: available
+                      ? () => Navigator.pop(sheetContext, file)
+                      : null,
+                );
+              }),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (selected == null || !mounted) return;
+
+    final fileId = selected['id']?.toString();
+    final fileName = selected['file_name']?.toString() ?? 'lampiran';
+    if (fileId == null || fileId.isEmpty) return;
+
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token');
-      if (token == null || token.isEmpty) {
-        throw Exception('Sesi login tidak ditemukan. Silakan login kembali.');
-      }
-      final response = await http
-          .get(
-            Uri.parse('${ApiConfig.guruTugas}/$taskId/file'),
-            headers: {'Accept': '*/*', 'Authorization': 'Bearer $token'},
-          )
-          .timeout(ApiConfig.timeout);
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception(
-          'Lampiran gagal diunduh (HTTP ${response.statusCode}).',
-        );
-      }
-      final fileName = storedPath.split('/').last;
-      await FilePicker.platform.saveFile(
+      final bytes = await _tugasService.downloadTaskAttachment(
+        taskId: taskId,
+        fileId: fileId,
+      );
+      final savedPath = await FilePicker.platform.saveFile(
         dialogTitle: 'Simpan lampiran tugas',
         fileName: fileName,
-        bytes: response.bodyBytes,
+        bytes: bytes,
       );
+      if (!mounted) return;
+      if (savedPath != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('File "$fileName" berhasil disimpan.')),
+        );
+      }
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(error.toString().replaceFirst('Exception: ', '')),
           backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
         ),
       );
     }
@@ -755,15 +814,13 @@ class _TugasPerMapelScreenState extends State<TugasPerMapelScreen> {
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed:
-                            (tugas['file_materi']?.toString().isNotEmpty ??
-                                false)
+                        onPressed: _taskAttachments(tugas).isNotEmpty
                             ? () => _downloadAttachment(tugas)
                             : null,
                         icon: const Icon(Icons.download_rounded),
                         label: Text(
-                          (tugas['file_materi']?.toString().isNotEmpty ?? false)
-                              ? 'Unduh'
+                          _taskAttachments(tugas).isNotEmpty
+                              ? 'Unduh (${_taskAttachments(tugas).length})'
                               : 'Tanpa File',
                         ),
                         style: OutlinedButton.styleFrom(

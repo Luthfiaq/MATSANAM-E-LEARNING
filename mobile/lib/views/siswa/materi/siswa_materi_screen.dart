@@ -1,6 +1,4 @@
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 
 import '../../../services/api_exception.dart';
@@ -12,6 +10,7 @@ import '../dashboard/dashboard_siswa_page.dart';
 import '../nilai/siswa_nilai_screen.dart';
 import '../pengaturan/profil_siswa_screen.dart';
 import '../tugas/siswa_tugas_screen.dart';
+import 'siswa_materi_detail_screen.dart';
 
 class SiswaMateriScreen extends StatefulWidget {
   final int? mapelId;
@@ -28,6 +27,7 @@ class _SiswaMateriScreenState extends State<SiswaMateriScreen> {
   final _searchController = TextEditingController();
   List<Map<String, dynamic>> _mapel = [];
   List<Map<String, dynamic>> _materi = [];
+  final Set<int> _completedMateriIds = {};
   bool _loading = true;
   String? _error;
   String _tipe = 'semua';
@@ -252,15 +252,36 @@ class _SiswaMateriScreenState extends State<SiswaMateriScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         isThreeLine: true,
-                        trailing: const Icon(Icons.chevron_right_rounded),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => SiswaMateriDetailScreen(
-                              materiId: (item['id'] as num).toInt(),
-                            ),
-                          ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (_completedMateriIds.contains((item['id'] as num).toInt()))
+                              const Padding(
+                                padding: EdgeInsets.only(right: 6),
+                                child: Icon(
+                                  Icons.check_circle_rounded,
+                                  size: 18,
+                                  color: AppColors.success,
+                                ),
+                              ),
+                            const Icon(Icons.chevron_right_rounded),
+                          ],
                         ),
+                        onTap: () async {
+                          final materiId = (item['id'] as num).toInt();
+                          final completed = await Navigator.push<bool>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => SiswaMateriDetailScreen(
+                                materiId: materiId,
+                                initialCompleted: _completedMateriIds.contains(materiId),
+                              ),
+                            ),
+                          );
+                          if (completed == true && mounted) {
+                            setState(() => _completedMateriIds.add(materiId));
+                          }
+                        },
                       ),
                     );
                   },
@@ -290,219 +311,6 @@ class _SiswaMateriScreenState extends State<SiswaMateriScreen> {
   }
 }
 
-class SiswaMateriDetailScreen extends StatefulWidget {
-  final int materiId;
-  const SiswaMateriDetailScreen({super.key, required this.materiId});
-  @override
-  State<SiswaMateriDetailScreen> createState() =>
-      _SiswaMateriDetailScreenState();
-}
-
-class _SiswaMateriDetailScreenState extends State<SiswaMateriDetailScreen> {
-  final _service = SiswaLearningService();
-  Map<String, dynamic>? _data;
-  bool _loading = true;
-  String? _error;
-  bool _savingFile = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    try {
-      final data = await _service.detailMateri(widget.materiId);
-      if (mounted)
-        setState(() {
-          _data = data;
-          _error = null;
-          _loading = false;
-        });
-    } catch (e) {
-      if (mounted)
-        setState(() {
-          _error = e.toString();
-          _loading = false;
-        });
-    }
-  }
-
-  Future<void> _download() async {
-    final url = _data?['file_url']?.toString();
-    if (url == null || url.isEmpty) return;
-    setState(() => _savingFile = true);
-    try {
-      final bytes = await _service.downloadAuthorizedFile(url);
-      final fileName =
-          (_data?['nama_file'] ??
-                  'materi-${widget.materiId}.${_data?['ekstensi'] ?? 'pdf'}')
-              .toString();
-      await FilePicker.platform.saveFile(
-        dialogTitle: 'Simpan materi',
-        fileName: fileName,
-        bytes: bytes,
-      );
-      if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Berkas materi siap disimpan.')),
-        );
-    } catch (e) {
-      if (mounted)
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Gagal mengunduh: $e')));
-    } finally {
-      if (mounted) setState(() => _savingFile = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final data = _data ?? {};
-    return Scaffold(
-      appBar: AppBar(title: const Text('Detail Materi')),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(_error!),
-              ),
-            )
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                _SurfaceCard(
-                  child: Padding(
-                    padding: const EdgeInsets.all(18),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _Tag(
-                          text: (data['tipe'] ?? 'materi')
-                              .toString()
-                              .toUpperCase(),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          '${data['judul'] ?? '-'}',
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '${data['mapel'] ?? '-'} • ${data['kelas'] ?? '-'}',
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Guru: ${data['guru'] ?? '-'}',
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _SurfaceCard(
-                  child: Padding(
-                    padding: const EdgeInsets.all(18),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Deskripsi Materi',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          (data['deskripsi'] ?? 'Tidak ada deskripsi tambahan.')
-                              .toString(),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _SurfaceCard(
-                  child: Padding(
-                    padding: const EdgeInsets.all(18),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Lampiran',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        if (data['ada_file'] == true)
-                          ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: const Icon(
-                              Icons.insert_drive_file_outlined,
-                              color: AppColors.primary,
-                            ),
-                            title: Text(
-                              '${data['nama_file'] ?? 'Berkas materi'}',
-                            ),
-                            subtitle: Text('${data['ekstensi'] ?? 'File'}'),
-                            trailing: _savingFile
-                                ? const CircularProgressIndicator()
-                                : IconButton(
-                                    icon: const Icon(Icons.download_rounded),
-                                    onPressed: _download,
-                                  ),
-                          ),
-                        if (data['ada_link'] == true)
-                          ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: const Icon(
-                              Icons.link_rounded,
-                              color: AppColors.primary,
-                            ),
-                            title: const Text('Buka tautan materi'),
-                            subtitle: Text(
-                              '${data['link']}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            onTap: () async {
-                              final uri = Uri.tryParse('${data['link']}');
-                              if (uri != null)
-                                await launchUrl(
-                                  uri,
-                                  mode: LaunchMode.externalApplication,
-                                );
-                            },
-                          ),
-                        if (data['ada_file'] != true &&
-                            data['ada_link'] != true)
-                          const Text('Materi ini tidak memiliki lampiran.'),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-    );
-  }
-}
-
 class _SurfaceCard extends StatelessWidget {
   final Widget child;
   const _SurfaceCard({required this.child});
@@ -516,27 +324,6 @@ class _SurfaceCard extends StatelessWidget {
       ),
     ),
     child: child,
-  );
-}
-
-class _Tag extends StatelessWidget {
-  final String text;
-  const _Tag({required this.text});
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-    decoration: BoxDecoration(
-      color: AppColors.primaryLight,
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: Text(
-      text,
-      style: const TextStyle(
-        color: AppColors.primary,
-        fontSize: 11,
-        fontWeight: FontWeight.w800,
-      ),
-    ),
   );
 }
 

@@ -15,6 +15,7 @@ class PengumpulanTugas extends Model
         'file_jawaban',
         'waktu_pengumpulan',
         'status',
+        'last_upload_batch_id',
     ];
 
     protected $casts = [
@@ -34,5 +35,10 @@ class PengumpulanTugas extends Model
     public function nilai()
     {
         return $this->hasOne(Nilai::class, 'pengumpulan_id');
+    }
+
+    public function files()
+    {
+        return $this->hasMany(PengumpulanTugasFile::class, 'pengumpulan_id')->orderBy('id');
     }
 }

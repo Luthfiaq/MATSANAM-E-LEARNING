@@ -7,6 +7,7 @@ use App\Models\Penugasan;
 use App\Models\PengumpulanTugas;
 use App\Models\Nilai;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class NilaiController extends Controller
 {
@@ -34,12 +35,37 @@ class NilaiController extends Controller
             "jadwal.kelas", 
             "jadwal.mataPelajaran", 
             "pengumpulan.siswa", 
-            "pengumpulan.nilai"
+            "pengumpulan.nilai",
+            "pengumpulan.files"
         ])->findOrFail($tugasId);
 
         $pengumpulan = $tugas->pengumpulan;
 
         return view("admin.nilai.detail", compact("tugas", "pengumpulan"));
+    }
+
+    /** Download a legacy primary submission file through the authenticated Admin route. */
+    public function submissionFile(int $submissionId)
+    {
+        $submission = PengumpulanTugas::findOrFail($submissionId);
+        abort_if(blank($submission->file_jawaban), 404, 'Berkas pengumpulan tidak tersedia.');
+        abort_unless(Storage::disk('local')->exists($submission->file_jawaban), 404, 'Berkas pengumpulan tidak ditemukan.');
+
+        return Storage::disk('local')->download(
+            $submission->file_jawaban,
+            basename($submission->file_jawaban),
+        );
+    }
+
+    /** Download one attachment for an Admin reviewing a task submission. */
+    public function submissionAttachmentFile(int $submissionId, int $fileId)
+    {
+        $submission = PengumpulanTugas::findOrFail($submissionId);
+        $attachment = $submission->files()->whereKey($fileId)->firstOrFail();
+        $disk = Storage::disk($attachment->disk ?: 'local');
+        abort_unless($disk->exists($attachment->file_path), 404, 'Berkas pengumpulan tidak ditemukan.');
+
+        return $disk->download($attachment->file_path, $attachment->original_name);
     }
 
     public function store(Request $request)

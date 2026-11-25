@@ -23,6 +23,26 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
   bool _isLoading = true;
   Map<String, dynamic> _dashboardData = {};
 
+  Color get _surface => Theme.of(context).colorScheme.surface;
+  Color get _border => Theme.of(context).colorScheme.outlineVariant;
+  Color get _textPrimary => Theme.of(context).colorScheme.onSurface;
+  Color get _textSecondary => Theme.of(context).colorScheme.onSurfaceVariant;
+  Color get _primary => Theme.of(context).colorScheme.primary;
+
+  String get _greeting {
+    final hour = DateTime.now().hour;
+    if (hour < 11) return 'Selamat Pagi';
+    if (hour < 15) return 'Selamat Siang';
+    if (hour < 18) return 'Selamat Sore';
+    return 'Selamat Malam';
+  }
+
+  String get _teacherFirstName {
+    final fullName = (_dashboardData['nama_guru'] ?? 'Guru').toString().trim();
+    if (fullName.isEmpty) return 'Guru';
+    return fullName.split(RegExp(r'\s+')).first;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -112,18 +132,21 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: theme.colorScheme.surface,
+        foregroundColor: theme.colorScheme.onSurface,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Dashboard',
               style: TextStyle(
-                color: AppColors.textPrimary,
+                color: _textPrimary,
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
               ),
@@ -139,10 +162,10 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
                   ),
                 ),
                 const SizedBox(width: 6),
-                const Text(
+                Text(
                   'GURU AKTIF',
                   style: TextStyle(
-                    color: AppColors.textSecondary,
+                    color: _textSecondary,
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
@@ -166,9 +189,9 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
             child: Container(
               width: 36,
               height: 36,
-              decoration: const BoxDecoration(
-                color: AppColors.primary,
-                shape: BoxShape.circle,
+              decoration: BoxDecoration(
+                color: _primary,
+                borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(
                 Icons.person_outline,
@@ -244,12 +267,12 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
                   ),
                 ),
               ),
-              const Icon(Icons.sync, color: Colors.white, size: 20),
+              const Icon(Icons.school_outlined, color: Colors.white, size: 22),
             ],
           ),
           const SizedBox(height: 16),
           Text(
-            'Selamat datang, ${_dashboardData['nama_guru'] ?? 'Guru'} 👋',
+            '$_greeting, $_teacherFirstName 👋',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 20,
@@ -284,7 +307,7 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
             'AKTIF',
             '${_dashboardData['total_kelas'] ?? '—'}',
             'Kelas',
-            AppColors.primary,
+            _primary,
           ),
         ),
         const SizedBox(width: 12),
@@ -293,7 +316,7 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
             'TOTAL',
             '${_dashboardData['total_siswa'] ?? '—'}',
             'Siswa',
-            AppColors.info,
+            Theme.of(context).colorScheme.tertiary,
           ),
         ),
         const SizedBox(width: 12),
@@ -302,7 +325,7 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
             'KEHADIRAN',
             '${_dashboardData['kehadiran'] ?? '—'}',
             'Siswa',
-            AppColors.success,
+            const Color(0xFF059669),
           ),
         ),
       ],
@@ -318,9 +341,9 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: _surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: _border),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.03),
@@ -334,8 +357,8 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
         children: [
           Text(
             label,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
+            style: TextStyle(
+              color: _textSecondary,
               fontSize: 10,
               fontWeight: FontWeight.w600,
             ),
@@ -349,13 +372,7 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
               fontWeight: FontWeight.w700,
             ),
           ),
-          Text(
-            subtitle,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 12,
-            ),
-          ),
+          Text(subtitle, style: TextStyle(color: _textSecondary, fontSize: 12)),
         ],
       ),
     );
@@ -368,23 +385,20 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'MENU UTAMA',
               style: TextStyle(
-                color: AppColors.textSecondary,
+                color: _textSecondary,
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
               ),
             ),
-            TextButton(
-              onPressed: () {},
-              child: const Text(
-                'Akses Cepat',
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
+            Text(
+              'Akses Cepat',
+              style: TextStyle(
+                color: _primary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
@@ -397,7 +411,7 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
                 'Materi',
                 'Materi & Modul Ajar',
                 Icons.book_outlined,
-                AppColors.primary,
+                _primary,
                 route: '/materi',
               ),
             ),
@@ -407,7 +421,7 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
                 'Tugas',
                 'Penugasan & Evaluasi',
                 Icons.assignment_outlined,
-                AppColors.info,
+                _primary,
                 badge: '${_dashboardData['tugas_menunggu'] ?? 0}',
                 route: '/guru/tugas/pilih-mapel',
               ),
@@ -422,7 +436,7 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
                 'Absensi',
                 'Presensi & QR Code',
                 Icons.qr_code_scanner,
-                AppColors.success,
+                const Color(0xFF059669),
                 route: '/guru/absensi/pilih-mapel',
               ),
             ),
@@ -432,7 +446,7 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
                 'Nilai',
                 'Input & Rekap Siswa',
                 Icons.bar_chart_rounded,
-                AppColors.secondary,
+                const Color(0xFF9333EA),
                 route: '/guru/nilai',
               ),
             ),
@@ -459,9 +473,9 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: _surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: _border),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.03),
@@ -492,13 +506,17 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.warningLight,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? const Color(0xFF78350F)
+                          : const Color(0xFFFEF3C7),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
                       badge,
-                      style: const TextStyle(
-                        color: AppColors.warning,
+                      style: TextStyle(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? const Color(0xFFFDE68A)
+                            : const Color(0xFFD97706),
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                       ),
@@ -510,8 +528,8 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
             const SizedBox(height: 12),
             Text(
               title,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
+              style: TextStyle(
+                color: _textPrimary,
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
               ),
@@ -519,10 +537,7 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
             const SizedBox(height: 4),
             Text(
               subtitle,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 12,
-              ),
+              style: TextStyle(color: _textSecondary, fontSize: 12),
             ),
           ],
         ),
@@ -537,10 +552,10 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'AKTIVITAS TERBARU & PERHATIAN',
               style: TextStyle(
-                color: AppColors.textSecondary,
+                color: _textSecondary,
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
               ),
@@ -563,26 +578,26 @@ class _DashboardGuruScreenState extends State<DashboardGuruScreen> {
           width: double.infinity,
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: _surface,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: _border),
           ),
-          child: const Column(
+          child: Column(
             children: [
-              Icon(Icons.history_rounded, size: 28, color: AppColors.textMuted),
-              SizedBox(height: 8),
+              Icon(Icons.history_rounded, size: 28, color: _textSecondary),
+              const SizedBox(height: 8),
               Text(
                 'Belum ada ringkasan aktivitas',
                 style: TextStyle(
-                  color: AppColors.textPrimary,
+                  color: _textPrimary,
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              SizedBox(height: 4),
+              const SizedBox(height: 4),
               Text(
                 'Aktivitas terbaru belum disediakan oleh API dashboard.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                style: TextStyle(color: _textSecondary, fontSize: 12),
               ),
             ],
           ),

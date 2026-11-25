@@ -17,11 +17,49 @@ use Illuminate\View\View;
 
 class PenugasanController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $jadwal = JadwalPelajaran::with(['guru', 'kelas', 'mataPelajaran', 'periode'])
-            ->orderBy('hari')->orderBy('jam_mulai')->paginate(15);
-        return view('admin.penugasan.index', compact('jadwal'));
+        $filters = $request->validate([
+            'q' => ['nullable', 'string', 'max:100'],
+            'kelas' => ['nullable', 'integer', 'exists:kelas,id'],
+        ]);
+
+        $query = JadwalPelajaran::query()
+            ->with(['guru', 'kelas', 'mataPelajaran', 'periode']);
+
+        if (! empty($filters['q'])) {
+            $keyword = trim($filters['q']);
+            $query->where(function ($searchQuery) use ($keyword) {
+                $searchQuery
+                    ->whereHas('guru', function ($guruQuery) use ($keyword) {
+                        $guruQuery->where('nama_lengkap', 'like', "%{$keyword}%")
+                            ->orWhere('nip', 'like', "%{$keyword}%");
+                    })
+                    ->orWhereHas('kelas', function ($kelasQuery) use ($keyword) {
+                        $kelasQuery->where('nama_kelas', 'like', "%{$keyword}%");
+                    })
+                    ->orWhereHas('mataPelajaran', function ($mapelQuery) use ($keyword) {
+                        $mapelQuery->where('nama', 'like', "%{$keyword}%")
+                            ->orWhere('kode', 'like', "%{$keyword}%");
+                    })
+                    ->orWhere('hari', 'like', "%{$keyword}%")
+                    ->orWhere('ruangan', 'like', "%{$keyword}%");
+            });
+        }
+
+        if (! empty($filters['kelas'])) {
+            $query->where('kelas_id', $filters['kelas']);
+        }
+
+        $jadwal = $query
+            ->orderBy('hari')
+            ->orderBy('jam_mulai')
+            ->paginate(15)
+            ->withQueryString();
+
+        $kelasList = Kelas::orderBy('tingkat')->orderBy('nama_kelas')->get();
+
+        return view('admin.penugasan.index', compact('jadwal', 'kelasList', 'filters'));
     }
 
     public function create(): View

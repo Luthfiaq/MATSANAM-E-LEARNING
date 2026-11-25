@@ -34,6 +34,30 @@
     </div>
 
 
+    <form method="GET" action="{{ route('admin.master-data.mata-pelajaran.index') }}" class="mb-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4 xl:items-end">
+            <div>
+                <label for="q" class="mb-1 block text-xs font-semibold text-slate-600">Pencarian</label>
+                <input id="q" name="q" type="search" value="{{ $search }}" placeholder="Cari nama, kode, atau deskripsi mata pelajaran..."
+                       class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
+            </div>
+            <div>
+                <label for="penggunaan" class="mb-1 block text-xs font-semibold text-slate-600">Penggunaan</label>
+                <select id="penggunaan" name="penggunaan" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-800 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
+                    <option value="">Semua Penggunaan</option>
+                    <option value="digunakan" {{ ($penggunaan) == 'digunakan' ? 'selected' : '' }}>Sudah digunakan pada jadwal</option>
+                    <option value="belum_digunakan" {{ ($penggunaan) == 'belum_digunakan' ? 'selected' : '' }}>Belum digunakan pada jadwal</option>
+                </select>
+            </div>
+
+            <div class="flex gap-2">
+                <button type="submit" class="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">Terapkan</button>
+                <a href="{{ route('admin.master-data.mata-pelajaran.index') }}" class="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">Reset</a>
+            </div>
+        </div>
+    </form>
+
+
     {{-- SUCCESS MESSAGE --}}
     @if(session('success'))
 
@@ -76,7 +100,7 @@
             </h2>
 
             <p class="text-sm text-slate-500 mt-1">
-                Total {{ $mataPelajaran->count() }} mata pelajaran
+                Menampilkan {{ $mataPelajaran->total() }} mata pelajaran
             </p>
 
         </div>
@@ -126,7 +150,7 @@
                         <tr class="hover:bg-slate-50">
 
                             <td class="px-6 py-4">
-                                {{ $loop->iteration }}
+                                {{ $mataPelajaran->firstItem() + $loop->index }}
                             </td>
 
 
@@ -214,7 +238,7 @@
                                 </div>
 
                                 <p class="text-slate-600 font-semibold">
-                                    Belum ada data mata pelajaran
+                                    Tidak ada mata pelajaran yang cocok dengan pencarian atau filter
                                 </p>
 
                                 <p class="text-slate-400 text-sm mt-1">

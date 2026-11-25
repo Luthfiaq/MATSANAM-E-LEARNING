@@ -149,7 +149,7 @@ class _DashboardSiswaPageState extends State<DashboardSiswaPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: _AppBar(
         jumlahNotifikasi: _unreadCount,
         onLonceng: _bukaNotifikasi,
@@ -301,33 +301,6 @@ class _DashboardSiswaPageState extends State<DashboardSiswaPage> {
       ),
     );
   }
-
-  static String _labelTanggal(String? hari, DateTime now) {
-    const bln = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'Mei',
-      'Jun',
-      'Jul',
-      'Agu',
-      'Sep',
-      'Okt',
-      'Nov',
-      'Des',
-    ];
-    const namaHari = [
-      'Senin',
-      'Selasa',
-      'Rabu',
-      'Kamis',
-      'Jumat',
-      'Sabtu',
-      'Minggu',
-    ];
-    return '${hari ?? namaHari[now.weekday - 1]}, ${now.day} ${bln[now.month - 1]}';
-  }
 }
 
 /* ===================== App bar & bottom nav ===================== */
@@ -347,8 +320,9 @@ class _AppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Material(
-      color: Colors.white,
+      color: colors.surface,
       elevation: 0.5,
       shadowColor: Colors.black26,
       child: SafeArea(
@@ -359,7 +333,7 @@ class _AppBar extends StatelessWidget implements PreferredSizeWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -368,16 +342,16 @@ class _AppBar extends StatelessWidget implements PreferredSizeWidget {
                         'Matsanam Siswa',
                         style: TextStyle(
                           fontSize: 12,
-                          color: AppColors.textSecondary,
+                          color: colors.onSurfaceVariant,
                         ),
                       ),
-                      SizedBox(height: 2),
+                      const SizedBox(height: 2),
                       Text(
                         'Siswa: Dashboard',
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
+                          color: colors.onSurface,
                         ),
                       ),
                     ],
@@ -388,10 +362,10 @@ class _AppBar extends StatelessWidget implements PreferredSizeWidget {
                   children: [
                     IconButton(
                       onPressed: onLonceng,
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.notifications_none_rounded,
                         size: 26,
-                        color: AppColors.textPrimary,
+                        color: colors.onSurface,
                       ),
                     ),
                     if (jumlahNotifikasi > 0)
@@ -408,7 +382,10 @@ class _AppBar extends StatelessWidget implements PreferredSizeWidget {
                           decoration: BoxDecoration(
                             color: AppColors.error,
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Colors.white, width: 1.5),
+                            border: Border.all(
+                              color: colors.surface,
+                              width: 1.5,
+                            ),
                           ),
                           child: Text(
                             jumlahNotifikasi > 9 ? '9+' : '$jumlahNotifikasi',
@@ -429,7 +406,7 @@ class _AppBar extends StatelessWidget implements PreferredSizeWidget {
                     width: 38,
                     height: 38,
                     decoration: BoxDecoration(
-                      color: AppColors.primaryDark,
+                      color: colors.primary,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
@@ -441,66 +418,6 @@ class _AppBar extends StatelessWidget implements PreferredSizeWidget {
                 ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BottomNav extends StatelessWidget {
-  final ValueChanged<int> onTap;
-  const _BottomNav({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    const items = [
-      (Icons.home_rounded, 'Beranda'),
-      (Icons.menu_book_rounded, 'Materi'),
-      (Icons.assignment_outlined, 'Tugas'),
-      (Icons.bar_chart_rounded, 'Nilai'),
-      (Icons.person_outline_rounded, 'Profil'),
-    ];
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 62,
-          child: Row(
-            children: List.generate(items.length, (i) {
-              final aktif = i == 0; // halaman ini = Beranda
-              final warna = aktif ? AppColors.primary : const Color(0xFF475569);
-              return Expanded(
-                child: InkWell(
-                  onTap: () => onTap(i),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(items[i].$1, size: 24, color: warna),
-                      const SizedBox(height: 3),
-                      Text(
-                        items[i].$2,
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: aktif ? FontWeight.w800 : FontWeight.w600,
-                          color: warna,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
           ),
         ),
       ),

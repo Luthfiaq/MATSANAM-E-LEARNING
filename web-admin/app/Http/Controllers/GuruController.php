@@ -142,11 +142,26 @@ class GuruController extends Controller
         $validated = $request->validate([
             'jadwal_id' => 'required|exists:jadwal_pelajaran,id',
             'mode_lokasi' => 'nullable|in:mts,bebas',
-            'lokasi_latitude' => 'required|numeric|between:-90,90',
-            'lokasi_longitude' => 'required|numeric|between:-180,180',
-            'radius_meter' => 'required|integer|min:50|max:500',
+            'lokasi_latitude' => 'nullable|numeric|between:-90,90',
+            'lokasi_longitude' => 'nullable|numeric|between:-180,180',
+            'radius_meter' => 'nullable|integer|min:50|max:500',
             'toleransi_keterlambatan' => 'sometimes|boolean',
         ]);
+
+        $validated['mode_lokasi'] = $validated['mode_lokasi'] ?? 'mts';
+
+        // For school mode, the server owns the geofence center. Never trust
+        // arbitrary coordinates sent by the teacher's device.
+        if ($validated['mode_lokasi'] === 'mts') {
+            $validated['lokasi_latitude'] = (float) config('absensi.lokasi_sekolah.latitude');
+            $validated['lokasi_longitude'] = (float) config('absensi.lokasi_sekolah.longitude');
+            $validated['radius_meter'] = $validated['radius_meter']
+                ?? (int) config('absensi.default_radius_meter', 150);
+        } else {
+            $validated['lokasi_latitude'] = null;
+            $validated['lokasi_longitude'] = null;
+            $validated['radius_meter'] = (int) config('absensi.default_radius_meter', 150);
+        }
 
         $guru = Guru::where('user_id', auth()->id())->firstOrFail();
 
@@ -197,6 +212,7 @@ class GuruController extends Controller
                 'kelas' => $jadwal->kelas?->nama_kelas,
                 'mapel' => $jadwal->mataPelajaran?->nama,
                 'guru' => $guru->nama_lengkap,
+                'mode_lokasi' => $sesi->mode_lokasi,
             ], JSON_UNESCAPED_UNICODE);
 
             $sesi->update(['qr_data' => $qrData]);
@@ -315,6 +331,7 @@ class GuruController extends Controller
             'kelas' => $sesi->jadwal?->kelas?->nama_kelas,
             'mapel' => $sesi->jadwal?->mataPelajaran?->nama,
             'guru' => $guru->nama_lengkap,
+            'mode_lokasi' => $sesi->mode_lokasi ?? 'mts',
         ], JSON_UNESCAPED_UNICODE);
 
         $sesi->update(['qr_data' => $qrData]);
@@ -755,14 +772,77 @@ class GuruController extends Controller
         return response()->json(['success' => true, 'message' => 'Materi berhasil dihapus.']);
     }
 
+    /** Build attachment metadata while retaining the legacy single file_materi field. */
+    private function taskAttachmentPayload(Penugasan $tugas, string $role = 'guru'): array
+    {
+        $tugas->loadMissing('files');
+        $base = $role === 'siswa' ? '/api/siswa/tugas/' : '/api/guru/tugas/';
+        $files = $tugas->files->map(function ($file) use ($tugas, $base) {
+            $disk = $file->disk ?: 'public';
+            $storage = Storage::disk($disk);
+            return [
+                'id' => (string) $file->id,
+                'file_name' => $file->original_name,
+                'file_url' => url($base . $tugas->id . '/files/' . $file->id),
+                'mime_type' => $file->mime_type,
+                'size_bytes' => (int) $file->size_bytes,
+                'is_legacy' => false,
+                'available' => $storage->exists($file->file_path),
+            ];
+        })->values()->all();
+
+        if (filled($tugas->file_materi)) {
+            $legacyPath = $tugas->file_materi;
+            $legacyAlreadyInRelation = $tugas->files->contains(
+                fn ($file) => $file->file_path === $legacyPath,
+            );
+            if (!$legacyAlreadyInRelation) {
+                $storage = Storage::disk('public');
+                $files[] = [
+                    'id' => 'legacy',
+                    'file_name' => basename($legacyPath),
+                    'file_url' => url($base . $tugas->id . '/files/legacy'),
+                    'mime_type' => $storage->exists($legacyPath) ? $storage->mimeType($legacyPath) : null,
+                    'size_bytes' => $storage->exists($legacyPath) ? (int) $storage->size($legacyPath) : null,
+                    'is_legacy' => true,
+                    'available' => $storage->exists($legacyPath),
+                ];
+            }
+        }
+
+        return array_values($files);
+    }
+
+    private function storeTaskAttachmentFiles(Penugasan $tugas, array $uploadedFiles, array &$storedPaths): void
+    {
+        foreach ($uploadedFiles as $file) {
+            if (!$file) {
+                continue;
+            }
+            $path = $file->store('tugas', 'public');
+            $storedPaths[] = $path;
+            $tugas->files()->create([
+                'disk' => 'public',
+                'file_path' => $path,
+                'original_name' => basename(str_replace('\\', '/', $file->getClientOriginalName())),
+                'mime_type' => $file->getMimeType(),
+                'size_bytes' => (int) $file->getSize(),
+            ]);
+        }
+    }
+
     public function tugasIndex()
     {
         $guru = Guru::where('user_id', auth()->id())->first();
         if (!$guru) return response()->json(['success' => false, 'message' => 'Profil guru tidak ditemukan.'], 404);
 
-        $tugas = \App\Models\Penugasan::whereHas('jadwal', function ($q) use ($guru) {
+        $tugas = Penugasan::whereHas('jadwal', function ($q) use ($guru) {
             $q->where('guru_id', $guru->id);
-        })->with(['jadwal.kelas', 'jadwal.mataPelajaran'])->latest()->get();
+        })->with(['jadwal.kelas', 'jadwal.mataPelajaran', 'files'])->latest()->get();
+
+        $tugas->each(function ($item) {
+            $item->setAttribute('lampiran_files', $this->taskAttachmentPayload($item));
+        });
 
         return response()->json(['success' => true, 'data' => $tugas]);
     }
@@ -781,10 +861,32 @@ class GuruController extends Controller
             'jenis' => 'required|in:tugas,quiz,uts,uas',
             'deadline' => 'required|date',
             'bobot' => 'nullable|integer|min:1|max:100',
-            'file' => 'nullable|file|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,jpg,jpeg,png,txt,zip|max:10240',
+            'client_request_id' => 'nullable|string|max:80',
+            // A limit of 20 MB applies to each selected attachment.
+            'files' => 'sometimes|array|max:20',
+            'files.*' => 'file|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,jpg,jpeg,png,txt,zip|max:20480',
+            // Backward compatibility for older app builds that send one `file`.
+            'file' => 'nullable|file|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,jpg,jpeg,png,txt,zip|max:20480',
         ]);
 
-        // A valid schedule ID is not sufficient: it must belong to this teacher.
+        // Reuse the same request key on a retry after a network timeout so
+        // the same task is returned instead of being created a second time.
+        $clientRequestId = $validated['client_request_id'] ?? null;
+        if ($clientRequestId) {
+            $existingTask = Penugasan::where('guru_id', $guru->id)
+                ->where('client_request_id', $clientRequestId)
+                ->with(['jadwal.kelas', 'jadwal.mataPelajaran', 'files'])
+                ->first();
+            if ($existingTask) {
+                $existingTask->setAttribute('lampiran_files', $this->taskAttachmentPayload($existingTask));
+                return response()->json([
+                    'success' => true,
+                    'data' => $existingTask,
+                    'message' => 'Tugas sudah tersimpan dari percobaan sebelumnya.',
+                ]);
+            }
+        }
+
         $jadwal = JadwalPelajaran::where('guru_id', $guru->id)
             ->with(['kelas', 'mataPelajaran'])
             ->find($validated['jadwal_id']);
@@ -795,28 +897,38 @@ class GuruController extends Controller
             ], 403);
         }
 
-        $filePath = $request->hasFile('file')
-            ? $request->file('file')->store('tugas', 'public')
-            : null;
-
+        $storedPaths = [];
         try {
-            $tugas = Penugasan::create([
-                'jadwal_id' => $jadwal->id,
-                'guru_id' => $guru->id,
-                'judul' => $validated['judul'],
-                'deskripsi' => $validated['deskripsi'],
-                'jenis' => $validated['jenis'],
-                'deadline' => $validated['deadline'],
-                'bobot' => $validated['bobot'] ?? 100,
-                'file_materi' => $filePath,
-            ]);
+            $legacyPath = $request->hasFile('file')
+                ? $request->file('file')->store('tugas', 'public')
+                : null;
+            if ($legacyPath) {
+                $storedPaths[] = $legacyPath;
+            }
+
+            $tugas = DB::transaction(function () use ($request, $validated, $jadwal, $guru, $legacyPath, $clientRequestId, &$storedPaths) {
+                $task = Penugasan::create([
+                    'jadwal_id' => $jadwal->id,
+                    'guru_id' => $guru->id,
+                    'judul' => $validated['judul'],
+                    'deskripsi' => $validated['deskripsi'],
+                    'jenis' => $validated['jenis'],
+                    'deadline' => $validated['deadline'],
+                    'bobot' => $validated['bobot'] ?? 100,
+                    'file_materi' => $legacyPath,
+                    'client_request_id' => $clientRequestId,
+                ]);
+                $this->storeTaskAttachmentFiles($task, $request->file('files', []), $storedPaths);
+                return $task->load(['jadwal.kelas', 'jadwal.mataPelajaran', 'files']);
+            });
         } catch (\Throwable $exception) {
-            if ($filePath) {
-                Storage::disk('public')->delete($filePath);
+            foreach (array_unique($storedPaths) as $path) {
+                Storage::disk('public')->delete($path);
             }
             throw $exception;
         }
 
+        $tugas->setAttribute('lampiran_files', $this->taskAttachmentPayload($tugas));
         app(MatsanamNotificationService::class)->notifyClassStudents(
             (int) $jadwal->kelas_id,
             'tugas_baru',
@@ -833,7 +945,7 @@ class GuruController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $tugas->load(['jadwal.kelas', 'jadwal.mataPelajaran']),
+            'data' => $tugas,
             'message' => 'Tugas berhasil ditambahkan.',
         ], 201);
     }
@@ -843,7 +955,7 @@ class GuruController extends Controller
         $guru = Guru::where('user_id', auth()->id())->firstOrFail();
         $tugas = Penugasan::whereHas('jadwal', function ($query) use ($guru) {
             $query->where('guru_id', $guru->id);
-        })->findOrFail($id);
+        })->with('files')->findOrFail($id);
 
         $validated = $request->validate([
             'judul' => 'sometimes|required|string|max:255',
@@ -851,36 +963,62 @@ class GuruController extends Controller
             'jenis' => 'sometimes|required|in:tugas,quiz,uts,uas',
             'deadline' => 'sometimes|required|date',
             'bobot' => 'sometimes|required|integer|min:1|max:100',
-            'file' => 'nullable|file|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,jpg,jpeg,png,txt,zip|max:10240',
+            'attachment_batch_id' => 'nullable|string|max:80',
+            'files' => 'sometimes|array|max:20',
+            'files.*' => 'file|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,jpg,jpeg,png,txt,zip|max:20480',
+            'file' => 'nullable|file|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,jpg,jpeg,png,txt,zip|max:20480',
         ]);
 
-        $oldFilePath = $tugas->file_materi;
-        $newFilePath = $request->hasFile('file')
-            ? $request->file('file')->store('tugas', 'public')
-            : null;
+        $attachmentBatchId = $validated['attachment_batch_id'] ?? null;
+        if ($attachmentBatchId && $tugas->last_attachment_batch_id === $attachmentBatchId) {
+            $tugas->setAttribute('lampiran_files', $this->taskAttachmentPayload($tugas));
+            return response()->json([
+                'success' => true,
+                'data' => $tugas,
+                'message' => 'Perubahan tugas dan lampiran sudah tersimpan dari percobaan sebelumnya.',
+            ]);
+        }
 
+        $oldLegacyPath = $tugas->file_materi;
+        $storedPaths = [];
         try {
-            $tugas->fill(collect($validated)->only([
-                'judul', 'deskripsi', 'jenis', 'deadline', 'bobot',
-            ])->all());
-            if ($newFilePath) {
-                $tugas->file_materi = $newFilePath;
+            $newLegacyPath = $request->hasFile('file')
+                ? $request->file('file')->store('tugas', 'public')
+                : null;
+            if ($newLegacyPath) {
+                $storedPaths[] = $newLegacyPath;
             }
-            $tugas->save();
+
+            DB::transaction(function () use ($request, $validated, $tugas, $newLegacyPath, $attachmentBatchId, &$storedPaths) {
+                $tugas->fill(collect($validated)->only([
+                    'judul', 'deskripsi', 'jenis', 'deadline', 'bobot',
+                ])->all());
+                if ($newLegacyPath) {
+                    $tugas->file_materi = $newLegacyPath;
+                }
+                if ($attachmentBatchId) {
+                    $tugas->last_attachment_batch_id = $attachmentBatchId;
+                }
+                $tugas->save();
+                $this->storeTaskAttachmentFiles($tugas, $request->file('files', []), $storedPaths);
+            });
         } catch (\Throwable $exception) {
-            if ($newFilePath) {
-                Storage::disk('public')->delete($newFilePath);
+            foreach (array_unique($storedPaths) as $path) {
+                Storage::disk('public')->delete($path);
             }
             throw $exception;
         }
 
-        if ($newFilePath && $oldFilePath && $oldFilePath !== $newFilePath) {
-            Storage::disk('public')->delete($oldFilePath);
+        if ($newLegacyPath && $oldLegacyPath && $oldLegacyPath !== $newLegacyPath) {
+            Storage::disk('public')->delete($oldLegacyPath);
         }
+
+        $tugas->refresh()->load(['jadwal.kelas', 'jadwal.mataPelajaran', 'files']);
+        $tugas->setAttribute('lampiran_files', $this->taskAttachmentPayload($tugas));
 
         return response()->json([
             'success' => true,
-            'data' => $tugas->load(['jadwal.kelas', 'jadwal.mataPelajaran']),
+            'data' => $tugas,
             'message' => 'Tugas berhasil diperbarui.',
         ]);
     }
@@ -895,10 +1033,78 @@ class GuruController extends Controller
         abort_if(blank($tugas->file_materi), 404, 'Lampiran tugas tidak tersedia.');
         abort_unless(Storage::disk('public')->exists($tugas->file_materi), 404, 'Lampiran tugas tidak ditemukan.');
 
-        return Storage::disk('public')->download(
-            $tugas->file_materi,
-            basename($tugas->file_materi),
-        );
+        return Storage::disk('public')->download($tugas->file_materi, basename($tugas->file_materi));
+    }
+
+    public function tugasAttachmentFile($id, string $fileId)
+    {
+        $guru = Guru::where('user_id', auth()->id())->firstOrFail();
+        $tugas = Penugasan::whereHas('jadwal', function ($query) use ($guru) {
+            $query->where('guru_id', $guru->id);
+        })->findOrFail($id);
+
+        if ($fileId === 'legacy') {
+            return $this->tugasFile($id);
+        }
+
+        $attachment = $tugas->files()->findOrFail($fileId);
+        $disk = Storage::disk($attachment->disk ?: 'public');
+        abort_unless($disk->exists($attachment->file_path), 404, 'Lampiran tugas tidak ditemukan.');
+
+        return $disk->download($attachment->file_path, $attachment->original_name);
+    }
+
+    public function deleteTugasAttachment($id, string $fileId)
+    {
+        $guru = Guru::where('user_id', auth()->id())->firstOrFail();
+        $tugas = Penugasan::whereHas('jadwal', function ($query) use ($guru) {
+            $query->where('guru_id', $guru->id);
+        })->findOrFail($id);
+
+        if ($fileId === 'legacy') {
+            $path = $tugas->file_materi;
+            abort_if(blank($path), 404, 'Lampiran lama tidak tersedia.');
+            $tugas->file_materi = null;
+            $tugas->save();
+            Storage::disk('public')->delete($path);
+            return response()->json(['success' => true, 'message' => 'Lampiran berhasil dihapus.']);
+        }
+
+        $attachment = $tugas->files()->findOrFail($fileId);
+        $path = $attachment->file_path;
+        $diskName = $attachment->disk ?: 'public';
+        $attachment->delete();
+        Storage::disk($diskName)->delete($path);
+
+        return response()->json(['success' => true, 'message' => 'Lampiran berhasil dihapus.']);
+    }
+
+    public function deleteAllTugasAttachments($id)
+    {
+        $guru = Guru::where('user_id', auth()->id())->firstOrFail();
+        $tugas = Penugasan::whereHas('jadwal', function ($query) use ($guru) {
+            $query->where('guru_id', $guru->id);
+        })->with('files')->findOrFail($id);
+
+        $paths = $tugas->files->map(fn ($file) => [
+            'disk' => $file->disk ?: 'public',
+            'path' => $file->file_path,
+        ])->all();
+        if (filled($tugas->file_materi)) {
+            $paths[] = ['disk' => 'public', 'path' => $tugas->file_materi];
+        }
+
+        DB::transaction(function () use ($tugas) {
+            $tugas->files()->delete();
+            $tugas->file_materi = null;
+            $tugas->save();
+        });
+
+        foreach ($paths as $entry) {
+            Storage::disk($entry['disk'])->delete($entry['path']);
+        }
+
+        return response()->json(['success' => true, 'message' => 'Semua lampiran tugas berhasil dihapus.']);
     }
 
     public function tugasDestroy($id)
@@ -910,13 +1116,19 @@ class GuruController extends Controller
             })->lockForUpdate()->findOrFail($id);
 
             if ($tugas->pengumpulan()->exists()) {
-                return ['deleted' => false, 'file' => null];
+                return ['deleted' => false, 'files' => []];
             }
 
-            $filePath = $tugas->file_materi;
+            $filePaths = $tugas->files()->get(['disk', 'file_path'])->map(fn ($file) => [
+                'disk' => $file->disk ?: 'public',
+                'path' => $file->file_path,
+            ])->all();
+            if (filled($tugas->file_materi)) {
+                $filePaths[] = ['disk' => 'public', 'path' => $tugas->file_materi];
+            }
             $tugas->delete();
 
-            return ['deleted' => true, 'file' => $filePath];
+            return ['deleted' => true, 'files' => $filePaths];
         });
 
         if (! $result['deleted']) {
@@ -926,8 +1138,8 @@ class GuruController extends Controller
             ], 409);
         }
 
-        if ($result['file']) {
-            Storage::disk('public')->delete($result['file']);
+        foreach ($result['files'] as $entry) {
+            Storage::disk($entry['disk'])->delete($entry['path']);
         }
 
         return response()->json([
@@ -944,6 +1156,7 @@ class GuruController extends Controller
             ->with([
                 'jadwal.kelas',
                 'jadwal.mataPelajaran',
+                'files',
                 // A task belongs to one class. Ignore legacy/orphan submission
                 // rows whose student is no longer in that class so the detail
                 // sheet and the full student roster report the same totals.
@@ -955,6 +1168,10 @@ class GuruController extends Controller
             ])
             ->latest()
             ->get();
+
+        $tugas->each(function ($item) {
+            $item->setAttribute('lampiran_files', $this->taskAttachmentPayload($item));
+        });
 
         return response()->json(['success' => true, 'data' => $tugas]);
     }
@@ -1312,7 +1529,7 @@ class GuruController extends Controller
             ->whereHas('siswa', function ($studentQuery) use ($jadwal) {
                 $studentQuery->where('kelas_id', $jadwal->kelas_id);
             })
-            ->with('nilai')
+            ->with(['nilai', 'files'])
             ->get()
             ->keyBy('siswa_id');
 
@@ -1322,6 +1539,27 @@ class GuruController extends Controller
             ->map(function ($student) use ($submissions) {
                 $submission = $submissions->get($student->id);
                 $nilai = $submission?->nilai;
+                $attachments = $submission?->files?->map(function ($file) use ($submission) {
+                    return [
+                        'id' => $file->id,
+                        'name' => $file->original_name,
+                        'url' => url('/api/guru/pengumpulan/' . $submission->id . '/lampiran/' . $file->id),
+                        'mime_type' => $file->mime_type,
+                        'size_bytes' => (int) $file->size_bytes,
+                    ];
+                })->values() ?? collect();
+
+                if ($attachments->isEmpty() && filled($submission?->file_jawaban)) {
+                    $attachments = collect([[
+                        'id' => null,
+                        'name' => basename($submission->file_jawaban),
+                        'url' => url('/api/guru/pengumpulan/' . $submission->id . '/file'),
+                        'mime_type' => Storage::disk('local')->mimeType($submission->file_jawaban),
+                        'size_bytes' => Storage::disk('local')->exists($submission->file_jawaban)
+                            ? (int) Storage::disk('local')->size($submission->file_jawaban)
+                            : null,
+                    ]]);
+                }
 
                 return [
                     'pengumpulan_id' => $submission?->id,
@@ -1336,6 +1574,7 @@ class GuruController extends Controller
                     'file_jawaban' => $submission?->file_jawaban,
                     'file_name' => $submission?->file_jawaban ? basename($submission->file_jawaban) : null,
                     'file_url' => $submission?->file_jawaban ? url('/api/guru/pengumpulan/' . $submission->id . '/file') : null,
+                    'lampiran_files' => $attachments,
                     'waktu_pengumpulan' => $submission?->waktu_pengumpulan,
                     'nilai' => $nilai?->nilai,
                     'catatan' => $nilai?->catatan,
@@ -1355,6 +1594,32 @@ class GuruController extends Controller
     }
 
 
+
+    /** Download one attachment from a submission belonging to this Guru's task. */
+    public function submissionAttachmentFile($submissionId, $fileId)
+    {
+        $guru = Guru::where('user_id', auth()->id())->firstOrFail();
+        $submission = PengumpulanTugas::whereKey($submissionId)
+            ->whereHas('penugasan.jadwal', function ($query) use ($guru) {
+                $query->where('guru_id', $guru->id);
+            })
+            ->with(['siswa', 'penugasan.jadwal'])
+            ->firstOrFail();
+
+        abort_unless(
+            $submission->siswa !== null
+                && $submission->penugasan?->jadwal !== null
+                && (int) $submission->siswa->kelas_id === (int) $submission->penugasan->jadwal->kelas_id,
+            404,
+            'Pengumpulan tidak termasuk kelas tugas ini.',
+        );
+
+        $attachment = $submission->files()->whereKey($fileId)->firstOrFail();
+        $disk = Storage::disk($attachment->disk ?: 'local');
+        abort_unless($disk->exists($attachment->file_path), 404, 'Berkas pengumpulan tidak ditemukan.');
+
+        return $disk->download($attachment->file_path, $attachment->original_name);
+    }
 
     /** Download submission file only when it belongs to a task taught by this Guru. */
     public function submissionFile($submissionId)

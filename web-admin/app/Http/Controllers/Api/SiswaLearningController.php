@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
+use Barryvdh\DomPDF\Facade\Pdf;
+
 use App\Http\Controllers\Controller;
 use App\Models\AbsensiHarian;
 use App\Models\AbsensiSesi;
@@ -192,8 +194,8 @@ class SiswaLearningController extends Controller
         ]);
 
         $items = Penugasan::with([
-            'jadwal.mataPelajaran', 'jadwal.guru', 'guru',
-            'pengumpulan' => fn ($query) => $query->where('siswa_id', $siswa->id)->with('nilai'),
+            'jadwal.mataPelajaran', 'jadwal.guru', 'guru', 'files',
+            'pengumpulan' => fn ($query) => $query->where('siswa_id', $siswa->id)->with(['nilai', 'files']),
         ])
             ->whereHas('jadwal', function ($jadwal) use ($siswa, $validated) {
                 $jadwal->where('kelas_id', $siswa->kelas_id);
@@ -226,7 +228,7 @@ class SiswaLearningController extends Controller
     {
         $siswa = $this->siswa($request);
         $tugas = $this->penugasanDalamKelas($siswa, $id);
-        $tugas->load(['pengumpulan' => fn ($query) => $query->where('siswa_id', $siswa->id)->with('nilai')]);
+        $tugas->load(['files', 'pengumpulan' => fn ($query) => $query->where('siswa_id', $siswa->id)->with(['nilai', 'files'])]);
 
         return response()->json(['success' => true, 'data' => $this->formatTugas($tugas, true)]);
     }
@@ -240,41 +242,113 @@ class SiswaLearningController extends Controller
         return Storage::disk('public')->response($tugas->file_materi, basename($tugas->file_materi));
     }
 
+    public function tugasAttachmentFile(Request $request, int $id, string $fileId)
+    {
+        $tugas = $this->penugasanDalamKelas($this->siswa($request), $id);
+        if ($fileId === 'legacy') {
+            return $this->tugasFile($request, $id);
+        }
+
+        $attachment = $tugas->files()->findOrFail($fileId);
+        $disk = Storage::disk($attachment->disk ?: 'public');
+        abort_unless($disk->exists($attachment->file_path), 404, 'Lampiran tugas tidak ditemukan.');
+
+        return $disk->download($attachment->file_path, $attachment->original_name);
+    }
+
     public function tugasKumpulkan(Request $request, int $id)
     {
         $siswa = $this->siswa($request);
         $tugas = $this->penugasanDalamKelas($siswa, $id);
 
+        // Every uploaded file has its own 20 MB limit. This is not a combined
+        // 20 MB limit for the entire submission.
         $validated = $request->validate([
             'jawaban' => ['nullable', 'string', 'max:10000'],
-            'file_jawaban' => ['nullable', 'file', 'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,txt,zip', 'max:10240'],
+            'files' => ['sometimes', 'nullable', 'array', 'max:20'],
+            'files.*' => ['file', 'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,txt,zip', 'max:20480'],
+            // Keep the previous single-file field for older app builds.
+            'file_jawaban' => ['nullable', 'file', 'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,txt,zip', 'max:20480'],
             'hapus_file' => ['nullable', 'boolean'],
+            'upload_batch_id' => ['nullable', 'string', 'max:80'],
+        ], [
+            'files.max' => 'Maksimal 20 file dalam satu pengumpulan.',
+            'files.*.max' => 'Setiap file pengumpulan maksimal 20 MB.',
+            'files.*.mimes' => 'Salah satu file memiliki format yang tidak didukung.',
+            'file_jawaban.max' => 'Ukuran file pengumpulan maksimal 20 MB.',
+            'file_jawaban.mimes' => 'Format file pengumpulan tidak didukung.',
         ]);
 
-        $hasNewFile = $request->hasFile('file_jawaban');
-        $removeOldFile = (bool) ($validated['hapus_file'] ?? false);
-        $newPath = $hasNewFile
-            ? $request->file('file_jawaban')->store('pengumpulan-siswa/' . $siswa->id, 'local')
-            : null;
-        $oldFile = null;
+        $uploadBatchId = $validated['upload_batch_id'] ?? null;
+        if ($uploadBatchId) {
+            $priorSubmission = PengumpulanTugas::where('penugasan_id', $tugas->id)
+                ->where('siswa_id', $siswa->id)
+                ->with(['nilai', 'files'])
+                ->first();
+            if ($priorSubmission && hash_equals((string) $priorSubmission->last_upload_batch_id, $uploadBatchId)) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Pengumpulan sudah diterima dari percobaan sebelumnya.',
+                    'data' => $this->formatSubmission($priorSubmission),
+                ]);
+            }
+        }
+
+        $incomingFiles = $request->file('files', []);
+        if (! is_array($incomingFiles)) {
+            $incomingFiles = [$incomingFiles];
+        }
+        $incomingFiles = array_values(array_filter($incomingFiles));
+
+        $legacyFile = $request->file('file_jawaban');
+        if ($legacyFile) {
+            $incomingFiles[] = $legacyFile;
+        }
+
+        $removeOldFiles = (bool) ($validated['hapus_file'] ?? false);
+        // A request using the old single-file field retains its old replace-one
+        // behavior. The new files[] field appends to the current attachment set.
+        $clearExistingFiles = $removeOldFiles || $legacyFile !== null;
+
+        $newFileRows = [];
+        $newPaths = [];
+        $oldPathsToDelete = [];
+        $duplicateBatch = false;
 
         try {
+            foreach ($incomingFiles as $uploadedFile) {
+                $path = $uploadedFile->store('pengumpulan-siswa/' . $siswa->id, 'local');
+                if (! $path) {
+                    throw new \RuntimeException('Salah satu file gagal disimpan. Silakan coba kembali.');
+                }
+
+                $newPaths[] = $path;
+                $newFileRows[] = [
+                    'disk' => 'local',
+                    'file_path' => $path,
+                    'original_name' => basename(str_replace('\\', '/', $uploadedFile->getClientOriginalName())),
+                    'mime_type' => $uploadedFile->getMimeType(),
+                    'size_bytes' => (int) $uploadedFile->getSize(),
+                ];
+            }
+
             $submission = DB::transaction(function () use (
                 $tugas,
                 $siswa,
                 $validated,
-                $newPath,
-                $removeOldFile,
-                &$oldFile
+                $newFileRows,
+                $newPaths,
+                $clearExistingFiles,
+                $uploadBatchId,
+                &$duplicateBatch,
+                &$oldPathsToDelete
             ) {
-                // Lock the task row so deletion and submission cannot race. The same
-                // lock is taken by Guru/Admin delete handlers before checking submissions.
+                // Lock the task row so deletion and submission cannot race.
                 $lockedTask = Penugasan::query()
                     ->lockForUpdate()
                     ->findOrFail($tugas->id);
 
-                // Re-check class access in case an Admin moved the task after the
-                // initial request lookup but before this transaction acquired the lock.
+                // Re-check class access inside the transaction.
                 abort_unless(
                     $lockedTask->jadwal()
                         ->where('kelas_id', $siswa->kelas_id)
@@ -286,46 +360,110 @@ class SiswaLearningController extends Controller
 
                 $existing = PengumpulanTugas::where('penugasan_id', $lockedTask->id)
                     ->where('siswa_id', $siswa->id)
-                    ->with('nilai')
+                    ->with(['nilai', 'files'])
                     ->lockForUpdate()
                     ->first();
+
+                if ($uploadBatchId && $existing && hash_equals((string) $existing->last_upload_batch_id, $uploadBatchId)) {
+                    $duplicateBatch = true;
+                    return $existing->fresh(['nilai', 'files']);
+                }
 
                 abort_if($existing?->nilai, 409, 'Tugas sudah dinilai Guru dan tidak dapat diubah.');
 
                 $jawaban = array_key_exists('jawaban', $validated)
                     ? trim((string) ($validated['jawaban'] ?? ''))
                     : ($existing?->jawaban ?? '');
-                $oldFile = $existing?->file_jawaban;
+
+                $existingFilePaths = $existing?->files?->pluck('file_path')->filter()->values()->all() ?? [];
+                $legacyExistingPath = $existing?->file_jawaban;
+                if ($legacyExistingPath && ! in_array($legacyExistingPath, $existingFilePaths, true)) {
+                    $existingFilePaths[] = $legacyExistingPath;
+                }
+
+                $hasRetainedFiles = ! $clearExistingFiles && count($existingFilePaths) > 0;
+                $willHaveFiles = $hasRetainedFiles || count($newFileRows) > 0;
 
                 abort_if(
-                    $jawaban === '' && ! $newPath && ! ($oldFile && ! $removeOldFile),
+                    $jawaban === '' && ! $willHaveFiles,
                     422,
-                    'Isi jawaban atau lampirkan file sebelum mengumpulkan.'
+                    'Isi jawaban atau lampirkan minimal satu file sebelum mengumpulkan.'
                 );
+
+                if ($clearExistingFiles && $existing) {
+                    $oldPathsToDelete = array_merge($oldPathsToDelete, $existingFilePaths);
+                    $existing->files()->delete();
+                } elseif ($existing && $legacyExistingPath && $existing->files->isEmpty()) {
+                    // Backfill a legacy single-file submission into the new
+                    // attachment relation when a new multi-file upload is added.
+                    $disk = Storage::disk('local');
+                    if ($disk->exists($legacyExistingPath)) {
+                        $existing->files()->create([
+                            'disk' => 'local',
+                            'file_path' => $legacyExistingPath,
+                            'original_name' => basename($legacyExistingPath),
+                            'mime_type' => $disk->mimeType($legacyExistingPath),
+                            'size_bytes' => (int) $disk->size($legacyExistingPath),
+                        ]);
+                    }
+                }
 
                 $now = now();
                 $deadline = Carbon::parse($lockedTask->deadline);
-                $filePath = $newPath ?? ($removeOldFile ? null : $oldFile);
 
-                return PengumpulanTugas::updateOrCreate(
-                    ['penugasan_id' => $lockedTask->id, 'siswa_id' => $siswa->id],
-                    [
-                        'jawaban' => $jawaban !== '' ? $jawaban : null,
-                        'file_jawaban' => $filePath,
-                        'waktu_pengumpulan' => $now,
-                        'status' => $now->gt($deadline) ? 'terlambat' : 'tepat_waktu',
-                    ]
-                );
+                $submission = $existing ?? new PengumpulanTugas([
+                    'penugasan_id' => $lockedTask->id,
+                    'siswa_id' => $siswa->id,
+                ]);
+                $submission->jawaban = $jawaban !== '' ? $jawaban : null;
+                $submission->waktu_pengumpulan = $now;
+                $submission->status = $now->gt($deadline) ? 'terlambat' : 'tepat_waktu';
+                if ($uploadBatchId) {
+                    $submission->last_upload_batch_id = $uploadBatchId;
+                }
+
+                if ($clearExistingFiles) {
+                    $submission->file_jawaban = null;
+                }
+                if (! $clearExistingFiles && blank($submission->file_jawaban) && $existingFilePaths) {
+                    $submission->file_jawaban = $existingFilePaths[0];
+                }
+                if (blank($submission->file_jawaban) && $newPaths) {
+                    // Preserve the first attachment in the legacy column so
+                    // previous app versions can still download a submission.
+                    $submission->file_jawaban = $newPaths[0];
+                }
+
+                $submission->save();
+
+                foreach ($newFileRows as $fileRow) {
+                    $submission->files()->create($fileRow);
+                }
+
+                return $submission->fresh(['nilai', 'files']);
             });
         } catch (\Throwable $exception) {
-            if ($newPath) Storage::disk('local')->delete($newPath);
+            foreach ($newPaths as $newPath) {
+                Storage::disk('local')->delete($newPath);
+            }
             throw $exception;
         }
 
-        if ($newPath && $oldFile && $oldFile !== $newPath) {
-            Storage::disk('local')->delete($oldFile);
-        } elseif ($removeOldFile && $oldFile && ! $newPath) {
-            Storage::disk('local')->delete($oldFile);
+        if ($duplicateBatch) {
+            foreach ($newPaths as $newPath) {
+                Storage::disk('local')->delete($newPath);
+            }
+            return response()->json([
+                'success' => true,
+                'message' => 'Pengumpulan sudah diterima dari percobaan sebelumnya.',
+                'data' => $this->formatSubmission($submission),
+            ]);
+        }
+
+        foreach (array_unique($oldPathsToDelete) as $oldPath) {
+            if (! in_array($oldPath, $newPaths, true)) {
+                Storage::disk('local')->delete($oldPath);
+            }
         }
 
         $tugas = $tugas->fresh(['guru.user', 'jadwal.mataPelajaran']);
@@ -344,8 +482,22 @@ class SiswaLearningController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Pengumpulan tugas berhasil disimpan.',
-            'data' => $this->formatSubmission($submission->fresh('nilai')),
+            'data' => $this->formatSubmission($submission),
         ]);
+    }
+
+    public function pengumpulanAttachmentFile(Request $request, int $id, int $fileId)
+    {
+        $siswa = $this->siswa($request);
+        $submission = PengumpulanTugas::whereKey($id)
+            ->where('siswa_id', $siswa->id)
+            ->firstOrFail();
+        $attachment = $submission->files()->whereKey($fileId)->firstOrFail();
+        $disk = Storage::disk($attachment->disk ?: 'local');
+
+        abort_unless($disk->exists($attachment->file_path), 404, 'File pengumpulan tidak ditemukan.');
+
+        return $disk->download($attachment->file_path, $attachment->original_name);
     }
 
     public function pengumpulanFile(Request $request, int $id)
@@ -373,6 +525,9 @@ class SiswaLearningController extends Controller
             $status = 'melewati_deadline';
         }
 
+        $taskAttachments = $this->formatTaskAttachments($tugas);
+        $firstTaskAttachment = $taskAttachments[0] ?? null;
+
         $data = [
             'id' => $tugas->id,
             'judul' => $tugas->judul,
@@ -386,8 +541,11 @@ class SiswaLearningController extends Controller
             'kelas' => $jadwal?->kelas?->nama_kelas,
             'kkm' => (int) ($jadwal?->mataPelajaran?->kkm ?? 0),
             'status' => $status,
-            'ada_lampiran' => filled($tugas->file_materi),
-            'lampiran_url' => filled($tugas->file_materi) ? url('/api/siswa/tugas/' . $tugas->id . '/file') : null,
+            'ada_lampiran' => !empty($taskAttachments),
+            'lampiran_files' => $taskAttachments,
+            // Legacy single-file fields point to the first item for older screens/builds.
+            'lampiran_url' => $firstTaskAttachment['file_url'] ?? null,
+            'lampiran_nama_file' => $firstTaskAttachment['file_name'] ?? null,
             'pengumpulan' => $submission ? $this->formatSubmission($submission) : null,
         ];
 
@@ -398,13 +556,77 @@ class SiswaLearningController extends Controller
         return $data;
     }
 
+    private function formatTaskAttachments(Penugasan $tugas): array
+    {
+        $tugas->loadMissing('files');
+        $files = $tugas->files->map(function ($file) use ($tugas) {
+            $disk = Storage::disk($file->disk ?: 'public');
+            return [
+                'id' => (string) $file->id,
+                'file_name' => $file->original_name,
+                'file_url' => url('/api/siswa/tugas/' . $tugas->id . '/files/' . $file->id),
+                'mime_type' => $file->mime_type,
+                'size_bytes' => (int) $file->size_bytes,
+                'is_legacy' => false,
+                'available' => $disk->exists($file->file_path),
+            ];
+        })->values()->all();
+
+        $legacyAlreadyListed = $tugas->files->contains(
+            fn ($file) => $file->file_path === $tugas->file_materi,
+        );
+        if (filled($tugas->file_materi) && ! $legacyAlreadyListed) {
+            $disk = Storage::disk('public');
+            $files[] = [
+                'id' => 'legacy',
+                'file_name' => basename($tugas->file_materi),
+                'file_url' => url('/api/siswa/tugas/' . $tugas->id . '/files/legacy'),
+                'mime_type' => $disk->exists($tugas->file_materi) ? $disk->mimeType($tugas->file_materi) : null,
+                'size_bytes' => $disk->exists($tugas->file_materi) ? (int) $disk->size($tugas->file_materi) : null,
+                'is_legacy' => true,
+                'available' => $disk->exists($tugas->file_materi),
+            ];
+        }
+
+        return array_values($files);
+    }
+
     private function formatSubmission(PengumpulanTugas $submission): array
     {
+        $submission->loadMissing('files');
+        $files = $submission->files->map(function ($file) use ($submission) {
+            return [
+                'id' => $file->id,
+                'file_name' => $file->original_name,
+                'file_url' => url('/api/siswa/pengumpulan/' . $submission->id . '/files/' . $file->id),
+                'mime_type' => $file->mime_type,
+                'size_bytes' => (int) $file->size_bytes,
+            ];
+        })->values();
+
+        // Old submissions predate pengumpulan_tugas_files. Expose the legacy
+        // file as a one-item attachment list without requiring a data migration.
+        if ($files->isEmpty() && filled($submission->file_jawaban)) {
+            $files = collect([[
+                'id' => null,
+                'file_name' => basename($submission->file_jawaban),
+                'file_url' => url('/api/siswa/pengumpulan/' . $submission->id . '/file'),
+                'mime_type' => Storage::disk('local')->mimeType($submission->file_jawaban),
+                'size_bytes' => Storage::disk('local')->exists($submission->file_jawaban)
+                    ? (int) Storage::disk('local')->size($submission->file_jawaban)
+                    : null,
+            ]]);
+        }
+
+        $primary = $files->first();
+
         return [
             'id' => $submission->id,
             'jawaban' => $submission->jawaban,
-            'file_name' => $submission->file_jawaban ? basename($submission->file_jawaban) : null,
-            'file_url' => $submission->file_jawaban ? url('/api/siswa/pengumpulan/' . $submission->id . '/file') : null,
+            // Legacy fields remain for older screens and app builds.
+            'file_name' => $primary['file_name'] ?? ($submission->file_jawaban ? basename($submission->file_jawaban) : null),
+            'file_url' => $primary['file_url'] ?? ($submission->file_jawaban ? url('/api/siswa/pengumpulan/' . $submission->id . '/file') : null),
+            'files' => $files,
             'waktu_pengumpulan' => $submission->waktu_pengumpulan?->toIso8601String(),
             'status' => $submission->status,
             'nilai' => $submission->nilai ? [
@@ -486,6 +708,95 @@ class SiswaLearningController extends Controller
                 'hasil' => $items->map(fn ($submission) => $this->formatNilai($submission))->values(),
             ],
         ]);
+    }
+
+    public function nilaiMapelPdf(Request $request, int $mapelId)
+    {
+        $siswa = $this->siswa($request);
+        abort_unless(
+            $this->jadwalKelasQuery($siswa)->where('mapel_id', $mapelId)->exists(),
+            404,
+            'Mata pelajaran tidak ditemukan untuk kelas Anda.'
+        );
+
+        $mapel = MataPelajaran::findOrFail($mapelId);
+        $items = PengumpulanTugas::with(['penugasan.jadwal.mataPelajaran', 'penugasan.guru', 'nilai.guru'])
+            ->where('siswa_id', $siswa->id)
+            ->whereHas('penugasan.jadwal', function ($query) use ($siswa, $mapelId) {
+                $query->where('kelas_id', $siswa->kelas_id)->where('mapel_id', $mapelId);
+                if ($periode = $this->periodeAktif()) {
+                    $query->where('periode_id', $periode->id);
+                }
+            })
+            ->latest('waktu_pengumpulan')
+            ->get();
+
+        $graded = $items->filter(fn ($submission) => $submission->nilai !== null);
+        $hasil = $items->map(fn ($submission) => $this->formatNilai($submission))->values();
+        $pdf = Pdf::loadView('pdf.nilai-mapel', [
+            'siswa' => $siswa,
+            'mapel' => $mapel,
+            'hasil' => $hasil,
+            'rataRata' => $graded->isEmpty()
+                ? null
+                : round($graded->avg(fn ($submission) => (float) $submission->nilai->nilai), 2),
+            'dicetakPada' => now('Asia/Jakarta'),
+        ])->setPaper('a4', 'portrait');
+
+        return $pdf->download('nilai-mapel-' . $mapel->id . '-siswa-' . $siswa->id . '.pdf');
+    }
+
+    public function nilaiRekapPdf(Request $request)
+    {
+        $siswa = $this->siswa($request);
+        $mapelIds = $this->jadwalKelasQuery($siswa)
+            ->whereNotNull('mapel_id')
+            ->distinct()
+            ->pluck('mapel_id');
+
+        $submissions = PengumpulanTugas::with(['penugasan.jadwal.mataPelajaran', 'penugasan.guru', 'nilai.guru'])
+            ->where('siswa_id', $siswa->id)
+            ->whereHas('penugasan.jadwal', function ($query) use ($siswa) {
+                $query->where('kelas_id', $siswa->kelas_id);
+                if ($periode = $this->periodeAktif()) {
+                    $query->where('periode_id', $periode->id);
+                }
+            })
+            ->latest('waktu_pengumpulan')
+            ->get();
+
+        $grouped = $submissions->groupBy(fn ($submission) => $submission->penugasan?->jadwal?->mataPelajaran?->id);
+        $mapelList = MataPelajaran::whereIn('id', $mapelIds)->orderBy('nama')->get();
+        $rekap = $mapelList->map(function (MataPelajaran $mapel) use ($grouped) {
+            $items = $grouped->get($mapel->id, collect());
+            $graded = $items->filter(fn ($submission) => $submission->nilai !== null);
+            return [
+                'mapel' => $mapel->nama,
+                'kkm' => (int) $mapel->kkm,
+                'jumlah' => $items->count(),
+                'dinilai' => $graded->count(),
+                'menunggu' => $items->count() - $graded->count(),
+                'rata_rata' => $graded->isEmpty()
+                    ? null
+                    : round($graded->avg(fn ($submission) => (float) $submission->nilai->nilai), 2),
+            ];
+        })->values();
+
+        $gradedAll = $submissions->filter(fn ($submission) => $submission->nilai !== null);
+        $overallAverage = $gradedAll->isEmpty()
+            ? null
+            : round($gradedAll->avg(fn ($submission) => (float) $submission->nilai->nilai), 2);
+
+        $pdf = Pdf::loadView('pdf.nilai-rekap', [
+            'siswa' => $siswa,
+            'rekap' => $rekap,
+            'totalPenilaian' => $submissions->count(),
+            'totalDinilai' => $gradedAll->count(),
+            'rataRata' => $overallAverage,
+            'dicetakPada' => now('Asia/Jakarta'),
+        ])->setPaper('a4', 'portrait');
+
+        return $pdf->download('rekap-nilai-siswa-' . $siswa->id . '.pdf');
     }
 
     private function formatNilai(PengumpulanTugas $submission): array

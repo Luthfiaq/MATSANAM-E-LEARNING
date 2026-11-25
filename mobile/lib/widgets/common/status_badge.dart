@@ -76,7 +76,6 @@ class StatusBadge extends StatelessWidget {
           'text': AppColors.primary,
         };
       case BadgeType.neutral:
-      default:
         return {
           'background': AppColors.background,
           'text': AppColors.textSecondary,
@@ -103,7 +102,6 @@ class StatusBadge extends StatelessWidget {
           'iconSize': 18.0,
         };
       case BadgeSize.medium:
-      default:
         return {
           'paddingH': 8.0,
           'paddingV': 4.0,

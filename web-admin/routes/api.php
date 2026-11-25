@@ -45,11 +45,15 @@ Route::middleware(['auth:sanctum', 'active.account', 'role:guru,siswa'])->group(
         Route::get('/tugas', [SiswaLearningController::class, 'tugasIndex']);
         Route::get('/tugas/{id}', [SiswaLearningController::class, 'tugasShow']);
         Route::get('/tugas/{id}/file', [SiswaLearningController::class, 'tugasFile']);
+        Route::get('/tugas/{id}/files/{fileId}', [SiswaLearningController::class, 'tugasAttachmentFile']);
         Route::post('/tugas/{id}/kumpulkan', [SiswaLearningController::class, 'tugasKumpulkan']);
         Route::get('/pengumpulan/{id}/file', [SiswaLearningController::class, 'pengumpulanFile']);
+        Route::get('/pengumpulan/{id}/files/{fileId}', [SiswaLearningController::class, 'pengumpulanAttachmentFile']);
 
         Route::get('/nilai', [SiswaLearningController::class, 'nilaiIndex']);
+        Route::get('/nilai/rekap/pdf', [SiswaLearningController::class, 'nilaiRekapPdf']);
         Route::get('/nilai/mapel/{mapelId}', [SiswaLearningController::class, 'nilaiByMapel']);
+        Route::get('/nilai/mapel/{mapelId}/pdf', [SiswaLearningController::class, 'nilaiMapelPdf']);
         Route::get('/jadwal', [SiswaLearningController::class, 'jadwal']);
         Route::get('/absensi/riwayat', [SiswaLearningController::class, 'riwayatAbsensi']);
         Route::post('/absensi/scan', [SiswaLearningController::class, 'scanQr'])->middleware('throttle:10,1');
@@ -77,8 +81,12 @@ Route::middleware(['auth:sanctum', 'active.account', 'role:guru,siswa'])->group(
         Route::put('/tugas/{id}', [GuruController::class, 'tugasUpdate']);
         Route::delete('/tugas/{id}', [GuruController::class, 'tugasDestroy']);
         Route::get('/tugas/{id}/file', [GuruController::class, 'tugasFile']);
+        Route::get('/tugas/{id}/files/{fileId}', [GuruController::class, 'tugasAttachmentFile']);
+        Route::delete('/tugas/{id}/files/all', [GuruController::class, 'deleteAllTugasAttachments']);
+        Route::delete('/tugas/{id}/files/{fileId}', [GuruController::class, 'deleteTugasAttachment']);
         Route::get('/tugas/{id}/submission', [GuruController::class, 'getSubmissions']);
         Route::get('/pengumpulan/{submissionId}/file', [GuruController::class, 'submissionFile']);
+        Route::get('/pengumpulan/{submissionId}/lampiran/{fileId}', [GuruController::class, 'submissionAttachmentFile']);
 
         // Nilai
         Route::get('/nilai', [GuruController::class, 'nilaiIndex']);

@@ -12,6 +12,7 @@ use App\Services\SuratAbsensiApprovalService;
 use App\Services\SuratAbsensiFileService;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -156,19 +157,34 @@ class AbsensiController extends Controller
     {
         $validated = $request->validate([
             'periode' => ['nullable', 'date_format:Y-m'],
+            'tanggal' => ['nullable', 'date_format:Y-m-d'],
+            'semua_periode' => ['nullable', 'boolean'],
             'kelas' => ['nullable', 'integer', 'exists:kelas,id'],
             'status' => ['nullable', Rule::in(['hadir', 'izin', 'sakit', 'alpa'])],
+            'q' => ['nullable', 'string', 'max:100'],
         ]);
 
-        $periode = $validated['periode'] ?? Carbon::now('Asia/Jakarta')->format('Y-m');
-        $periodDate = Carbon::createFromFormat('Y-m', $periode);
+        $tanggalFilter = $validated['tanggal'] ?? null;
+        $semuaPeriode = (bool) ($validated['semua_periode'] ?? false) && ! $tanggalFilter;
+
+        // Saat pertama membuka halaman, tampilkan bulan berjalan. Tombol Reset
+        // mengirim semua_periode=1 agar seluruh riwayat ditampilkan.
+        $periode = $tanggalFilter
+            ? Carbon::createFromFormat('Y-m-d', $tanggalFilter)->format('Y-m')
+            : ($semuaPeriode ? null : ($validated['periode'] ?? Carbon::now('Asia/Jakarta')->format('Y-m')));
+        $periodDate = $periode ? Carbon::createFromFormat('Y-m', $periode) : null;
 
         $baseQuery = AbsensiHarian::query()
-            ->with(['siswa.kelas', 'jadwal.guru', 'jadwal.mataPelajaran', 'jadwal.kelas'])
-            ->whereBetween('tanggal', [
+            ->with(['siswa.kelas', 'jadwal.guru', 'jadwal.mataPelajaran', 'jadwal.kelas']);
+
+        if ($tanggalFilter) {
+            $baseQuery->whereDate('tanggal', $tanggalFilter);
+        } elseif (! $semuaPeriode) {
+            $baseQuery->whereBetween('tanggal', [
                 $periodDate->copy()->startOfMonth()->toDateString(),
                 $periodDate->copy()->endOfMonth()->toDateString(),
             ]);
+        }
 
         if (! empty($validated['kelas'])) {
             $baseQuery->whereHas('jadwal', function ($query) use ($validated) {
@@ -176,8 +192,22 @@ class AbsensiController extends Controller
             });
         }
 
-        // Kartu ringkasan mengikuti filter periode dan kelas, namun tidak terpengaruh filter status tabel.
-        $summary = (clone $baseQuery)
+        // Pencarian identitas siswa menjadi bagian dari query dasar agar kartu statistik
+        // dan tabel menunjukkan himpunan siswa yang sama. Filter status tabel tetap
+        // tidak mengubah statistik karena kartu menampilkan distribusi semua status.
+        $search = trim((string) ($validated['q'] ?? ''));
+        $filteredQuery = clone $baseQuery;
+        if ($search !== '') {
+            $filteredQuery->whereHas('siswa', function ($siswaQuery) use ($search) {
+                $siswaQuery->where(function ($identityQuery) use ($search) {
+                    $identityQuery->where('nama_lengkap', 'like', "%{$search}%")
+                        ->orWhere('nis', 'like', "%{$search}%")
+                        ->orWhere('nisn', 'like', "%{$search}%");
+                });
+            });
+        }
+
+        $summary = (clone $filteredQuery)
             ->selectRaw('status, COUNT(*) as total')
             ->groupBy('status')
             ->pluck('total', 'status')
@@ -190,7 +220,7 @@ class AbsensiController extends Controller
         $total = $totalHadir + $totalIzin + $totalSakit + $totalAlpa;
         $persentaseHadir = $total > 0 ? round(($totalHadir / $total) * 100, 2) : 0;
 
-        $listQuery = clone $baseQuery;
+        $listQuery = clone $filteredQuery;
         if (! empty($validated['status'])) {
             $listQuery->where('status', $validated['status']);
         }
@@ -208,45 +238,181 @@ class AbsensiController extends Controller
             'total',
             'persentaseHadir',
             'kelasList',
-            'request'
+            'request',
+            'periode',
+            'tanggalFilter',
+            'search',
+            'semuaPeriode'
         ));
     }
 
     public function historiSurat(Request $request): View
     {
-        $query = SuratAbsensi::with(['siswa.kelas', 'verifikator'])->latest();
+        $filters = $this->validateHistoriFilters($request);
+        $surats = $this->buildHistoriSuratQuery($filters)
+            ->paginate(15)
+            ->withQueryString();
 
-        if ($request->filled('status') && strtolower((string) $request->status) !== 'semua') {
-            $query->whereRaw('LOWER(status_verifikasi) = ?', [strtolower((string) $request->status)]);
-        }
-
-        $surats = $query->paginate(15)->withQueryString();
+        $totalSemua = SuratAbsensi::count();
         $totalPending = SuratAbsensi::whereRaw('LOWER(status_verifikasi) = ?', ['pending'])->count();
         $totalDisetujui = SuratAbsensi::whereRaw('LOWER(status_verifikasi) = ?', ['disetujui'])->count();
         $totalDitolak = SuratAbsensi::whereRaw('LOWER(status_verifikasi) = ?', ['ditolak'])->count();
+        $kelasList = Kelas::orderBy('tingkat')->orderBy('nama_kelas')->get();
 
         return view('admin.absensi.histori', compact(
             'surats',
+            'totalSemua',
             'totalPending',
             'totalDisetujui',
-            'totalDitolak'
+            'totalDitolak',
+            'kelasList',
+            'filters'
         ));
+    }
+
+    public function exportHistoriSurat(Request $request): StreamedResponse
+    {
+        $filters = $this->validateHistoriFilters($request);
+        $surats = $this->buildHistoriSuratQuery($filters)->get();
+
+        $safeCsvValue = static function ($value): string {
+            $value = (string) ($value ?? '');
+            // Hindari formula injection ketika CSV dibuka melalui aplikasi spreadsheet.
+            if (preg_match('/^\s*[=+@-]/u', $value)) {
+                $value = "'" . $value;
+            }
+
+            return $value;
+        };
+
+        $fileName = 'histori-verifikasi-surat-' . now()->format('Ymd-His') . '.csv';
+
+        return response()->streamDownload(function () use ($surats, $safeCsvValue): void {
+            $output = fopen('php://output', 'wb');
+            if ($output === false) {
+                return;
+            }
+
+            // BOM UTF-8 agar nama dan catatan berbahasa Indonesia terbaca baik di Excel.
+            fwrite($output, "\xEF\xBB\xBF");
+            fputcsv($output, [
+                'ID Surat', 'Nama Siswa', 'NIS', 'NISN', 'Kelas', 'Jenis',
+                'Tanggal Mulai', 'Tanggal Selesai', 'Status', 'Alasan Pengajuan',
+                'Catatan Verifikasi', 'Verifikator', 'Tanggal Verifikasi',
+            ], ',', '"', '');
+
+            foreach ($surats as $surat) {
+                fputcsv($output, array_map($safeCsvValue, [
+                    $surat->id,
+                    $surat->siswa?->nama_lengkap,
+                    $surat->siswa?->nis,
+                    $surat->siswa?->nisn,
+                    $surat->siswa?->kelas?->nama_kelas,
+                    $surat->jenis,
+                    $surat->tanggal_mulai?->format('Y-m-d'),
+                    $surat->tanggal_selesai?->format('Y-m-d'),
+                    $surat->status_verifikasi,
+                    $surat->alasan,
+                    $surat->catatan_verifikasi,
+                    $surat->verifikator?->name,
+                    $surat->tanggal_verifikasi?->format('Y-m-d H:i:s'),
+                ]), ',', '"', '');
+            }
+
+            fclose($output);
+        }, $fileName, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate',
+        ]);
+    }
+
+    private function validateHistoriFilters(Request $request): array
+    {
+        return $request->validate([
+            'q' => ['nullable', 'string', 'max:100'],
+            'status' => ['nullable', Rule::in(['semua', 'pending', 'disetujui', 'ditolak'])],
+            'kelas' => ['nullable', 'integer', 'exists:kelas,id'],
+            'jenis' => ['nullable', Rule::in(['sakit', 'izin'])],
+            'semester' => ['nullable', Rule::in(['1', '2'])],
+            'tahun' => ['nullable', 'integer', 'min:2000', 'max:2100'],
+        ]);
+    }
+
+    private function buildHistoriSuratQuery(array $filters): Builder
+    {
+        $query = SuratAbsensi::query()
+            ->with(['siswa.kelas', 'verifikator'])
+            ->latest();
+
+        $keyword = trim((string) ($filters['q'] ?? ''));
+        if ($keyword !== '') {
+            $query->whereHas('siswa', function (Builder $studentQuery) use ($keyword): void {
+                $studentQuery->where(function (Builder $searchQuery) use ($keyword): void {
+                    $searchQuery->where('nama_lengkap', 'like', '%' . $keyword . '%')
+                        ->orWhere('nis', 'like', '%' . $keyword . '%')
+                        ->orWhere('nisn', 'like', '%' . $keyword . '%');
+                });
+            });
+        }
+
+        $status = $filters['status'] ?? 'semua';
+        if ($status !== 'semua') {
+            $query->whereRaw('LOWER(status_verifikasi) = ?', [$status]);
+        }
+
+        if (! empty($filters['kelas'])) {
+            $kelasId = (int) $filters['kelas'];
+            $query->whereHas('siswa.kelas', function (Builder $kelasQuery) use ($kelasId): void {
+                $kelasQuery->whereKey($kelasId);
+            });
+        }
+
+        if (! empty($filters['jenis'])) {
+            $query->where('jenis', $filters['jenis']);
+        }
+
+        if (($filters['semester'] ?? null) === '1') {
+            $query->whereMonth('tanggal_mulai', '>=', 7)
+                ->whereMonth('tanggal_mulai', '<=', 12);
+        } elseif (($filters['semester'] ?? null) === '2') {
+            $query->whereMonth('tanggal_mulai', '>=', 1)
+                ->whereMonth('tanggal_mulai', '<=', 6);
+        }
+
+        if (! empty($filters['tahun'])) {
+            $query->whereYear('tanggal_mulai', (int) $filters['tahun']);
+        }
+
+        return $query;
     }
 
     public function exportPresensi(Request $request)
     {
         $validated = $request->validate([
             'format' => ['required', Rule::in(['excel', 'csv', 'pdf'])],
-            'periode' => ['required', 'date_format:Y-m'],
+            'periode' => ['nullable', 'date_format:Y-m'],
+            'tanggal' => ['nullable', 'date_format:Y-m-d'],
+            'semua_periode' => ['nullable', 'boolean'],
             'kelas' => ['nullable', 'integer', 'exists:kelas,id'],
+            'q' => ['nullable', 'string', 'max:100'],
         ]);
 
-        $periodDate = Carbon::createFromFormat('Y-m', $validated['periode']);
-        $query = AbsensiHarian::with(['siswa', 'jadwal.guru', 'jadwal.mataPelajaran', 'jadwal.kelas'])
-            ->whereBetween('tanggal', [
+        $tanggal = $validated['tanggal'] ?? null;
+        $semuaPeriode = (bool) ($validated['semua_periode'] ?? false) && ! $tanggal;
+        $periode = $tanggal
+            ? Carbon::createFromFormat('Y-m-d', $tanggal)->format('Y-m')
+            : ($semuaPeriode ? null : ($validated['periode'] ?? Carbon::now('Asia/Jakarta')->format('Y-m')));
+        $periodDate = $periode ? Carbon::createFromFormat('Y-m', $periode) : null;
+        $query = AbsensiHarian::with(['siswa', 'jadwal.guru', 'jadwal.mataPelajaran', 'jadwal.kelas']);
+
+        if ($tanggal) {
+            $query->whereDate('tanggal', $tanggal);
+        } elseif (! $semuaPeriode) {
+            $query->whereBetween('tanggal', [
                 $periodDate->copy()->startOfMonth()->toDateString(),
                 $periodDate->copy()->endOfMonth()->toDateString(),
             ]);
+        }
 
         if (! empty($validated['kelas'])) {
             $query->whereHas('jadwal', function ($builder) use ($validated) {
@@ -254,10 +420,21 @@ class AbsensiController extends Controller
             });
         }
 
+        $search = trim((string) ($validated['q'] ?? ''));
+        if ($search !== '') {
+            $query->whereHas('siswa', function ($siswaQuery) use ($search) {
+                $siswaQuery->where(function ($identityQuery) use ($search) {
+                    $identityQuery->where('nama_lengkap', 'like', "%{$search}%")
+                        ->orWhere('nis', 'like', "%{$search}%")
+                        ->orWhere('nisn', 'like', "%{$search}%");
+                });
+            });
+        }
+
         $absensis = $query->orderBy('tanggal')->get();
 
         if ($validated['format'] === 'excel') {
-            $fileName = 'rekap_presensi_' . $validated['periode'] . '.xls';
+            $fileName = 'rekap_presensi_' . ($tanggal ?: ($semuaPeriode ? 'semua-periode' : $periode)) . '.xls';
             $kelas = ! empty($validated['kelas']) ? Kelas::find($validated['kelas']) : null;
             $headers = [
                 'No', 'Nama Siswa', 'NISN', 'Kelas', 'Mata Pelajaran', 'Guru',
@@ -275,7 +452,9 @@ class AbsensiController extends Controller
                 return '<Cell ss:StyleID="' . $style . '"><Data ss:Type="' . $type . '">' . $xmlEscape($value) . '</Data></Cell>';
             };
 
-            $periodLabel = $periodDate->translatedFormat('F Y');
+            $periodLabel = $tanggal
+                ? Carbon::createFromFormat('Y-m-d', $tanggal)->translatedFormat('d F Y')
+                : ($semuaPeriode ? 'Semua Periode' : $periodDate->translatedFormat('F Y'));
             $classLabel = $kelas?->nama_kelas ?? 'Semua Kelas';
             $lastRow = 4 + $absensis->count() + 1;
             $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n"
@@ -377,7 +556,7 @@ class AbsensiController extends Controller
         }
 
         if ($validated['format'] === 'csv') {
-            $fileName = 'rekap_presensi_' . $validated['periode'] . '.csv';
+            $fileName = 'rekap_presensi_' . ($tanggal ?: ($semuaPeriode ? 'semua-periode' : $periode)) . '.csv';
 
             return new StreamedResponse(function () use ($absensis) {
                 $output = fopen('php://output', 'wb');
@@ -420,7 +599,10 @@ class AbsensiController extends Controller
         // Tanpa package PDF pihak ketiga, sediakan halaman print-ready agar Admin bisa Save as PDF dari browser.
         return response()->view('admin.absensi.print', [
             'absensis' => $absensis,
-            'periode' => $validated['periode'],
+            'periode' => $periode,
+            'tanggal' => $tanggal,
+            'semuaPeriode' => $semuaPeriode,
+            'search' => $search,
             'kelas' => ! empty($validated['kelas']) ? Kelas::find($validated['kelas']) : null,
         ]);
     }

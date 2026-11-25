@@ -3,13 +3,19 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/api_config.dart';
 import '../utils/session.dart';
+import 'multipart_upload.dart';
 import 'api_exception.dart';
 
 class SiswaLearningService {
+  static const int maxFileBytes = 20 * 1024 * 1024;
+  static const int maxFilesPerUpload = 20;
+  static const Duration uploadTimeout = Duration(minutes: 5);
+
   Future<String> _token() async {
     final token = await Session.getToken();
     if (token == null || token.isEmpty) {
@@ -163,10 +169,31 @@ class SiswaLearningService {
   Future<Map<String, dynamic>> kumpulkanTugas({
     required int tugasId,
     required String jawaban,
+    List<PlatformFile> files = const [],
+    // Legacy arguments remain available for callers from older screens.
     Uint8List? fileBytes,
     String? fileName,
     bool hapusFile = false,
+    String? uploadBatchId,
+    UploadProgressCallback? onProgress,
   }) async {
+    if (files.length > maxFilesPerUpload) {
+      throw const ApiException('Maksimal 20 file dalam satu pengumpulan.');
+    }
+    for (final file in files) {
+      if (file.size > maxFileBytes) {
+        throw ApiException('File "${file.name}" melebihi batas 20 MB.');
+      }
+      if (file.bytes == null) {
+        throw ApiException(
+          'File "${file.name}" tidak dapat dibaca. Pilih ulang file tersebut.',
+        );
+      }
+    }
+    if (fileBytes != null && fileBytes.length > maxFileBytes) {
+      throw const ApiException('Ukuran file maksimal 20 MB per file.');
+    }
+
     final token = await _token();
     final request = http.MultipartRequest(
       'POST',
@@ -178,7 +205,21 @@ class SiswaLearningService {
     });
     request.fields['jawaban'] = jawaban;
     if (hapusFile) request.fields['hapus_file'] = '1';
-    if (fileBytes != null && fileName != null) {
+    if (uploadBatchId != null)
+      request.fields['upload_batch_id'] = uploadBatchId;
+
+    for (final file in files) {
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'files[]',
+          file.bytes!,
+          filename: file.name,
+        ),
+      );
+    }
+
+    // Backward compatibility for older callers that still provide one file.
+    if (files.isEmpty && fileBytes != null && fileName != null) {
       request.files.add(
         http.MultipartFile.fromBytes(
           'file_jawaban',
@@ -189,8 +230,11 @@ class SiswaLearningService {
     }
 
     try {
-      final streamed = await request.send().timeout(ApiConfig.timeout);
-      final response = await http.Response.fromStream(streamed);
+      final response = await sendMultipartWithProgress(
+        request,
+        timeout: uploadTimeout,
+        onProgress: onProgress,
+      );
       final decoded = jsonDecode(response.body);
       final payload = decoded is Map
           ? Map<String, dynamic>.from(decoded)
@@ -235,6 +279,14 @@ class SiswaLearningService {
   Future<Map<String, dynamic>> nilaiMapel(int mapelId) async {
     final payload = await _get('${ApiConfig.siswaNilai}/mapel/$mapelId');
     return _map(payload['data']);
+  }
+
+  Future<Uint8List> unduhNilaiMapelPdf(int mapelId) {
+    return downloadAuthorizedFile('${ApiConfig.siswaNilai}/mapel/$mapelId/pdf');
+  }
+
+  Future<Uint8List> unduhRekapNilaiPdf() {
+    return downloadAuthorizedFile('${ApiConfig.siswaNilai}/rekap/pdf');
   }
 
   Future<List<Map<String, dynamic>>> jadwal({String? hari}) async {

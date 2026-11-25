@@ -23,7 +23,7 @@
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Kamera digunakan untuk memindai QR presensi dari Guru.</string>
+	<string>Kamera digunakan untuk memindai QR presensi dan mengambil foto lampiran tugas.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Lokasi digunakan untuk memvalidasi radius presensi yang ditentukan madrasah.</string>
 	<key>LSRequiresIPhoneOS</key>

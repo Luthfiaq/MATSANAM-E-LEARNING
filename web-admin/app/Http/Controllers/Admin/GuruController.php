@@ -14,18 +14,39 @@ use Illuminate\View\View;
 
 class GuruController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $guru = Guru::query()
+        $validated = $request->validate([
+            'q' => ['nullable', 'string', 'max:100'],
+            'status' => ['nullable', Rule::in(['aktif', 'nonaktif'])],
+        ]);
+
+        $search = trim((string) ($validated['q'] ?? ''));
+        $status = $validated['status'] ?? '';
+
+        $query = Guru::query()
             ->whereHas('user')
-            ->with('user')
-            ->orderBy('nama_lengkap')
-            ->paginate(15)
-            ->withQueryString();
+            ->with('user');
 
-        return view('admin.master-data.guru.index', compact('guru'));
+        if ($search !== '') {
+            $query->where(function ($builder) use ($search) {
+                $builder->where('nama_lengkap', 'like', "%{$search}%")
+                    ->orWhere('nip', 'like', "%{$search}%")
+                    ->orWhere('telepon', 'like', "%{$search}%")
+                    ->orWhereHas('user', function ($userQuery) use ($search) {
+                        $userQuery->where('email', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        if ($status !== '') {
+            $query->whereHas('user', fn ($userQuery) => $userQuery->where('is_active', $status === 'aktif'));
+        }
+
+        $guru = $query->orderBy('nama_lengkap')->paginate(15)->withQueryString();
+
+        return view('admin.master-data.guru.index', compact('guru', 'search', 'status'));
     }
-
     public function create(): View
     {
         return view('admin.master-data.guru.create');

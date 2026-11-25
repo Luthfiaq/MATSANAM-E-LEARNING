@@ -184,24 +184,27 @@ class _KoreksiTugasScreenState extends State<KoreksiTugasScreen> {
   }
 
   List<Map<String, dynamic>> _attachments() {
-    final raw = _student['file_jawaban'];
-    if (raw == null || raw.toString().trim().isEmpty) return [];
-
-    final explicitName = _student['file_name']?.toString();
-    final url = _student['file_url']?.toString();
-    if (raw is List) {
-      return raw.map((item) {
-        final path = item.toString();
-        return <String, dynamic>{'name': _fileName(path), 'url': url};
+    final rawAttachments = _student['lampiran_files'];
+    if (rawAttachments is List && rawAttachments.isNotEmpty) {
+      return rawAttachments.whereType<Map>().map((item) {
+        final file = Map<String, dynamic>.from(item);
+        return <String, dynamic>{
+          'name': file['name'] ?? file['file_name'] ?? 'Lampiran siswa',
+          'url': file['url'] ?? file['file_url'],
+          'size_bytes': file['size_bytes'],
+        };
       }).toList();
     }
 
+    // Backward compatibility for existing submissions and older API payloads.
+    final raw = _student['file_jawaban'];
+    if (raw == null || raw.toString().trim().isEmpty) return [];
     return [
       <String, dynamic>{
-        'name': explicitName?.isNotEmpty == true
-            ? explicitName
+        'name': _student['file_name']?.toString().isNotEmpty == true
+            ? _student['file_name'].toString()
             : _fileName(raw.toString()),
-        'url': url,
+        'url': _student['file_url']?.toString(),
       },
     ];
   }

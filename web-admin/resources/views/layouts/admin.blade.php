@@ -103,8 +103,7 @@
             color: #1e293b !important;
             border-bottom-color: #e2e8f0 !important;
         }
-        html[data-theme="light"] #adminTopbar .text-slate-900,
-        html[data-theme="light"] #adminTopbar .text-white { color: #0f172a !important; }
+        html[data-theme="light"] #adminTopbar .text-slate-900 { color: #0f172a !important; }
         html[data-theme="light"] #adminTopbar .text-slate-500,
         html[data-theme="light"] #adminTopbar .text-slate-400 { color: #64748b !important; }
         html[data-theme="light"] #adminTopbar .bg-blue-50 {
@@ -131,6 +130,177 @@
             background-color: #334155 !important;
             border-color: #475569 !important;
             color: #bfdbfe !important;
+        }
+
+
+        /* Shared theme tokens and contrast corrections for all Admin pages. */
+        html[data-theme="light"] { color-scheme: light; }
+        html[data-theme="dark"] { color-scheme: dark; }
+
+        html[data-theme="light"] body {
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+        html[data-theme="dark"] body {
+            background-color: #0f172a;
+            color: #e2e8f0;
+        }
+        html[data-theme="dark"] main {
+            color: #e2e8f0;
+        }
+        html[data-theme="dark"] .text-slate-200,
+        html[data-theme="dark"] .text-gray-200 { color: #e2e8f0 !important; }
+        html[data-theme="dark"] .text-slate-300,
+        html[data-theme="dark"] .text-gray-300 { color: #cbd5e1 !important; }
+        html[data-theme="dark"] .text-slate-400,
+        html[data-theme="dark"] .text-gray-400 { color: #94a3b8 !important; }
+        html[data-theme="dark"] .text-slate-500,
+        html[data-theme="dark"] .text-gray-500 { color: #94a3b8 !important; }
+        html[data-theme="dark"] .text-slate-600,
+        html[data-theme="dark"] .text-gray-600 { color: #cbd5e1 !important; }
+        html[data-theme="dark"] .text-slate-700,
+        html[data-theme="dark"] .text-gray-700 { color: #e2e8f0 !important; }
+        html[data-theme="dark"] .text-slate-800,
+        html[data-theme="dark"] .text-gray-800,
+        html[data-theme="dark"] .text-slate-900,
+        html[data-theme="dark"] .text-gray-900 { color: #f1f5f9 !important; }
+        html[data-theme="dark"] input::placeholder,
+        html[data-theme="dark"] textarea::placeholder { color: #94a3b8 !important; opacity: 1; }
+        html[data-theme="dark"] select option {
+            background-color: #0f172a;
+            color: #e2e8f0;
+        }
+        html[data-theme="dark"] .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+        html[data-theme="dark"] .divide-gray-100 > :not([hidden]) ~ :not([hidden]) {
+            border-color: #334155 !important;
+        }
+        html[data-theme="dark"] .border-gray-100,
+        html[data-theme="dark"] .border-gray-200,
+        html[data-theme="dark"] .border-gray-300,
+        html[data-theme="dark"] .border-slate-100,
+        html[data-theme="dark"] .border-slate-200 {
+            border-color: #334155 !important;
+        }
+        html[data-theme="dark"] .hover\:bg-gray-50:hover,
+        html[data-theme="dark"] .hover\:bg-slate-50:hover,
+        html[data-theme="dark"] .hover\:bg-gray-100:hover,
+        html[data-theme="dark"] .hover\:bg-slate-100:hover,
+        html[data-theme="dark"] table tbody tr:hover {
+            background-color: #334155 !important;
+            color: #f1f5f9;
+        }
+        html[data-theme="dark"] input::placeholder,
+        html[data-theme="dark"] textarea::placeholder,
+        html[data-theme="dark"] input::-webkit-input-placeholder,
+        html[data-theme="dark"] textarea::-webkit-input-placeholder {
+            color: #94a3b8 !important;
+            opacity: 1;
+        }
+
+        /* Global Search input surface and text are explicit so they do not
+           inherit a stale Tailwind dark variant during theme restoration. */
+        html[data-theme="light"] #adminTopbar #adminGlobalSearch > div {
+            background-color: #f8fafc !important;
+            border-color: #cbd5e1 !important;
+        }
+        html[data-theme="light"] #adminGlobalSearchInput {
+            color: #1e293b !important;
+            background-color: transparent !important;
+        }
+        html[data-theme="light"] #adminGlobalSearchInput::placeholder {
+            color: #64748b !important;
+            opacity: 1;
+        }
+        html[data-theme="light"] #adminGlobalSearch kbd {
+            background-color: #ffffff !important;
+            color: #64748b !important;
+            border-color: #cbd5e1 !important;
+        }
+        html[data-theme="dark"] #adminTopbar #adminGlobalSearch > div {
+            background-color: #334155 !important;
+            border-color: #475569 !important;
+        }
+        html[data-theme="dark"] #adminGlobalSearchInput {
+            color: #f1f5f9 !important;
+            background-color: transparent !important;
+        }
+        html[data-theme="dark"] #adminGlobalSearchInput::placeholder {
+            color: #94a3b8 !important;
+            opacity: 1;
+        }
+
+        /* Global Search results must follow the selected theme even when other
+           page widgets use a locally styled surface. */
+        html[data-theme="light"] #adminGlobalSearchResults {
+            background: #ffffff !important;
+            color: #1e293b !important;
+            border-color: #cbd5e1 !important;
+        }
+        html[data-theme="light"] #adminGlobalSearchResults [data-search-result] {
+            color: #1e293b !important;
+        }
+        html[data-theme="light"] #adminGlobalSearchResults [data-search-result]:hover,
+        html[data-theme="light"] #adminGlobalSearchResults [data-search-result]:focus,
+        html[data-theme="light"] #adminGlobalSearchResults [data-search-result].bg-blue-50 {
+            background: #eff6ff !important;
+        }
+        html[data-theme="light"] #adminGlobalSearchResults .text-slate-800,
+        html[data-theme="light"] #adminGlobalSearchResults .text-slate-700 { color: #1e293b !important; }
+        html[data-theme="light"] #adminGlobalSearchResults .text-slate-600 { color: #475569 !important; }
+        html[data-theme="light"] #adminGlobalSearchResults .text-slate-500 { color: #64748b !important; }
+        html[data-theme="light"] #adminGlobalSearchResults .text-slate-400 { color: #64748b !important; }
+        html[data-theme="light"] #adminGlobalSearchResults .bg-slate-100 { background: #f1f5f9 !important; }
+        html[data-theme="light"] #adminGlobalSearchResults .border-slate-100 { border-color: #e2e8f0 !important; }
+        html[data-theme="light"] #adminGlobalSearchResults .text-slate-100,
+        html[data-theme="light"] #adminGlobalSearchResults .text-slate-200,
+        html[data-theme="light"] #adminGlobalSearchResults [class~="dark:text-slate-100"],
+        html[data-theme="light"] #adminGlobalSearchResults [class~="dark:text-slate-200"] {
+            color: #334155 !important;
+        }
+        html[data-theme="light"] #adminGlobalSearchResults .bg-slate-700,
+        html[data-theme="light"] #adminGlobalSearchResults .bg-slate-800,
+        html[data-theme="light"] #adminGlobalSearchResults [class~="dark:bg-slate-700"] {
+            background-color: #f1f5f9 !important;
+        }
+        html[data-theme="light"] #adminGlobalSearchResults .border-slate-700,
+        html[data-theme="light"] #adminGlobalSearchResults [class~="dark:border-slate-700"] {
+            border-color: #e2e8f0 !important;
+        }
+        html[data-theme="light"] #adminGlobalSearchResults {
+            box-shadow: 0 18px 36px rgba(15, 23, 42, .16) !important;
+        }
+
+        html[data-theme="dark"] #adminGlobalSearchResults {
+            background: #1e293b !important;
+            color: #e2e8f0 !important;
+            border-color: #475569 !important;
+        }
+        html[data-theme="dark"] #adminGlobalSearchResults [data-search-result] {
+            color: #f1f5f9 !important;
+        }
+        html[data-theme="dark"] #adminGlobalSearchResults [data-search-result]:hover,
+        html[data-theme="dark"] #adminGlobalSearchResults [data-search-result]:focus,
+        html[data-theme="dark"] #adminGlobalSearchResults [data-search-result].bg-blue-50 {
+            background: #334155 !important;
+        }
+        html[data-theme="dark"] #adminGlobalSearchResults .text-slate-800,
+        html[data-theme="dark"] #adminGlobalSearchResults .text-slate-700,
+        html[data-theme="dark"] #adminGlobalSearchResults .text-slate-600 { color: #f1f5f9 !important; }
+        html[data-theme="dark"] #adminGlobalSearchResults .text-slate-500,
+        html[data-theme="dark"] #adminGlobalSearchResults .text-slate-400 { color: #cbd5e1 !important; }
+        html[data-theme="dark"] #adminGlobalSearchResults .bg-slate-100 { background: #334155 !important; }
+        html[data-theme="dark"] #adminGlobalSearchResults .border-slate-100 { border-color: #475569 !important; }
+
+        /* Ensure form controls and native date/select widgets use the same palette. */
+        html[data-theme="light"] input:not([type=checkbox]):not([type=radio]),
+        html[data-theme="light"] select,
+        html[data-theme="light"] textarea {
+            color-scheme: light;
+        }
+        html[data-theme="dark"] input:not([type=checkbox]):not([type=radio]),
+        html[data-theme="dark"] select,
+        html[data-theme="dark"] textarea {
+            color-scheme: dark;
         }
     </style>
     @stack('styles')

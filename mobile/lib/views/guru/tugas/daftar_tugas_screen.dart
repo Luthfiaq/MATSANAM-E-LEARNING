@@ -34,7 +34,6 @@ class _DaftarTugasGuruScreenState extends State<DaftarTugasGuruScreen> {
   }
 
   Future<void> _loadTugas({int? page}) async {
-    final pageNum = page ?? _currentPage;
     setState(() => _isLoading = true);
     try {
       final prefs = await SharedPreferences.getInstance();

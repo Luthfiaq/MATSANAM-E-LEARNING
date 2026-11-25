@@ -78,13 +78,24 @@
                                     {{ $p->status === 'tepat_waktu' ? 'Tepat Waktu' : 'Terlambat' }}
                                 </span>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                @if($p->file_jawaban)
-                                <a href="{{ asset('storage/' . $p->file_jawaban) }}" target="_blank" class="text-blue-600 hover:text-blue-900 text-sm">
-                                    📄 {{ basename($p->file_jawaban) }}
-                                </a>
+                            <td class="px-6 py-4">
+                                @php
+                                    $lampiranPengumpulan = $p->files;
+                                @endphp
+                                @if($lampiranPengumpulan->isNotEmpty())
+                                    <div class="space-y-1">
+                                        @foreach($lampiranPengumpulan as $lampiran)
+                                            <a href="{{ route('admin.nilai.submission-attachment-file', ['submissionId' => $p->id, 'fileId' => $lampiran->id]) }}" class="block text-blue-600 hover:text-blue-900 text-sm" target="_blank">
+                                                📄 {{ $lampiran->original_name }}
+                                            </a>
+                                        @endforeach
+                                    </div>
+                                @elseif($p->file_jawaban)
+                                    <a href="{{ route('admin.nilai.submission-file', $p->id) }}" class="text-blue-600 hover:text-blue-900 text-sm" target="_blank">
+                                        📄 {{ basename($p->file_jawaban) }}
+                                    </a>
                                 @else
-                                <span class="text-gray-400 text-sm">-</span>
+                                    <span class="text-gray-400 text-sm">-</span>
                                 @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">

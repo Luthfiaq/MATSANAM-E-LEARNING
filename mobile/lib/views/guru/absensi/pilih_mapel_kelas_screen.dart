@@ -256,7 +256,7 @@ class _PilihMapelKelasScreenState extends State<PilihMapelKelasScreen> {
                 ],
               ),
             ),
-      bottomNavigationBar: const GuruBottomNavigation(currentIndex: 2),
+      bottomNavigationBar: const GuruBottomNavigation(currentIndex: 3),
     );
   }
 

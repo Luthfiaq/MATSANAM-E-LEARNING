@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../services/auth_service.dart';
 import '../../../services/notification_service.dart';
 import '../../../utils/session.dart';
 import '../../auth/login_screen.dart';
+import '../../auth/change_password_screen.dart';
 import '../../../main.dart';
 import '../../../widgets/common/guru_bottom_navigation.dart';
 import '../../../widgets/common/notification_bell_button.dart';
@@ -17,8 +19,8 @@ class PengaturanGuruScreen extends StatefulWidget {
 }
 
 class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
-  static const Color primary = Color(0xFF2563EB);
-  static const Color green = Color(0xFF087F5B);
+  Color get primary => Theme.of(context).colorScheme.primary;
+  static const Color green = Color(0xFF059669);
 
   String selectedTheme = 'Terang';
 
@@ -28,19 +30,38 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
   String teacherName = 'Memuat profil...';
   String teacherNip = 'NIP: -';
   String teacherEmail = '-';
-  String? teacherPhoto;
   bool _profileLoading = true;
 
   @override
   void initState() {
     super.initState();
+    _restoreThemePreference();
     _loadTeacherProfile();
+  }
+
+  Future<void> _restoreThemePreference() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedTheme = prefs.getString('siswa_theme') ?? 'Terang';
+      if (!mounted) return;
+      if (['Terang', 'Gelap', 'Sistem'].contains(savedTheme)) {
+        setState(() => selectedTheme = savedTheme);
+      }
+    } catch (_) {
+      // Keep Light Mode as the safe default if local preferences are unavailable.
+    }
   }
 
   Future<void> _loadTeacherProfile() async {
     try {
       final cachedProfile = await Session.getProfile();
-      final fresh = await AuthService().getCurrentUser();
+      final cachedUser = await Session.getUser();
+      Map<String, dynamic>? fresh;
+      try {
+        fresh = await AuthService().getCurrentUser();
+      } catch (_) {
+        // Cached user/profile remains useful when the API is temporarily offline.
+      }
       Map<String, dynamic> remotePreferences = {};
       try {
         remotePreferences = await NotificationService().fetchPreferences();
@@ -52,17 +73,15 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
       final profile = freshProfile is Map
           ? Map<String, dynamic>.from(freshProfile)
           : (cachedProfile ?? <String, dynamic>{});
+      final user = freshUser is Map
+          ? Map<String, dynamic>.from(freshUser)
+          : (cachedUser ?? <String, dynamic>{});
       if (!mounted) return;
       setState(() {
-        teacherName =
-            (profile['nama_lengkap'] ??
-                    (freshUser is Map ? freshUser['name'] : null) ??
-                    'Nama Guru')
-                .toString();
+        teacherName = (profile['nama_lengkap'] ?? user['name'] ?? 'Nama Guru')
+            .toString();
         teacherNip = 'NIP: ${(profile['nip'] ?? '-').toString()}';
-        teacherEmail =
-            (freshUser is Map ? freshUser['email'] : null)?.toString() ?? '-';
-        teacherPhoto = profile['foto_profil']?.toString();
+        teacherEmail = (user['email'] ?? '-').toString();
         tugasBaru = remotePreferences['pengumpulan_tugas'] as bool? ?? true;
         pengajuanIzin = remotePreferences['pengajuan_izin'] as bool? ?? true;
         _profileLoading = false;
@@ -71,6 +90,38 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
       if (!mounted) return;
       setState(() => _profileLoading = false);
     }
+  }
+
+  String get teacherInitials {
+    if (_profileLoading) return 'GU';
+    const excluded = {
+      'dra.',
+      'dr.',
+      'h.',
+      'hj.',
+      'prof.',
+      's.pd.',
+      'm.pd.',
+      'm.e.',
+      's.kom.',
+      'm.si.',
+      's.pd',
+      'm.pd',
+      'm.e',
+      's.kom',
+      'm.si',
+    };
+    final parts = teacherName
+        .split(RegExp(r'[\s,]+'))
+        .map((part) => part.trim())
+        .where(
+          (part) => part.isNotEmpty && !excluded.contains(part.toLowerCase()),
+        )
+        .toList();
+    if (parts.isEmpty) return 'GU';
+    final first = parts.first.substring(0, 1);
+    final second = parts.length > 1 ? parts[1].substring(0, 1) : '';
+    return '$first$second'.toUpperCase();
   }
 
   bool get isDark => Theme.of(context).brightness == Brightness.dark;
@@ -94,20 +145,6 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
 
   Color get softIcon =>
       isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9);
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-
-    // Menyesuaikan tampilan dengan tema aplikasi.
-    if (Theme.of(context).brightness == Brightness.dark &&
-        selectedTheme == 'Terang') {
-      selectedTheme = 'Gelap';
-    } else if (Theme.of(context).brightness == Brightness.light &&
-        selectedTheme == 'Gelap') {
-      selectedTheme = 'Terang';
-    }
-  }
 
   Future<void> _setNotificationPreference(String key, bool value) async {
     try {
@@ -135,7 +172,7 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
   }
 
   // MENGUBAH TEMA APLIKASI
-  void _changeTheme(String theme) {
+  Future<void> _changeTheme(String theme) async {
     ThemeMode mode;
 
     switch (theme) {
@@ -153,101 +190,17 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
       selectedTheme = theme;
     });
 
-    MatsanamApp.ubahTema(context, mode);
-
+    await MatsanamApp.ubahTema(context, mode);
+    if (!mounted) return;
     _showMessage('Tema $theme berhasil diterapkan.');
   }
 
-  // DIALOG GANTI PASSWORD
+  // Ganti kata sandi memakai form dan endpoint autentikasi yang sama
+  // dengan alur siswa; tidak menampilkan notifikasi sukses palsu.
   void _showChangePasswordDialog() {
-    final oldController = TextEditingController();
-    final newController = TextEditingController();
-    final confirmController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: cardColor,
-          title: Text(
-            'Ganti Kata Sandi',
-            style: TextStyle(color: textDark, fontWeight: FontWeight.bold),
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: oldController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Kata sandi lama',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: newController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Kata sandi baru',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: confirmController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Konfirmasi kata sandi',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Batal'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primary,
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () {
-                if (oldController.text.isEmpty ||
-                    newController.text.isEmpty ||
-                    confirmController.text.isEmpty) {
-                  _showMessage('Semua kolom harus diisi.');
-                  return;
-                }
-
-                if (newController.text.length < 6) {
-                  _showMessage('Kata sandi baru minimal 6 karakter.');
-                  return;
-                }
-
-                if (newController.text != confirmController.text) {
-                  _showMessage('Konfirmasi kata sandi tidak cocok.');
-                  return;
-                }
-
-                Navigator.pop(dialogContext);
-
-                _showMessage('Permintaan ganti kata sandi berhasil disiapkan.');
-              },
-              child: const Text('Simpan'),
-            ),
-          ],
-        );
-      },
-    ).then((_) {
-      oldController.dispose();
-      newController.dispose();
-      confirmController.dispose();
-    });
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const ChangePasswordScreen()),
+    );
   }
 
   // DIALOG EMAIL
@@ -269,10 +222,7 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
               const SizedBox(height: 6),
               SelectableText(
                 teacherEmail,
-                style: const TextStyle(
-                  color: primary,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(color: primary, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 12),
               Text(
@@ -535,9 +485,9 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
                   color: primary,
                   borderRadius: BorderRadius.circular(11),
                 ),
-                child: const Text(
-                  'IK',
-                  style: TextStyle(
+                child: Text(
+                  teacherInitials,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 19,
                     fontWeight: FontWeight.bold,
@@ -579,7 +529,7 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  'Guru • MTs Matsanama',
+                  'Guru • MTsN 6 Nganjuk',
                   style: TextStyle(fontSize: 9, color: textMuted),
                 ),
                 const SizedBox(height: 7),
@@ -661,9 +611,9 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
             child: CircleAvatar(
               radius: 15,
               backgroundColor: primary,
-              child: const Text(
-                'IK',
-                style: TextStyle(
+              child: Text(
+                teacherInitials,
+                style: const TextStyle(
                   fontSize: 10,
                   color: Colors.white,
                   fontWeight: FontWeight.bold,

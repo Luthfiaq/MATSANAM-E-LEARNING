@@ -30,8 +30,6 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
   bool _isLoading = true;
   String? _loadError;
   bool _didChange = false;
-  int _currentPage = 1;
-  int _totalPages = 1;
   String _selectedFilter = 'Semua';
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
@@ -103,7 +101,7 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
     _loadMateri();
   }
 
-  Future<void> _loadMateri({int? page}) async {
+  Future<void> _loadMateri() async {
     if (!mounted) return;
     setState(() {
       _isLoading = true;
@@ -155,8 +153,6 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
       if (!mounted) return;
       setState(() {
         _materiList = rows;
-        _currentPage = 1;
-        _totalPages = 1;
         _loadError = null;
         _isLoading = false;
       });
@@ -801,40 +797,6 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
                 ),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPagination() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            'Halaman $_currentPage dari $_totalPages',
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 12,
-            ),
-          ),
-          Row(
-            children: [
-              IconButton(
-                onPressed: _currentPage > 1
-                    ? () => _loadMateri(page: _currentPage - 1)
-                    : null,
-                icon: const Icon(Icons.chevron_left),
-              ),
-              IconButton(
-                onPressed: _currentPage < _totalPages
-                    ? () => _loadMateri(page: _currentPage + 1)
-                    : null,
-                icon: const Icon(Icons.chevron_right),
-              ),
-            ],
           ),
         ],
       ),
