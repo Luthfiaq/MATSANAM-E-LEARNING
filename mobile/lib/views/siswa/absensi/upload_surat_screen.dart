@@ -5,7 +5,8 @@ import 'package:flutter/material.dart';
 
 import '../../../models/absensi_model.dart';
 import '../../../services/absensi_service.dart';
-import '../../../utils/constants.dart';
+import '../../../services/siswa_learning_service.dart';
+import '../../../utils/theme_helpers.dart';
 
 class UploadSuratScreen extends StatefulWidget {
   const UploadSuratScreen({super.key});
@@ -17,9 +18,14 @@ class UploadSuratScreen extends StatefulWidget {
 class _UploadSuratScreenState extends State<UploadSuratScreen> {
   final _formKey = GlobalKey<FormState>();
   final _service = AbsensiService();
+  final _learningService = SiswaLearningService();
   final _reasonController = TextEditingController();
 
   String _type = 'izin';
+  String _scope = 'sehari_penuh';
+  List<Map<String, dynamic>> _scheduleOptions = [];
+  int? _selectedScheduleId;
+  bool _loadingSchedules = false;
   DateTime? _startDate;
   DateTime? _endDate;
   Uint8List? _fileBytes;
@@ -30,6 +36,62 @@ class _UploadSuratScreenState extends State<UploadSuratScreen> {
   void dispose() {
     _reasonController.dispose();
     super.dispose();
+  }
+
+  String _isoDate(DateTime date) =>
+      '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+  Future<void> _setScope(String value) async {
+    setState(() {
+      _scope = value;
+      _selectedScheduleId = null;
+      _scheduleOptions = [];
+    });
+    if (value == 'pulang_lebih_awal' && _startDate != null) {
+      await _loadScheduleOptions(_startDate!);
+    }
+  }
+
+  Future<void> _loadScheduleOptions(DateTime date) async {
+    if (_scope != 'pulang_lebih_awal') return;
+    setState(() {
+      _loadingSchedules = true;
+      _scheduleOptions = [];
+      _selectedScheduleId = null;
+    });
+    try {
+      final schedules = await _learningService.jadwal(tanggal: _isoDate(date));
+      if (!mounted) return;
+      // Mata pelajaran acuan adalah pelajaran pertama yang mulai diizinkan.
+      // Pelajaran yang sudah tercatat Hadir tidak ditawarkan karena catatan
+      // Hadir yang valid tidak boleh diubah menjadi Izin/Sakit.
+      final options = schedules
+          .where((item) => (item['absensi_status'] ?? '').toString().toLowerCase() != 'hadir')
+          .toList();
+      setState(() {
+        _scheduleOptions = options;
+        _loadingSchedules = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _loadingSchedules = false;
+        _scheduleOptions = [];
+      });
+      _showMessage('Gagal memuat jadwal: $error', isError: true);
+    }
+  }
+
+  String _selectedScheduleLabel() {
+    Map<String, dynamic>? item;
+    for (final row in _scheduleOptions) {
+      if ((row['id'] as num?)?.toInt() == _selectedScheduleId) {
+        item = row;
+        break;
+      }
+    }
+    if (item == null) return 'mata pelajaran yang dipilih';
+    return '${item['mapel']} (${item['jam_mulai']}–${item['jam_selesai']})';
   }
 
   Future<void> _selectDate({required bool start}) async {
@@ -50,7 +112,7 @@ class _UploadSuratScreenState extends State<UploadSuratScreen> {
         data: Theme.of(context).copyWith(
           colorScheme: Theme.of(
             context,
-          ).colorScheme.copyWith(primary: AppColors.primary),
+          ).colorScheme.copyWith(primary: Theme.of(context).colorScheme.primary),
         ),
         child: child!,
       ),
@@ -63,10 +125,15 @@ class _UploadSuratScreenState extends State<UploadSuratScreen> {
         if (_endDate == null || _endDate!.isBefore(picked)) {
           _endDate = picked;
         }
+        // Pilihan jadwal harus selalu berasal dari tanggal mulai pengajuan.
+        _selectedScheduleId = null;
       } else {
         _endDate = picked;
       }
     });
+    if (start && _scope == 'pulang_lebih_awal' && _startDate != null) {
+      await _loadScheduleOptions(_startDate!);
+    }
   }
 
   Future<void> _pickDocument() async {
@@ -116,6 +183,10 @@ class _UploadSuratScreenState extends State<UploadSuratScreen> {
       _showMessage('Pilih tanggal mulai dan tanggal selesai.', isError: true);
       return;
     }
+    if (_scope == 'pulang_lebih_awal' && _selectedScheduleId == null) {
+      _showMessage('Pilih mata pelajaran pertama yang mulai diizinkan.', isError: true);
+      return;
+    }
     if (_endDate!.isBefore(_startDate!)) {
       _showMessage(
         'Tanggal selesai tidak boleh sebelum tanggal mulai.',
@@ -128,9 +199,7 @@ class _UploadSuratScreenState extends State<UploadSuratScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Kirim pengajuan?'),
-        content: Text(
-          'Pengajuan ${_type == 'sakit' ? 'sakit' : 'izin'} untuk ${_formatIndonesianDate(_startDate!)} sampai ${_formatIndonesianDate(_endDate!)} akan dikirim untuk diverifikasi.',
-        ),
+        content: Text(_confirmationMessage()),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
@@ -151,6 +220,8 @@ class _UploadSuratScreenState extends State<UploadSuratScreen> {
         jenisIzin: _type,
         tanggalMulai: _startDate!,
         tanggalSelesai: _endDate!,
+        cakupan: _scope,
+        jadwalAcuanId: _selectedScheduleId,
         keterangan: _reasonController.text.trim(),
         fileBytes: _fileBytes,
         fileName: _fileName,
@@ -173,12 +244,22 @@ class _UploadSuratScreenState extends State<UploadSuratScreen> {
     }
   }
 
+  String _confirmationMessage() {
+    final start = _formatIndonesianDate(_startDate!);
+    final end = _formatIndonesianDate(_endDate!);
+    final kind = _type == 'sakit' ? 'sakit' : 'izin';
+    if (_scope == 'pulang_lebih_awal') {
+      return 'Pengajuan $kind dari ${_selectedScheduleLabel()} pada $start sampai $end. Pada tanggal mulai, mata pelajaran yang dipilih dan pelajaran setelahnya masuk cakupan $kind. Pada tanggal berikutnya sampai tanggal selesai, seluruh jadwal masuk cakupan $kind setelah surat disetujui.';
+    }
+    return 'Pengajuan $kind sehari penuh untuk $start sampai $end akan dikirim untuk diverifikasi.';
+  }
+
   void _showMessage(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: isError ? AppColors.error : AppColors.success,
+        backgroundColor: isError ? context.matsanamError : context.matsanamSuccess,
       ),
     );
   }
@@ -199,18 +280,18 @@ class _UploadSuratScreenState extends State<UploadSuratScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: .08),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: .08),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: AppColors.primary.withValues(alpha: .16),
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: .16),
                   ),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.info_outline_rounded,
-                      color: AppColors.primary,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -257,6 +338,25 @@ class _UploadSuratScreenState extends State<UploadSuratScreen> {
               ),
               const SizedBox(height: 22),
               Text(
+                'Cakupan Pengajuan',
+                style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 8),
+              _ScopeOption(
+                title: 'Sehari penuh',
+                subtitle: 'Seluruh mata pelajaran pada setiap tanggal yang dipilih.',
+                selected: _scope == 'sehari_penuh',
+                onTap: () => _setScope('sehari_penuh'),
+              ),
+              const SizedBox(height: 8),
+              _ScopeOption(
+                title: 'Pulang lebih awal',
+                subtitle: 'Tentukan mata pelajaran pertama yang mulai diizinkan.',
+                selected: _scope == 'pulang_lebih_awal',
+                onTap: () => _setScope('pulang_lebih_awal'),
+              ),
+              const SizedBox(height: 22),
+              Text(
                 'Rentang Tanggal',
                 style: textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w800,
@@ -268,9 +368,7 @@ class _UploadSuratScreenState extends State<UploadSuratScreen> {
                   Expanded(
                     child: _DateField(
                       label: 'Tanggal mulai',
-                      value: _startDate == null
-                          ? null
-                          : _formatIndonesianDate(_startDate!),
+                      value: _startDate == null ? null : _formatIndonesianDate(_startDate!),
                       onTap: () => _selectDate(start: true),
                     ),
                   ),
@@ -278,17 +376,62 @@ class _UploadSuratScreenState extends State<UploadSuratScreen> {
                   Expanded(
                     child: _DateField(
                       label: 'Tanggal selesai',
-                      value: _endDate == null
-                          ? null
-                          : _formatIndonesianDate(_endDate!),
+                      value: _endDate == null ? null : _formatIndonesianDate(_endDate!),
                       onTap: () => _selectDate(start: false),
                     ),
                   ),
                 ],
               ),
+              if (_scope == 'pulang_lebih_awal') ...[
+                const SizedBox(height: 16),
+                Text(
+                  'Mulai Izin Dari Mata Pelajaran',
+                  style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 8),
+                if (_startDate == null)
+                  Text(
+                    'Pilih tanggal mulai terlebih dahulu untuk memuat jadwal kelas.',
+                    style: textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                  )
+                else if (_loadingSchedules)
+                  const Center(child: Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator()))
+                else if (_scheduleOptions.isEmpty)
+                  Text(
+                    'Tidak ada mata pelajaran yang dapat dipilih pada tanggal mulai. Pastikan jadwal tersedia dan mata pelajaran tersebut belum tercatat Hadir.',
+                    style: textTheme.bodySmall?.copyWith(color: scheme.error),
+                  )
+                else
+                  DropdownButtonFormField<int>(
+                    value: _selectedScheduleId,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+                      hintText: 'Pilih mata pelajaran pertama yang diizinkan',
+                    ),
+                    items: _scheduleOptions.map((item) {
+                      final id = (item['id'] as num).toInt();
+                      final time = '${item['jam_mulai']}–${item['jam_selesai']}';
+                      final subject = item['mapel']?.toString() ?? 'Mata pelajaran';
+                      return DropdownMenuItem<int>(
+                        value: id,
+                        child: Text('$time · $subject', maxLines: 1, overflow: TextOverflow.ellipsis),
+                      );
+                    }).toList(),
+                    onChanged: (value) => setState(() => _selectedScheduleId = value),
+                    validator: (value) => _scope == 'pulang_lebih_awal' && value == null
+                        ? 'Pilih mata pelajaran pertama yang diizinkan.'
+                        : null,
+                  ),
+                const SizedBox(height: 6),
+                Text(
+                  'Pada tanggal mulai, mata pelajaran yang dipilih dan semua pelajaran setelahnya menjadi cakupan izin/sakit. Pada tanggal berikutnya sampai tanggal selesai, seluruh jadwal menjadi cakupan izin/sakit. Catatan Hadir tetap dipertahankan.',
+                  style: textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                ),
+              ],
               const SizedBox(height: 22),
               Text(
-                'Alasan / Keterangan',
+                _scope == 'pulang_lebih_awal' ? 'Alasan Pulang Lebih Awal' : 'Alasan / Keterangan',
                 style: textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w800,
                 ),
@@ -300,9 +443,10 @@ class _UploadSuratScreenState extends State<UploadSuratScreen> {
                 maxLines: 6,
                 maxLength: 2000,
                 textInputAction: TextInputAction.newline,
-                decoration: const InputDecoration(
-                  hintText:
-                      'Jelaskan alasan pengajuan secara singkat dan jelas...',
+                decoration: InputDecoration(
+                  hintText: _scope == 'pulang_lebih_awal'
+                      ? 'Jelaskan alasan harus pulang lebih awal...'
+                      : 'Jelaskan alasan pengajuan secara singkat dan jelas...',
                   alignLabelWithHint: true,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.all(Radius.circular(12)),
@@ -356,7 +500,7 @@ class _UploadSuratScreenState extends State<UploadSuratScreen> {
                     _submitting ? 'Mengirim pengajuan...' : 'Kirim Pengajuan',
                   ),
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: Theme.of(context).colorScheme.primary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -376,6 +520,56 @@ class _UploadSuratScreenState extends State<UploadSuratScreen> {
                     ),
                   ),
                   child: const Text('Batal'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ScopeOption extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ScopeOption({
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: selected ? Theme.of(context).colorScheme.primary.withValues(alpha: .07) : scheme.surface,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: selected ? Theme.of(context).colorScheme.primary : scheme.outlineVariant),
+          ),
+          child: Row(
+            children: [
+              Icon(selected ? Icons.radio_button_checked : Icons.radio_button_off, color: selected ? Theme.of(context).colorScheme.primary : scheme.onSurfaceVariant),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700, color: selected ? Theme.of(context).colorScheme.primary : scheme.onSurface)),
+                    const SizedBox(height: 3),
+                    Text(subtitle, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+                  ],
                 ),
               ),
             ],
@@ -406,7 +600,7 @@ class _TypeOption extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Material(
       color: selected
-          ? AppColors.primary.withValues(alpha: .08)
+          ? Theme.of(context).colorScheme.primary.withValues(alpha: .08)
           : scheme.surface,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
@@ -417,7 +611,7 @@ class _TypeOption extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: selected ? AppColors.primary : scheme.outlineVariant,
+              color: selected ? Theme.of(context).colorScheme.primary : scheme.outlineVariant,
               width: selected ? 1.5 : 1,
             ),
           ),
@@ -426,14 +620,14 @@ class _TypeOption extends StatelessWidget {
             children: [
               Icon(
                 icon,
-                color: selected ? AppColors.primary : scheme.onSurfaceVariant,
+                color: selected ? Theme.of(context).colorScheme.primary : scheme.onSurfaceVariant,
               ),
               const SizedBox(height: 9),
               Text(
                 label,
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w800,
-                  color: selected ? AppColors.primary : scheme.onSurface,
+                  color: selected ? Theme.of(context).colorScheme.primary : scheme.onSurface,
                 ),
               ),
               const SizedBox(height: 2),
@@ -488,10 +682,10 @@ class _DateField extends StatelessWidget {
             const SizedBox(height: 8),
             Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.calendar_month_outlined,
                   size: 17,
-                  color: AppColors.primary,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
                 const SizedBox(width: 6),
                 Expanded(
@@ -547,9 +741,9 @@ class _DocumentPicker extends StatelessWidget {
       child: hasFile
           ? Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.insert_drive_file_outlined,
-                  color: AppColors.primary,
+                  color: Theme.of(context).colorScheme.primary,
                   size: 30,
                 ),
                 const SizedBox(width: 10),
@@ -587,12 +781,12 @@ class _DocumentPicker extends StatelessWidget {
                   width: 42,
                   height: 42,
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: .08),
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: .08),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.upload_file_rounded,
-                    color: AppColors.primary,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
                 const SizedBox(width: 12),

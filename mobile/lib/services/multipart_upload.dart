@@ -25,7 +25,7 @@ Future<http.Response> sendMultipartWithProgress(
         .addStream(
           body.map((chunk) {
             sentBytes += chunk.length;
-            if (totalBytes != null && totalBytes > 0) {
+            if (totalBytes > 0) {
               onProgress?.call(
                 (sentBytes / totalBytes).clamp(0.0, 1.0).toDouble(),
               );

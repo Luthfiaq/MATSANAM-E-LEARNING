@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../utils/constants.dart';
 
 class EmptyState extends StatelessWidget {
@@ -9,16 +10,17 @@ class EmptyState extends StatelessWidget {
   final VoidCallback? onAction;
 
   const EmptyState({
-    Key? key,
+    super.key,
     required this.icon,
     required this.title,
     this.message,
     this.actionText,
     this.onAction,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Center(
       child: Padding(
         padding: AppDimens.paddingLarge,
@@ -29,16 +31,21 @@ class EmptyState extends StatelessWidget {
               width: 120,
               height: 120,
               decoration: BoxDecoration(
-                color: AppColors.background,
+                color: colors.surfaceContainerHighest,
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 60, color: AppColors.textMuted),
+              child: Icon(
+                icon,
+                size: 60,
+                color: colors.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: AppDimens.spacingLarge),
             Text(
               title,
-              style: AppTypography.heading3.copyWith(
-                color: AppColors.textSecondary,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: colors.onSurface,
+                fontWeight: FontWeight.w700,
               ),
               textAlign: TextAlign.center,
             ),
@@ -46,8 +53,8 @@ class EmptyState extends StatelessWidget {
               const SizedBox(height: AppDimens.spacingSmall),
               Text(
                 message!,
-                style: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.textMuted,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: colors.onSurfaceVariant,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -58,17 +65,6 @@ class EmptyState extends StatelessWidget {
                 onPressed: onAction,
                 icon: const Icon(Icons.add, size: 18),
                 label: Text(actionText!),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppDimens.radiusMedium),
-                  ),
-                ),
               ),
             ],
           ],

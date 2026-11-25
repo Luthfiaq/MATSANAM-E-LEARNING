@@ -1389,7 +1389,7 @@ class GuruController extends Controller
             return response()->json(['success' => false, 'message' => 'Filter status tidak valid.'], 422);
         }
 
-        $baseQuery = SuratAbsensi::with(['siswa.kelas', 'verifikator'])
+        $baseQuery = SuratAbsensi::with(['siswa.kelas', 'verifikator', 'jadwalAcuan.mataPelajaran'])
             ->whereHas('siswa.kelas.jadwalPelajaran', function ($query) use ($guru) {
                 $query->where('guru_id', $guru->id);
             });
@@ -1420,6 +1420,13 @@ class GuruController extends Controller
                     'kelas' => $surat->siswa?->kelas?->nama_kelas,
                 ],
                 'jenis' => strtolower((string) $surat->jenis),
+                'cakupan' => $surat->cakupan ?: 'sehari_penuh',
+                'jadwal_acuan' => $surat->jadwalAcuan ? [
+                    'id' => $surat->jadwalAcuan->id,
+                    'mapel' => $surat->jadwalAcuan->mataPelajaran?->nama,
+                    'jam_mulai' => substr((string) $surat->jadwalAcuan->jam_mulai, 0, 5),
+                    'jam_selesai' => substr((string) $surat->jadwalAcuan->jam_selesai, 0, 5),
+                ] : null,
                 'tanggal_mulai' => $surat->tanggal_mulai?->toDateString(),
                 'tanggal_selesai' => $surat->tanggal_selesai?->toDateString(),
                 'alasan' => $surat->alasan,

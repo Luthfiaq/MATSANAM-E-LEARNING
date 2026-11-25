@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
-import '../utils/constants.dart';
+import '../utils/app_theme_state.dart';
 import '../utils/session.dart';
 import '../widgets/common/school_logo.dart';
 import 'auth/login_screen.dart';
@@ -47,6 +47,9 @@ class _SplashGateState extends State<SplashGate> {
     final role = user is Map ? user['role']?.toString() : null;
     final mustChangePassword =
         user is Map && user['must_change_password'] == true;
+    if (role == 'guru' || role == 'siswa') {
+      AppThemeState.setActiveRole(role!);
+    }
     if (mustChangePassword) {
       _buka(const ChangePasswordScreen(wajib: true));
     } else if (role == 'guru') {
@@ -67,9 +70,33 @@ class _SplashGateState extends State<SplashGate> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: AppColors.background,
-      body: Center(child: SchoolLogoCard(size: 96)),
+    final theme = Theme.of(context);
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SchoolLogoCard(size: 96),
+            const SizedBox(height: 18),
+            Text(
+              'MTsN 6 Nganjuk',
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: theme.colorScheme.onSurface,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              'Gerbang Layanan Terpadu e-Learning & Presensi',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

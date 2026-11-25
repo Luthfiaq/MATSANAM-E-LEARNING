@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../services/siswa_learning_service.dart';
-import '../../../utils/constants.dart';
+import '../../../utils/theme_helpers.dart';
 
 class RekapAbsensiScreen extends StatefulWidget {
   const RekapAbsensiScreen({super.key});
@@ -100,7 +100,7 @@ class _RekapAbsensiScreenState extends State<RekapAbsensiScreen> {
         data: Theme.of(context).copyWith(
           colorScheme: Theme.of(
             context,
-          ).colorScheme.copyWith(primary: AppColors.primary),
+          ).colorScheme.copyWith(primary: Theme.of(context).colorScheme.primary),
         ),
         child: child!,
       ),
@@ -175,25 +175,25 @@ class _RekapAbsensiScreenState extends State<RekapAbsensiScreen> {
                       _SummaryCard(
                         label: 'Hadir',
                         value: summary['hadir'] ?? 0,
-                        color: AppColors.success,
+                        color: context.matsanamSuccess,
                         icon: Icons.check_circle_outline_rounded,
                       ),
                       _SummaryCard(
                         label: 'Izin',
                         value: summary['izin'] ?? 0,
-                        color: AppColors.primary,
+                        color: context.matsanamPrimary,
                         icon: Icons.event_note_outlined,
                       ),
                       _SummaryCard(
                         label: 'Sakit',
                         value: summary['sakit'] ?? 0,
-                        color: AppColors.warning,
+                        color: context.matsanamWarning,
                         icon: Icons.medical_services_outlined,
                       ),
                       _SummaryCard(
                         label: 'Alpa',
                         value: summary['alpa'] ?? 0,
-                        color: AppColors.error,
+                        color: context.matsanamError,
                         icon: Icons.cancel_outlined,
                       ),
                     ],
@@ -317,7 +317,7 @@ class DetailRiwayatAbsensiScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = (absensi['status'] ?? '-').toString();
-    final statusColor = _statusColor(status);
+    final statusColor = _statusColor(context, status);
     final hasLetter = absensi['surat_id'] != null;
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -403,9 +403,9 @@ class DetailRiwayatAbsensiScreen extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.description_outlined,
-                        color: AppColors.primary,
+                        color: context.matsanamPrimary,
                       ),
                       const SizedBox(width: 8),
                       Expanded(
@@ -483,13 +483,13 @@ class _StudentSummaryHeader extends StatelessWidget {
             height: 46,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: .10),
+              color: context.matsanamPrimary.withValues(alpha: .10),
               shape: BoxShape.circle,
             ),
             child: Text(
               initials,
-              style: const TextStyle(
-                color: AppColors.primary,
+              style: TextStyle(
+                color: context.matsanamPrimary,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -545,9 +545,9 @@ class _MonthSelector extends StatelessWidget {
           ),
           child: Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.calendar_month_rounded,
-                color: AppColors.primary,
+                color: context.matsanamPrimary,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -662,11 +662,11 @@ class _StatusFilter extends StatelessWidget {
         selected: active,
         onSelected: (_) => onTap(value),
         showCheckmark: false,
-        selectedColor: AppColors.primary,
+        selectedColor: Theme.of(context).colorScheme.primary,
         backgroundColor: Theme.of(context).colorScheme.surface,
         side: BorderSide(
           color: active
-              ? AppColors.primary
+              ? Theme.of(context).colorScheme.primary
               : Theme.of(context).colorScheme.outlineVariant,
         ),
         labelStyle: TextStyle(
@@ -689,7 +689,7 @@ class _AttendanceRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = item['status']?.toString() ?? '-';
-    final color = _statusColor(status);
+    final color = _statusColor(context, status);
     final scheme = Theme.of(context).colorScheme;
     return Material(
       color: scheme.surface,
@@ -738,7 +738,7 @@ class _AttendanceRow extends StatelessWidget {
                         child: Text(
                           'Terkait surat pengajuan',
                           style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(color: AppColors.primary),
+                              ?.copyWith(color: Theme.of(context).colorScheme.primary),
                         ),
                       ),
                   ],
@@ -873,10 +873,10 @@ class _EmptyHistory extends StatelessWidget {
     ),
     child: Column(
       children: [
-        const Icon(
+        Icon(
           Icons.event_busy_outlined,
           size: 42,
-          color: AppColors.textMuted,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
         const SizedBox(height: 10),
         Text(
@@ -910,10 +910,10 @@ class _ErrorState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
+          Icon(
             Icons.cloud_off_outlined,
             size: 42,
-            color: AppColors.error,
+            color: context.matsanamError,
           ),
           const SizedBox(height: 12),
           Text(
@@ -949,12 +949,12 @@ class _InlineError extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
-      color: AppColors.error.withValues(alpha: .08),
+      color: Theme.of(context).colorScheme.error.withValues(alpha: .10),
       borderRadius: BorderRadius.circular(12),
     ),
     child: Row(
       children: [
-        const Icon(Icons.error_outline_rounded, color: AppColors.error),
+        Icon(Icons.error_outline_rounded, color: Theme.of(context).colorScheme.error),
         const SizedBox(width: 8),
         Expanded(
           child: Text(message, style: Theme.of(context).textTheme.bodySmall),
@@ -965,12 +965,12 @@ class _InlineError extends StatelessWidget {
   );
 }
 
-Color _statusColor(String value) => switch (value) {
-  'hadir' => AppColors.success,
-  'izin' => AppColors.primary,
-  'sakit' => AppColors.warning,
-  'alpa' => AppColors.error,
-  _ => AppColors.textSecondary,
+Color _statusColor(BuildContext context, String value) => switch (value) {
+  'hadir' => context.matsanamSuccess,
+  'izin' => context.matsanamPrimary,
+  'sakit' => context.matsanamWarning,
+  'alpa' => context.matsanamError,
+  _ => Theme.of(context).colorScheme.onSurfaceVariant,
 };
 
 IconData _statusIcon(String value) => switch (value) {

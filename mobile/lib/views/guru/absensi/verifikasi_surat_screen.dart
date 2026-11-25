@@ -321,6 +321,14 @@ class _VerifikasiSuratGuruScreenState extends State<VerifikasiSuratGuruScreen> {
     return 'Siswa';
   }
 
+  String _scopeTitle(String value) {
+    switch (value) {
+      case 'mulai_pelajaran': return 'Pulang lebih awal'; // Pengajuan lama.
+      case 'pulang_lebih_awal': return 'Pulang lebih awal';
+      default: return 'Sehari penuh';
+    }
+  }
+
   String _formatDate(dynamic raw) {
     final value = raw?.toString() ?? '';
     final date = DateTime.tryParse(value);
@@ -650,6 +658,10 @@ class _VerifikasiSuratGuruScreenState extends State<VerifikasiSuratGuruScreen> {
     final verificationNote = (surat['catatan_verifikasi'] ?? '')
         .toString()
         .trim();
+    final scope = (surat['cakupan'] ?? 'sehari_penuh').toString();
+    final reference = surat['jadwal_acuan'] is Map
+        ? Map<String, dynamic>.from(surat['jadwal_acuan'])
+        : <String, dynamic>{};
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -757,6 +769,31 @@ class _VerifikasiSuratGuruScreenState extends State<VerifikasiSuratGuruScreen> {
                       ),
                     ),
                   ],
+                ),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryLight.withOpacity(.45),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Cakupan: ${_scopeTitle(scope)}', style: const TextStyle(color: AppColors.textPrimary, fontSize: 11, fontWeight: FontWeight.w700)),
+                      if (reference.isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Text('Mulai dari: ${reference['mapel'] ?? 'Mata pelajaran'} · ${reference['jam_mulai'] ?? '--:--'}–${reference['jam_selesai'] ?? '--:--'}', style: const TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+                      ],
+                      const SizedBox(height: 4),
+                      Text(
+                        scope == 'pulang_lebih_awal'
+                            ? 'Pada tanggal mulai, mata pelajaran acuan dan pelajaran setelahnya diproses sesuai jenis surat. Pada tanggal berikutnya sampai tanggal selesai, seluruh jadwal diproses. Catatan Hadir yang sudah valid tetap dipertahankan.'
+                            : 'Seluruh jadwal pada rentang tanggal diproses, tetapi catatan Hadir yang sudah valid tidak ditimpa.',
+                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 10, height: 1.35),
+                      ),
+                    ],
+                  ),
                 ),
                 if (reason.isNotEmpty) ...[
                   const SizedBox(height: 12),

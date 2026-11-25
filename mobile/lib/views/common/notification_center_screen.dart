@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../models/notification_model.dart';
 import '../../services/api_exception.dart';
 import '../../services/notification_service.dart';
-import '../../utils/constants.dart';
 import '../../utils/session.dart';
 import '../auth/login_screen.dart';
 import '../guru/absensi/verifikasi_surat_screen.dart';
@@ -300,15 +299,29 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
     );
   }
 
-  Widget _filterChip(String value, String label) => ChoiceChip(
-    label: Text(label),
-    selected: _filter == value,
-    onSelected: (selected) {
-      if (!selected || _filter == value) return;
-      setState(() => _filter = value);
-      _load(refresh: true);
-    },
-  );
+  Widget _filterChip(String value, String label) {
+    final colors = Theme.of(context).colorScheme;
+    final selected = _filter == value;
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (nextSelected) {
+        if (!nextSelected || selected) return;
+        setState(() => _filter = value);
+        _load(refresh: true);
+      },
+      selectedColor: colors.primary,
+      backgroundColor: colors.surface,
+      side: BorderSide(
+        color: selected ? colors.primary : colors.outlineVariant,
+      ),
+      labelStyle: TextStyle(
+        color: selected ? colors.onPrimary : colors.onSurface,
+        fontWeight: FontWeight.w600,
+      ),
+      checkmarkColor: colors.onPrimary,
+    );
+  }
 
   Widget _buildList() {
     if (_loading && _items.isEmpty) {
@@ -334,7 +347,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                   ? Icons.mark_email_read_outlined
                   : Icons.notifications_none_rounded,
               size: 58,
-              color: AppColors.textMuted,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             const SizedBox(height: 14),
             Center(
@@ -342,17 +355,22 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                 _filter == 'unread'
                     ? 'Tidak ada notifikasi yang belum dibaca'
                     : 'Belum ada notifikasi',
-                style: const TextStyle(fontWeight: FontWeight.w800),
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
             const SizedBox(height: 6),
-            const Center(
+            Center(
               child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 36),
+                padding: const EdgeInsets.symmetric(horizontal: 36),
                 child: Text(
                   'Pemberitahuan materi, tugas, nilai, dan aktivitas akan muncul di sini.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.textSecondary),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
             ),
@@ -436,6 +454,7 @@ class _NotificationTile extends StatelessWidget {
                       item.title,
                       style: TextStyle(
                         fontSize: 13,
+                        color: colors.onSurface,
                         fontWeight: item.isRead
                             ? FontWeight.w600
                             : FontWeight.w800,
@@ -516,14 +535,26 @@ class _StateMessage extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 48, color: AppColors.textMuted),
+          Icon(
+            icon,
+            size: 48,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
           const SizedBox(height: 12),
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+          Text(
+            title,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurface,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
           const SizedBox(height: 6),
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.textSecondary),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 12),
           OutlinedButton.icon(

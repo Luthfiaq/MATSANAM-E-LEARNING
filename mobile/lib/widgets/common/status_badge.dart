@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../utils/constants.dart';
 
 enum BadgeType { success, warning, danger, info, primary, neutral }
@@ -12,16 +13,16 @@ class StatusBadge extends StatelessWidget {
   final IconData? icon;
 
   const StatusBadge({
-    Key? key,
+    super.key,
     required this.text,
     this.type = BadgeType.neutral,
     this.size = BadgeSize.medium,
     this.icon,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
-    final colors = _getColors();
+    final palette = _getColors(context);
     final dimensions = _getDimensions();
 
     return Container(
@@ -30,20 +31,21 @@ class StatusBadge extends StatelessWidget {
         vertical: dimensions['paddingV']!,
       ),
       decoration: BoxDecoration(
-        color: colors['background'],
+        color: palette.background,
         borderRadius: BorderRadius.circular(dimensions['radius']!),
+        border: Border.all(color: palette.border),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, color: colors['text'], size: dimensions['iconSize']),
-            SizedBox(width: AppDimens.spacingXSmall),
+            Icon(icon, color: palette.foreground, size: dimensions['iconSize']),
+            const SizedBox(width: AppDimens.spacingXSmall),
           ],
           Text(
             text,
             style: TextStyle(
-              color: colors['text'],
+              color: palette.foreground,
               fontSize: dimensions['fontSize'],
               fontWeight: FontWeight.w600,
               letterSpacing: 0.2,
@@ -54,32 +56,41 @@ class StatusBadge extends StatelessWidget {
     );
   }
 
-  Map<String, Color> _getColors() {
+  _BadgePalette _getColors(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
     switch (type) {
       case BadgeType.success:
-        return {
-          'background': AppColors.successLight,
-          'text': AppColors.success,
-        };
+        return _BadgePalette(
+          background: dark ? const Color(0xFF064E3B) : const Color(0xFFD1FAE5),
+          foreground: dark ? const Color(0xFF6EE7B7) : const Color(0xFF047857),
+          border: dark ? const Color(0xFF065F46) : const Color(0xFFA7F3D0),
+        );
       case BadgeType.warning:
-        return {
-          'background': AppColors.warningLight,
-          'text': AppColors.warning,
-        };
+        return _BadgePalette(
+          background: dark ? const Color(0xFF78350F) : const Color(0xFFFEF3C7),
+          foreground: dark ? const Color(0xFFFCD34D) : const Color(0xFFB45309),
+          border: dark ? const Color(0xFF92400E) : const Color(0xFFFDE68A),
+        );
       case BadgeType.danger:
-        return {'background': AppColors.dangerLight, 'text': AppColors.danger};
+        return _BadgePalette(
+          background: dark ? const Color(0xFF7F1D1D) : const Color(0xFFFEE2E2),
+          foreground: dark ? const Color(0xFFFCA5A5) : const Color(0xFFB91C1C),
+          border: dark ? const Color(0xFF991B1B) : const Color(0xFFFECACA),
+        );
       case BadgeType.info:
-        return {'background': AppColors.infoLight, 'text': AppColors.info};
       case BadgeType.primary:
-        return {
-          'background': AppColors.primaryLight,
-          'text': AppColors.primary,
-        };
+        return _BadgePalette(
+          background: scheme.primaryContainer,
+          foreground: scheme.onPrimaryContainer,
+          border: scheme.primary.withValues(alpha: dark ? .38 : .18),
+        );
       case BadgeType.neutral:
-        return {
-          'background': AppColors.background,
-          'text': AppColors.textSecondary,
-        };
+        return _BadgePalette(
+          background: scheme.surfaceContainerHighest,
+          foreground: scheme.onSurfaceVariant,
+          border: scheme.outlineVariant,
+        );
     }
   }
 
@@ -87,28 +98,40 @@ class StatusBadge extends StatelessWidget {
     switch (size) {
       case BadgeSize.small:
         return {
-          'paddingH': 6.0,
-          'paddingV': 2.0,
-          'fontSize': 10.0,
-          'radius': 4.0,
-          'iconSize': 12.0,
+          'paddingH': 6,
+          'paddingV': 2,
+          'fontSize': 10,
+          'radius': 4,
+          'iconSize': 12,
         };
       case BadgeSize.large:
         return {
-          'paddingH': 12.0,
-          'paddingV': 6.0,
-          'fontSize': 14.0,
-          'radius': 8.0,
-          'iconSize': 18.0,
+          'paddingH': 12,
+          'paddingV': 6,
+          'fontSize': 14,
+          'radius': 8,
+          'iconSize': 18,
         };
       case BadgeSize.medium:
         return {
-          'paddingH': 8.0,
-          'paddingV': 4.0,
-          'fontSize': 11.0,
-          'radius': 6.0,
-          'iconSize': 14.0,
+          'paddingH': 8,
+          'paddingV': 4,
+          'fontSize': 11,
+          'radius': 6,
+          'iconSize': 14,
         };
     }
   }
+}
+
+class _BadgePalette {
+  final Color background;
+  final Color foreground;
+  final Color border;
+
+  const _BadgePalette({
+    required this.background,
+    required this.foreground,
+    required this.border,
+  });
 }

@@ -13,6 +13,8 @@ class SuratAbsensi extends Model
         'tanggal_mulai',
         'tanggal_selesai',
         'jenis',
+        'cakupan',
+        'jadwal_acuan_id',
         'alasan',
         'file_surat',
         'status_verifikasi',
@@ -30,6 +32,11 @@ class SuratAbsensi extends Model
     public function siswa()
     {
         return $this->belongsTo(Siswa::class);
+    }
+
+    public function jadwalAcuan()
+    {
+        return $this->belongsTo(JadwalPelajaran::class, 'jadwal_acuan_id');
     }
 
     public function verifikator()

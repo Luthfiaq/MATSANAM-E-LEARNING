@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../utils/constants.dart';
 import '../common/status_badge.dart';
 
@@ -13,7 +14,7 @@ class InfoCard extends StatelessWidget {
   final Widget? trailing;
 
   const InfoCard({
-    Key? key,
+    super.key,
     required this.icon,
     required this.iconColor,
     required this.title,
@@ -22,18 +23,20 @@ class InfoCard extends StatelessWidget {
     this.badgeType,
     this.onTap,
     this.trailing,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(AppDimens.radiusLarge),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: colors.outlineVariant),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: dark ? .12 : .025),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -53,14 +56,10 @@ class InfoCard extends StatelessWidget {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: iconColor.withOpacity(0.12),
+                    color: iconColor.withValues(alpha: dark ? .2 : .12),
                     borderRadius: BorderRadius.circular(AppDimens.radiusMedium),
                   ),
-                  child: Icon(
-                    icon,
-                    color: iconColor,
-                    size: AppDimens.iconLarge,
-                  ),
+                  child: Icon(icon, color: iconColor, size: AppDimens.iconLarge),
                 ),
                 const SizedBox(width: AppDimens.spacingMedium),
                 Expanded(
@@ -72,7 +71,8 @@ class InfoCard extends StatelessWidget {
                           Expanded(
                             child: Text(
                               title,
-                              style: AppTypography.labelLarge,
+                              style: Theme.of(context).textTheme.labelLarge
+                                  ?.copyWith(color: colors.onSurface),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -90,7 +90,9 @@ class InfoCard extends StatelessWidget {
                       const SizedBox(height: AppDimens.spacingXSmall),
                       Text(
                         subtitle,
-                        style: AppTypography.bodySmall,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -104,7 +106,7 @@ class InfoCard extends StatelessWidget {
                   const SizedBox(width: AppDimens.spacingSmall),
                   Icon(
                     Icons.chevron_right_rounded,
-                    color: AppColors.textSecondary,
+                    color: colors.onSurfaceVariant,
                     size: 22,
                   ),
                 ],

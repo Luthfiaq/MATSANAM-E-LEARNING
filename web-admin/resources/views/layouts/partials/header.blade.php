@@ -1,5 +1,8 @@
 <header id="adminTopbar" class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 py-3 px-4 md:px-6 flex items-center justify-between gap-3 md:gap-4 shrink-0">
     <div class="flex items-center gap-3 min-w-0 flex-1">
+        <button id="adminMobileMenuToggle" type="button" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600 transition-colors" onclick="toggleAdminSidebar()" aria-label="Buka menu navigasi" aria-controls="adminSidebar" aria-expanded="false" title="Buka menu navigasi">
+            <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
         <div class="hidden lg:flex items-center bg-blue-50 dark:bg-slate-700 py-1.5 px-3 gap-2 rounded-lg border border-blue-100 dark:border-slate-600 text-xs text-blue-700 dark:text-blue-300 whitespace-nowrap shrink-0">
             <span>▣</span>
             @php($activePeriod = \App\Models\PeriodeAkademik::where('is_active', true)->first())

@@ -25,7 +25,7 @@ class AbsensiController extends Controller
 {
     public function verifikasiSurat(Request $request): View
     {
-        $query = SuratAbsensi::with(['siswa.kelas.waliKelas', 'verifikator'])
+        $query = SuratAbsensi::with(['siswa.kelas.waliKelas', 'verifikator', 'jadwalAcuan.mataPelajaran'])
             ->latest();
 
         $status = strtolower((string) $request->query('status', 'semua'));

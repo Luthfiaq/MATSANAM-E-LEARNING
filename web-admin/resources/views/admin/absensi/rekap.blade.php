@@ -116,6 +116,7 @@
                     <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Guru</th>
                     <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tanggal</th>
                     <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Keterangan</th>
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
@@ -153,10 +154,13 @@
                             {{ $status[1] }}
                         </span>
                     </td>
+                    <td class="px-6 py-4 text-sm text-gray-600">
+                        {{ $absen->keterangan ?: '-' }}
+                    </td>
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                    <td colspan="7" class="px-6 py-12 text-center text-gray-500">
                         <div class="flex flex-col items-center gap-2">
                             <span class="text-4xl">📋</span>
                             <span>Tidak ada data presensi</span>

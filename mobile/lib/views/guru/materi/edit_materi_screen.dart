@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../config/api_config.dart';
 import '../../../utils/constants.dart';
+import '../../../utils/theme_helpers.dart';
 
 class EditMateriScreen extends StatefulWidget {
   final Map<String, dynamic> materi;
@@ -57,19 +58,19 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.matsanamPage,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: context.matsanamSurface,
         elevation: 0,
         centerTitle: false,
         leading: IconButton(
           onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          icon: Icon(Icons.arrow_back_ios_new_rounded),
         ),
-        title: const Text(
+        title: Text(
           'Edit Materi',
           style: TextStyle(
-            color: AppColors.textPrimary,
+            color: context.matsanamText,
             fontSize: 17,
             fontWeight: FontWeight.w700,
           ),
@@ -119,9 +120,9 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: AppColors.surface,
+                        color: context.matsanamSurface,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.border),
+                        border: Border.all(color: context.matsanamBorder),
                       ),
                       child: Column(
                         children: [
@@ -131,14 +132,14 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
                             Icons.picture_as_pdf,
                             AppColors.primary,
                           ),
-                          const Divider(height: 24),
+                          Divider(height: 24),
                           _buildTypeOption(
                             'video',
                             'Video',
                             Icons.play_circle_outline,
                             AppColors.accentOrange,
                           ),
-                          const Divider(height: 24),
+                          Divider(height: 24),
                           _buildTypeOption(
                             'link',
                             'Link URL',
@@ -181,7 +182,7 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
                         ),
                         elevation: 2,
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.check_rounded),
@@ -207,8 +208,8 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
   Widget _buildFormSectionTitle(String title) {
     return Text(
       title,
-      style: const TextStyle(
-        color: AppColors.textPrimary,
+      style: TextStyle(
+        color: context.matsanamText,
         fontSize: 16,
         fontWeight: FontWeight.w700,
       ),
@@ -224,9 +225,9 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.matsanamSurface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.matsanamBorder),
       ),
       child: Row(
         children: [
@@ -238,25 +239,25 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
               children: [
                 Text(
                   label,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
+                  style: TextStyle(
+                    color: context.matsanamTextSecondary,
                     fontSize: 12,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   value,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
+                  style: TextStyle(
+                    color: context.matsanamText,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
             ),
           ),
-          const Icon(
+          Icon(
             Icons.lock_outline_rounded,
-            color: AppColors.textSecondary,
+            color: context.matsanamTextSecondary,
             size: 16,
           ),
         ],
@@ -275,17 +276,17 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.matsanamSurface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.matsanamBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
+            style: TextStyle(
+              color: context.matsanamTextSecondary,
               fontSize: 12,
             ),
           ),
@@ -296,10 +297,10 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
             validator: validator,
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: const TextStyle(color: AppColors.textSecondary),
+              hintStyle: TextStyle(color: context.matsanamTextSecondary),
               border: InputBorder.none,
             ),
-            style: const TextStyle(color: AppColors.textPrimary),
+            style: TextStyle(color: context.matsanamText),
           ),
         ],
       ),
@@ -330,7 +331,7 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
             ),
             child: Icon(
               icon,
-              color: _selectedType == type ? color : AppColors.textSecondary,
+              color: _selectedType == type ? color : context.matsanamTextSecondary,
             ),
           ),
           const SizedBox(width: 14),
@@ -338,8 +339,8 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
             label,
             style: TextStyle(
               color: _selectedType == type
-                  ? AppColors.textPrimary
-                  : AppColors.textSecondary,
+                  ? context.matsanamText
+                  : context.matsanamTextSecondary,
               fontWeight: _selectedType == type
                   ? FontWeight.w600
                   : FontWeight.normal,
@@ -351,7 +352,7 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
               width: 20,
               height: 20,
               decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-              child: const Icon(
+              child: Icon(
                 Icons.check_rounded,
                 color: Colors.white,
                 size: 14,
@@ -381,9 +382,9 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: context.matsanamPage,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.matsanamBorder),
       ),
       child: Row(
         children: [
@@ -391,7 +392,7 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: AppColors.primaryLight,
+              color: context.matsanamSoftPrimary,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
@@ -410,15 +411,15 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
                   fileName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
+                  style: TextStyle(
+                    color: context.matsanamText,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 Text(
                   _fileSizeLabel(widget.materi['file_size']),
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
+                  style: TextStyle(
+                    color: context.matsanamTextSecondary,
                     fontSize: 12,
                   ),
                 ),
@@ -434,9 +435,9 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: context.matsanamPage,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.matsanamBorder),
       ),
       child: Row(
         children: [
@@ -447,17 +448,17 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
               color: AppColors.infoLight,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.link_rounded, color: AppColors.info),
+            child: Icon(Icons.link_rounded, color: AppColors.info),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Tautan materi saat ini',
                   style: TextStyle(
-                    color: AppColors.textPrimary,
+                    color: context.matsanamText,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -465,8 +466,8 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
                   widget.materi['link']?.toString() ?? '-',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
+                  style: TextStyle(
+                    color: context.matsanamTextSecondary,
                     fontSize: 12,
                   ),
                 ),
@@ -483,18 +484,18 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.matsanamSurface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.matsanamBorder),
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Icon(Icons.info_outline_rounded, color: AppColors.textSecondary),
+          Icon(Icons.info_outline_rounded, color: context.matsanamTextSecondary),
           SizedBox(width: 10),
           Expanded(
             child: Text(
               'Belum ada file atau tautan yang tersimpan. Tambahkan pada bagian Ganti File / Link.',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              style: TextStyle(color: context.matsanamTextSecondary, fontSize: 13),
             ),
           ),
         ],
@@ -507,9 +508,9 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: context.matsanamPage,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.matsanamBorder),
       ),
       child: Column(
         children: [
@@ -517,10 +518,10 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
             width: 60,
             height: 60,
             decoration: BoxDecoration(
-              color: AppColors.primaryLight,
+              color: context.matsanamSoftPrimary,
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.upload_file_rounded,
               color: AppColors.primary,
               size: 32,
@@ -529,15 +530,15 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
           const SizedBox(height: 12),
           Text(
             'PDF atau video (maksimal 10 MB)',
-            style: const TextStyle(
-              color: AppColors.textSecondary,
+            style: TextStyle(
+              color: context.matsanamTextSecondary,
               fontSize: 13,
             ),
           ),
           const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: _pickReplacementFile,
-            icon: const Icon(Icons.folder_open_rounded),
+            icon: Icon(Icons.folder_open_rounded),
             label: Text(_pickedFile?.name ?? 'Pilih File Baru'),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -586,26 +587,26 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.matsanamSurface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.matsanamBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Ganti Link URL',
-            style: const TextStyle(
-              color: AppColors.textSecondary,
+            style: TextStyle(
+              color: context.matsanamTextSecondary,
               fontSize: 12,
             ),
           ),
           const SizedBox(height: 8),
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.language,
-                color: AppColors.textSecondary,
+                color: context.matsanamTextSecondary,
                 size: 18,
               ),
               const SizedBox(width: 8),
@@ -614,10 +615,10 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
                   controller: _linkController,
                   decoration: InputDecoration(
                     hintText: 'https://...',
-                    hintStyle: const TextStyle(color: AppColors.textSecondary),
+                    hintStyle: TextStyle(color: context.matsanamTextSecondary),
                     border: InputBorder.none,
                   ),
-                  style: const TextStyle(color: AppColors.textPrimary),
+                  style: TextStyle(color: context.matsanamText),
                 ),
               ),
             ],

@@ -4,13 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        (function () {
+            try {
+                const theme = localStorage.getItem('theme') || 'light';
+                document.documentElement.dataset.theme = theme;
+                document.documentElement.classList.toggle('dark', theme === 'dark');
+            } catch (error) { document.documentElement.dataset.theme = 'light'; }
+        })();
+        window.tailwind = window.tailwind || {};
+        window.tailwind.config = { darkMode: 'class' };
+    </script>
     <title>Login - MATSANAM E-Learning</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{{ asset('css/matsanam-admin-ui-final.css') }}">
     <style>
         body { font-family: system-ui, -apple-system, sans-serif; }
     </style>
 </head>
-<body class="bg-gradient-to-br from-blue-50 to-blue-100">
+<body class="admin-auth-page bg-gradient-to-br from-blue-50 to-blue-100">
     <div class="flex min-h-screen items-center justify-center p-4">
         <div class="w-full max-w-md">
             <!-- Logo & Title -->
@@ -86,23 +101,13 @@
             </div>
 
             <!-- Info Section -->
-            <div class="mt-6 rounded-xl bg-blue-50 border border-blue-100 p-4">
+            <div class="admin-login-help mt-6 rounded-xl bg-blue-50 border border-blue-100 p-4">
                 <div class="text-sm text-gray-700">
                     <p class="mb-2 font-semibold flex items-center gap-2">
-                        <span>ℹ️</span>
+                        <span aria-hidden="true">ℹ️</span>
                         <span>Informasi Login Admin</span>
                     </p>
-                    <div class="text-xs space-y-1">
-                        <p>Gunakan akun administrator untuk mengakses sistem.</p>
-                        <div class="mt-2 bg-white rounded-lg p-3 border border-blue-200">
-                            <p class="font-mono">
-                                Email: <span class="font-semibold text-blue-700">admin@matsanam.sch.id</span>
-                            </p>
-                            <p class="font-mono">
-                                Password: <span class="font-semibold text-blue-700">admin123</span>
-                            </p>
-                        </div>
-                    </div>
+                    <p class="text-xs leading-relaxed">Gunakan akun administrator aktif yang diberikan oleh Tata Usaha. Jaga kerahasiaan email dan kata sandi Anda.</p>
                 </div>
             </div>
 

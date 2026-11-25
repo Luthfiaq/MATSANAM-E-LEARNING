@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../utils/constants.dart';
 
 enum ButtonVariant { primary, secondary, danger, outline }
@@ -13,7 +14,7 @@ class PrimaryButton extends StatelessWidget {
   final double? height;
 
   const PrimaryButton({
-    Key? key,
+    super.key,
     required this.text,
     this.onPressed,
     this.icon,
@@ -21,14 +22,14 @@ class PrimaryButton extends StatelessWidget {
     this.isFullWidth = true,
     this.variant = ButtonVariant.primary,
     this.height,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
-    final colors = _getColors();
+    final palette = _getColors(context);
     final isDisabled = onPressed == null || isLoading;
 
-    Widget buttonChild = Row(
+    final buttonChild = Row(
       mainAxisSize: isFullWidth ? MainAxisSize.max : MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -38,18 +39,18 @@ class PrimaryButton extends StatelessWidget {
             height: 16,
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(colors['foreground']!),
+              valueColor: AlwaysStoppedAnimation<Color>(palette.foreground),
             ),
           )
         else if (icon != null)
-          Icon(icon, size: 18, color: colors['foreground']),
+          Icon(icon, size: 18, color: palette.foreground),
         if ((isLoading || icon != null) && text.isNotEmpty)
           const SizedBox(width: 8),
         if (text.isNotEmpty)
           Text(
             text,
             style: TextStyle(
-              color: colors['foreground'],
+              color: palette.foreground,
               fontSize: 14,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.3,
@@ -65,9 +66,11 @@ class PrimaryButton extends StatelessWidget {
         child: OutlinedButton(
           onPressed: isDisabled ? null : onPressed,
           style: OutlinedButton.styleFrom(
-            foregroundColor: colors['foreground'],
+            foregroundColor: palette.foreground,
             side: BorderSide(
-              color: isDisabled ? AppColors.border : colors['background']!,
+              color: isDisabled
+                  ? Theme.of(context).colorScheme.outlineVariant
+                  : palette.background,
               width: 1.5,
             ),
             shape: RoundedRectangleBorder(
@@ -80,16 +83,17 @@ class PrimaryButton extends StatelessWidget {
       );
     }
 
+    final colors = Theme.of(context).colorScheme;
     return SizedBox(
       width: isFullWidth ? double.infinity : null,
       height: height ?? 48,
       child: ElevatedButton(
         onPressed: isDisabled ? null : onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: colors['background'],
-          foregroundColor: colors['foreground'],
-          disabledBackgroundColor: AppColors.border,
-          disabledForegroundColor: AppColors.textMuted,
+          backgroundColor: palette.background,
+          foregroundColor: palette.foreground,
+          disabledBackgroundColor: colors.surfaceContainerHighest,
+          disabledForegroundColor: colors.onSurface.withValues(alpha: .38),
           elevation: 0,
           shadowColor: Colors.transparent,
           shape: RoundedRectangleBorder(
@@ -102,19 +106,37 @@ class PrimaryButton extends StatelessWidget {
     );
   }
 
-  Map<String, Color> _getColors() {
+  _ButtonPalette _getColors(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
     switch (variant) {
       case ButtonVariant.secondary:
-        return {'background': AppColors.success, 'foreground': Colors.white};
+        return _ButtonPalette(
+          background: dark ? const Color(0xFF065F46) : const Color(0xFF059669),
+          foreground: Colors.white,
+        );
       case ButtonVariant.danger:
-        return {'background': AppColors.danger, 'foreground': Colors.white};
+        return _ButtonPalette(
+          background: colors.error,
+          foreground: colors.onError,
+        );
       case ButtonVariant.outline:
-        return {
-          'background': AppColors.primary,
-          'foreground': AppColors.primary,
-        };
+        return _ButtonPalette(
+          background: colors.primary,
+          foreground: colors.primary,
+        );
       case ButtonVariant.primary:
-        return {'background': AppColors.primary, 'foreground': Colors.white};
+        return _ButtonPalette(
+          background: colors.primary,
+          foreground: colors.onPrimary,
+        );
     }
   }
+}
+
+class _ButtonPalette {
+  final Color background;
+  final Color foreground;
+
+  const _ButtonPalette({required this.background, required this.foreground});
 }

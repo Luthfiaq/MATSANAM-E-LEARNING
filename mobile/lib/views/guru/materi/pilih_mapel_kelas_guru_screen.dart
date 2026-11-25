@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../config/api_config.dart';
 import '../../../utils/constants.dart';
+import '../../../utils/theme_helpers.dart';
 import '../../../widgets/common/guru_bottom_navigation.dart';
 
 class PilihMapelKelasGuruScreen extends StatefulWidget {
@@ -266,16 +267,14 @@ class _PilihMapelKelasGuruScreenState extends State<PilihMapelKelasGuruScreen> {
                     child: ListView.separated(
                       shrinkWrap: true,
                       itemCount: schedules.length,
-                      separatorBuilder: (_, __) => Divider(
-                        height: 1,
-                        color: _border,
-                      ),
+                      separatorBuilder: (_, __) =>
+                          Divider(height: 1, color: _border),
                       itemBuilder: (context, index) {
                         final schedule = schedules[index];
                         return ListTile(
                           contentPadding: EdgeInsets.zero,
-                          leading: const CircleAvatar(
-                            backgroundColor: AppColors.primaryLight,
+                          leading: CircleAvatar(
+                            backgroundColor: context.matsanamSoftPrimary,
                             child: Icon(
                               Icons.groups_outlined,
                               color: AppColors.primary,
@@ -291,7 +290,7 @@ class _PilihMapelKelasGuruScreenState extends State<PilihMapelKelasGuruScreen> {
                           subtitle: Text(
                             '${schedule['hari'] ?? '-'} • ${schedule['jam_mulai'] ?? ''} - ${schedule['jam_selesai'] ?? ''}',
                           ),
-                          trailing: const Icon(Icons.chevron_right_rounded),
+                          trailing: Icon(Icons.chevron_right_rounded),
                           onTap: () {
                             Navigator.pop(sheetContext);
                             _openSchedule(schedule);
@@ -322,7 +321,7 @@ class _PilihMapelKelasGuruScreenState extends State<PilihMapelKelasGuruScreen> {
         elevation: 0,
         leading: IconButton(
           onPressed: () => Navigator.maybePop(context),
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          icon: Icon(Icons.arrow_back_ios_new_rounded),
         ),
         title: Text(
           'Materi',
@@ -371,7 +370,7 @@ class _PilihMapelKelasGuruScreenState extends State<PilihMapelKelasGuruScreen> {
                           ),
                           Text(
                             '${grouped.length} Mapel',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: AppColors.primary,
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -417,10 +416,10 @@ class _PilihMapelKelasGuruScreenState extends State<PilihMapelKelasGuruScreen> {
           width: 46,
           height: 46,
           decoration: BoxDecoration(
-            color: AppColors.primaryLight,
+            color: context.matsanamSoftPrimary,
             borderRadius: BorderRadius.circular(13),
           ),
-          child: const Icon(
+          child: Icon(
             Icons.school_outlined,
             color: AppColors.primary,
             size: 25,
@@ -457,7 +456,7 @@ class _PilihMapelKelasGuruScreenState extends State<PilihMapelKelasGuruScreen> {
             ],
           ),
         ),
-        const Icon(
+        Icon(
           Icons.verified_user_outlined,
           color: AppColors.success,
           size: 22,
@@ -643,7 +642,7 @@ class _PilihMapelKelasGuruScreenState extends State<PilihMapelKelasGuruScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.menu_book_outlined,
                         color: Color(0xFF047857),
                         size: 16,
@@ -655,7 +654,7 @@ class _PilihMapelKelasGuruScreenState extends State<PilihMapelKelasGuruScreen> {
                           style: TextStyle(color: _primaryText, fontSize: 11),
                         ),
                       ),
-                      const Text(
+                      Text(
                         'Buka Materi',
                         style: TextStyle(
                           color: AppColors.primary,
@@ -664,7 +663,7 @@ class _PilihMapelKelasGuruScreenState extends State<PilihMapelKelasGuruScreen> {
                         ),
                       ),
                       const SizedBox(width: 4),
-                      const Icon(
+                      Icon(
                         Icons.arrow_forward_rounded,
                         color: AppColors.primary,
                         size: 15,

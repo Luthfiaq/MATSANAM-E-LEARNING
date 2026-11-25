@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../config/api_config.dart';
 import '../../../utils/constants.dart';
+import '../../../utils/theme_helpers.dart';
 
 class DaftarSiswaMengumpulkanScreen extends StatefulWidget {
   final Map<String, dynamic> tugas;
@@ -161,21 +162,21 @@ class _DaftarSiswaMengumpulkanScreenState
     final visible = _visibleStudents;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.matsanamPage,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: context.matsanamSurface,
         elevation: 0,
         leading: IconButton(
           onPressed: () => Navigator.pop(context),
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new_rounded,
-            color: AppColors.textPrimary,
+            color: context.matsanamText,
           ),
         ),
-        title: const Text(
+        title: Text(
           'Daftar Pengumpulan',
           style: TextStyle(
-            color: AppColors.textPrimary,
+            color: context.matsanamText,
             fontSize: 17,
             fontWeight: FontWeight.w700,
           ),
@@ -237,17 +238,17 @@ class _DaftarSiswaMengumpulkanScreenState
                     controller: _searchController,
                     onChanged: (_) => setState(() {}),
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.search_rounded),
+                      prefixIcon: Icon(Icons.search_rounded),
                       hintText: 'Cari nama siswa atau NISN...',
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: context.matsanamSurface,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(11),
-                        borderSide: const BorderSide(color: AppColors.border),
+                        borderSide: BorderSide(color: context.matsanamBorder),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(11),
-                        borderSide: const BorderSide(color: AppColors.border),
+                        borderSide: BorderSide(color: context.matsanamBorder),
                       ),
                     ),
                   ),
@@ -272,16 +273,16 @@ class _DaftarSiswaMengumpulkanScreenState
                   const SizedBox(height: 9),
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.sort_rounded,
                         size: 17,
-                        color: AppColors.textSecondary,
+                        color: context.matsanamTextSecondary,
                       ),
                       const SizedBox(width: 5),
-                      const Text(
+                      Text(
                         'Urutkan:',
                         style: TextStyle(
-                          color: AppColors.textSecondary,
+                          color: context.matsanamTextSecondary,
                           fontSize: 11,
                         ),
                       ),
@@ -336,7 +337,7 @@ class _DaftarSiswaMengumpulkanScreenState
                           Text(_error!, textAlign: TextAlign.center),
                           TextButton(
                             onPressed: _loadSiswa,
-                            child: const Text('Coba Lagi'),
+                            child: Text('Coba Lagi'),
                           ),
                         ],
                       ),
@@ -392,7 +393,7 @@ class _DaftarSiswaMengumpulkanScreenState
                 ),
                 child: Text(
                   '$className • $subject',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
@@ -402,14 +403,14 @@ class _DaftarSiswaMengumpulkanScreenState
               const Spacer(),
               Text(
                 '${DateTime.now().day} ${_monthName(DateTime.now().month)} ${DateTime.now().year}',
-                style: const TextStyle(color: Colors.white70, fontSize: 10),
+                style: TextStyle(color: Colors.white70, fontSize: 10),
               ),
             ],
           ),
           const SizedBox(height: 13),
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
               fontSize: 18,
               fontWeight: FontWeight.w800,
@@ -420,7 +421,7 @@ class _DaftarSiswaMengumpulkanScreenState
             widget.tugas['deskripsi']?.toString() ?? '',
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Colors.white70, fontSize: 11),
+            style: TextStyle(color: Colors.white70, fontSize: 11),
           ),
           const SizedBox(height: 14),
           Row(
@@ -433,7 +434,7 @@ class _DaftarSiswaMengumpulkanScreenState
               ),
               Text(
                 '$graded dari $submitted Dinilai (${(progress * 100).toStringAsFixed(0)}%)',
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
@@ -461,9 +462,9 @@ class _DaftarSiswaMengumpulkanScreenState
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.matsanamSurface,
             borderRadius: BorderRadius.circular(11),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.matsanamBorder),
           ),
           child: Row(
             children: [
@@ -483,8 +484,8 @@ class _DaftarSiswaMengumpulkanScreenState
                   children: [
                     Text(
                       '$value',
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
+                      style: TextStyle(
+                        color: context.matsanamText,
                         fontWeight: FontWeight.w800,
                         fontSize: 19,
                       ),
@@ -493,8 +494,8 @@ class _DaftarSiswaMengumpulkanScreenState
                       label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
+                      style: TextStyle(
+                        color: context.matsanamTextSecondary,
                         fontSize: 10,
                       ),
                     ),
@@ -516,12 +517,12 @@ class _DaftarSiswaMengumpulkanScreenState
         showCheckmark: false,
         onSelected: (_) => setState(() => _filter = value),
         selectedColor: AppColors.primary,
-        backgroundColor: Colors.white,
+        backgroundColor: context.matsanamSurface,
         side: BorderSide(
-          color: selected ? AppColors.primary : AppColors.border,
+          color: selected ? AppColors.primary : context.matsanamBorder,
         ),
         labelStyle: TextStyle(
-          color: selected ? Colors.white : AppColors.textSecondary,
+          color: selected ? Colors.white : context.matsanamTextSecondary,
           fontSize: 10,
           fontWeight: FontWeight.w600,
         ),
@@ -554,9 +555,9 @@ class _DaftarSiswaMengumpulkanScreenState
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.matsanamSurface,
         borderRadius: BorderRadius.circular(13),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.matsanamBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -565,10 +566,10 @@ class _DaftarSiswaMengumpulkanScreenState
             children: [
               CircleAvatar(
                 radius: 22,
-                backgroundColor: const Color(0xFFEFF6FF),
+                backgroundColor: context.matsanamSoftPrimary,
                 child: Text(
                   _initials(name),
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.primary,
                     fontWeight: FontWeight.w800,
                   ),
@@ -581,16 +582,16 @@ class _DaftarSiswaMengumpulkanScreenState
                   children: [
                     Text(
                       name,
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
+                      style: TextStyle(
+                        color: context.matsanamText,
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                     Text(
                       'NIS: ${student['nis'] ?? '-'} • Kelas ${widget.tugas['kelas'] ?? '-'}',
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
+                      style: TextStyle(
+                        color: context.matsanamTextSecondary,
                         fontSize: 10,
                       ),
                     ),
@@ -622,7 +623,7 @@ class _DaftarSiswaMengumpulkanScreenState
                     ? Icons.attach_file_rounded
                     : Icons.event_busy_rounded,
                 size: 14,
-                color: AppColors.textMuted,
+                color: context.matsanamTextMuted,
               ),
               const SizedBox(width: 5),
               Expanded(
@@ -632,8 +633,8 @@ class _DaftarSiswaMengumpulkanScreenState
                             ? 'Sudah mengumpulkan'
                             : 'Dikumpulkan $submittedAt')
                       : 'Belum ada pengumpulan',
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
+                  style: TextStyle(
+                    color: context.matsanamTextSecondary,
                     fontSize: 10,
                   ),
                 ),
@@ -666,11 +667,11 @@ class _DaftarSiswaMengumpulkanScreenState
                   )
                 : OutlinedButton.icon(
                     onPressed: null,
-                    icon: const Icon(Icons.hourglass_empty_rounded, size: 16),
-                    label: const Text('Menunggu Pengumpulan'),
+                    icon: Icon(Icons.hourglass_empty_rounded, size: 16),
+                    label: Text('Menunggu Pengumpulan'),
                     style: OutlinedButton.styleFrom(
-                      disabledForegroundColor: AppColors.textMuted,
-                      side: const BorderSide(color: AppColors.border),
+                      disabledForegroundColor: context.matsanamTextMuted,
+                      side: BorderSide(color: context.matsanamBorder),
                     ),
                   ),
           ),

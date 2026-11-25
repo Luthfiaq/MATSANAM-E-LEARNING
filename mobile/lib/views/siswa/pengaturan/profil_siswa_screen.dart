@@ -156,7 +156,7 @@ class _ProfilSiswaScreenState extends State<ProfilSiswaScreen> {
                   contentPadding: EdgeInsets.zero,
                   title: Text(
                     e.key,
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    style: TextStyle(fontSize: 12, color: Theme.of(ctx).colorScheme.onSurfaceVariant),
                   ),
                   subtitle: Text(
                     e.value.isEmpty ? '-' : e.value,
@@ -222,10 +222,14 @@ class _ProfilSiswaScreenState extends State<ProfilSiswaScreen> {
         .toString();
     final nis = (profile['nis'] ?? '-').toString();
     final kelas = (profile['kelas'] ?? '-').toString();
+    final waliKelasName = (profile['wali_kelas'] ?? '').toString().trim();
+    final waliKelasLabel = waliKelasName.isEmpty
+        ? 'Data belum tersedia'
+        : waliKelasName;
     final initial = name.trim().isEmpty ? 'S' : name.trim()[0].toUpperCase();
     return Scaffold(
       appBar: AppBar(
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
@@ -234,7 +238,7 @@ class _ProfilSiswaScreenState extends State<ProfilSiswaScreen> {
             ),
             Text(
               'Profil',
-              style: TextStyle(fontSize: 11, color: Color(0xFF91A2BD)),
+              style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
           ],
         ),
@@ -294,9 +298,9 @@ class _ProfilSiswaScreenState extends State<ProfilSiswaScreen> {
                       const SizedBox(height: 5),
                       Text(
                         'NIS: $nis • Kelas $kelas',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
-                          color: Color(0xFF64748B),
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -305,11 +309,12 @@ class _ProfilSiswaScreenState extends State<ProfilSiswaScreen> {
                         style: TextStyle(fontSize: 11),
                       ),
                       const SizedBox(height: 5),
-                      const Text(
-                        'Wali Kelas: Data belum tersedia',
+                      Text(
+                        'Wali Kelas: $waliKelasLabel',
+                        textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 11,
-                          color: Color(0xFF64748B),
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -379,8 +384,10 @@ class _ProfilSiswaScreenState extends State<ProfilSiswaScreen> {
                         'Kontak Orang Tua / Wali Siswa',
                         'Nomor darurat dan verifikasi WhatsApp',
                         () => _info('Kontak Orang Tua / Wali', {
-                          'Informasi':
-                              'Data wali belum tersedia pada API profil.',
+                          'Nama Orang Tua / Wali':
+                              (profile['nama_wali'] ?? '').toString(),
+                          'Nomor Telepon Wali':
+                              (profile['telepon_wali'] ?? '').toString(),
                         }),
                       ),
                     ],
@@ -393,13 +400,13 @@ class _ProfilSiswaScreenState extends State<ProfilSiswaScreen> {
                 _panel(
                   Column(
                     children: [
-                      const Padding(
-                        padding: EdgeInsets.only(bottom: 8),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
                         child: Text(
                           'Preferensi disimpan pada akun dan digunakan untuk mengatur pemberitahuan di aplikasi.',
                           style: TextStyle(
                             fontSize: 10,
-                            color: Color(0xFF91A2BD),
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ),
@@ -477,10 +484,10 @@ class _ProfilSiswaScreenState extends State<ProfilSiswaScreen> {
                   ),
                 ),
                 const SizedBox(height: 18),
-                const Center(
+                Center(
                   child: Text(
                     'MTsN 6 Nganjuk • MATSANAM E-Learning',
-                    style: TextStyle(fontSize: 10, color: Color(0xFF91A2BD)),
+                    style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                 ),
               ],
@@ -537,9 +544,9 @@ class _ProfilSiswaScreenState extends State<ProfilSiswaScreen> {
     ),
     subtitle: Text(
       subtitle,
-      style: const TextStyle(fontSize: 10, color: Color(0xFF91A2BD)),
+      style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant),
     ),
-    trailing: const Icon(Icons.chevron_right, color: Color(0xFF91A2BD)),
+    trailing: Icon(Icons.chevron_right, color: Theme.of(context).colorScheme.onSurfaceVariant),
     onTap: onTap,
   );
   Widget _switch(
@@ -553,10 +560,10 @@ class _ProfilSiswaScreenState extends State<ProfilSiswaScreen> {
     title: Text(title, style: const TextStyle(fontSize: 13)),
     subtitle: Text(
       subtitle,
-      style: const TextStyle(fontSize: 10, color: Color(0xFF91A2BD)),
+      style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant),
     ),
     value: value,
-    activeColor: blue,
+    activeThumbColor: blue,
     onChanged: changed,
   );
 }

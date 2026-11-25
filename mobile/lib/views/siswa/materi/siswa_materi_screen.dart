@@ -11,6 +11,7 @@ import '../nilai/siswa_nilai_screen.dart';
 import '../pengaturan/profil_siswa_screen.dart';
 import '../tugas/siswa_tugas_screen.dart';
 import 'siswa_materi_detail_screen.dart';
+import '../../../utils/theme_helpers.dart';
 
 class SiswaMateriScreen extends StatefulWidget {
   final int? mapelId;
@@ -111,9 +112,9 @@ class _SiswaMateriScreenState extends State<SiswaMateriScreen> {
               isSubjectList
                   ? 'Materi Pembelajaran'
                   : widget.namaMapel ?? 'Daftar Materi',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
-                color: AppColors.textSecondary,
+                color: context.matsanamTextSecondary,
               ),
             ),
           ],
@@ -155,9 +156,12 @@ class _SiswaMateriScreenState extends State<SiswaMateriScreen> {
         final item = _mapel[index];
         return _SurfaceCard(
           child: ListTile(
-            leading: const CircleAvatar(
-              backgroundColor: AppColors.primaryLight,
-              child: Icon(Icons.menu_book_rounded, color: AppColors.primary),
+            leading: CircleAvatar(
+              backgroundColor: context.matsanamSoftPrimary,
+              child: Icon(
+                Icons.menu_book_rounded,
+                color: context.matsanamPrimary,
+              ),
             ),
             title: Text(
               '${item['nama'] ?? '-'}',
@@ -239,8 +243,8 @@ class _SiswaMateriScreenState extends State<SiswaMateriScreen> {
                     return _SurfaceCard(
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: AppColors.primaryLight,
-                          child: Icon(icon, color: AppColors.primary),
+                          backgroundColor: context.matsanamSoftPrimary,
+                          child: Icon(icon, color: context.matsanamPrimary),
                         ),
                         title: Text(
                           '${item['judul'] ?? '-'}',
@@ -255,13 +259,15 @@ class _SiswaMateriScreenState extends State<SiswaMateriScreen> {
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            if (_completedMateriIds.contains((item['id'] as num).toInt()))
-                              const Padding(
+                            if (_completedMateriIds.contains(
+                              (item['id'] as num).toInt(),
+                            ))
+                              Padding(
                                 padding: EdgeInsets.only(right: 6),
                                 child: Icon(
                                   Icons.check_circle_rounded,
                                   size: 18,
-                                  color: AppColors.success,
+                                  color: context.matsanamSuccess,
                                 ),
                               ),
                             const Icon(Icons.chevron_right_rounded),
@@ -274,7 +280,9 @@ class _SiswaMateriScreenState extends State<SiswaMateriScreen> {
                             MaterialPageRoute(
                               builder: (_) => SiswaMateriDetailScreen(
                                 materiId: materiId,
-                                initialCompleted: _completedMateriIds.contains(materiId),
+                                initialCompleted: _completedMateriIds.contains(
+                                  materiId,
+                                ),
                               ),
                             ),
                           );
@@ -345,7 +353,7 @@ class _StateMessage extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 44, color: AppColors.textMuted),
+          Icon(icon, size: 44, color: context.matsanamTextMuted),
           const SizedBox(height: 12),
           Text(
             title,
@@ -355,7 +363,7 @@ class _StateMessage extends StatelessWidget {
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.textSecondary),
+            style: TextStyle(color: context.matsanamTextSecondary),
           ),
           if (action != null) ...[
             const SizedBox(height: 14),

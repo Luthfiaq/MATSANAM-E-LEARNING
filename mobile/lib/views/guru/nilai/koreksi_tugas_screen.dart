@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../config/api_config.dart';
 import '../../../utils/constants.dart';
+import '../../../utils/theme_helpers.dart';
 
 class KoreksiTugasScreen extends StatefulWidget {
   final Map<String, dynamic> tugas;
@@ -66,18 +67,18 @@ class _KoreksiTugasScreenState extends State<KoreksiTugasScreen> {
     final result = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Perubahan belum disimpan'),
-        content: const Text(
+        title: Text('Perubahan belum disimpan'),
+        content: Text(
           'Nilai atau catatan yang sedang diubah akan hilang. Tetap lanjut?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Tetap di sini'),
+            child: Text('Tetap di sini'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Buang Perubahan'),
+            child: Text('Buang Perubahan'),
           ),
         ],
       ),
@@ -293,24 +294,25 @@ class _KoreksiTugasScreenState extends State<KoreksiTugasScreen> {
     final attachments = _attachments();
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.matsanamPage,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: context.matsanamSurface,
         elevation: 0,
         leading: IconButton(
           onPressed: () async {
-            if (await _confirmDiscard() && mounted)
-              Navigator.pop(context, true);
+            final shouldLeave = await _confirmDiscard();
+            if (!mounted || !shouldLeave) return;
+            Navigator.pop(context, true);
           },
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new_rounded,
-            color: AppColors.textPrimary,
+            color: context.matsanamText,
           ),
         ),
-        title: const Text(
+        title: Text(
           'Detail & Koreksi Tugas',
           style: TextStyle(
-            color: AppColors.textPrimary,
+            color: context.matsanamText,
             fontSize: 16,
             fontWeight: FontWeight.w700,
           ),
@@ -340,11 +342,11 @@ class _KoreksiTugasScreenState extends State<KoreksiTugasScreen> {
           onPressed: _index > 0 && !_isSaving
               ? () => _moveTo(_index - 1)
               : null,
-          icon: const Icon(Icons.chevron_left_rounded, size: 18),
-          label: const Text('Sebelumnya', style: TextStyle(fontSize: 10)),
+          icon: Icon(Icons.chevron_left_rounded, size: 18),
+          label: Text('Sebelumnya', style: TextStyle(fontSize: 10)),
           style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.textPrimary,
-            side: const BorderSide(color: AppColors.border),
+            foregroundColor: context.matsanamText,
+            side: BorderSide(color: context.matsanamBorder),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
           ),
         ),
@@ -353,16 +355,16 @@ class _KoreksiTugasScreenState extends State<KoreksiTugasScreen> {
             children: [
               Text(
                 '${_index + 1} dari ${_students.length} Siswa',
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
+                style: TextStyle(
+                  color: context.matsanamText,
                   fontWeight: FontWeight.w700,
                   fontSize: 11,
                 ),
               ),
               Text(
                 '$className • $subject',
-                style: const TextStyle(
-                  color: AppColors.textMuted,
+                style: TextStyle(
+                  color: context.matsanamTextMuted,
                   fontSize: 10,
                 ),
               ),
@@ -373,11 +375,11 @@ class _KoreksiTugasScreenState extends State<KoreksiTugasScreen> {
           onPressed: _index < _students.length - 1 && !_isSaving
               ? () => _moveTo(_index + 1)
               : null,
-          icon: const Icon(Icons.chevron_right_rounded, size: 18),
-          label: const Text('Berikutnya', style: TextStyle(fontSize: 10)),
+          icon: Icon(Icons.chevron_right_rounded, size: 18),
+          label: Text('Berikutnya', style: TextStyle(fontSize: 10)),
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.primary,
-            side: const BorderSide(color: AppColors.border),
+            side: BorderSide(color: context.matsanamBorder),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
           ),
         ),
@@ -396,17 +398,17 @@ class _KoreksiTugasScreenState extends State<KoreksiTugasScreen> {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.matsanamSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.matsanamBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             name,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
+            style: TextStyle(
+              color: context.matsanamText,
               fontSize: 17,
               fontWeight: FontWeight.w800,
             ),
@@ -414,8 +416,8 @@ class _KoreksiTugasScreenState extends State<KoreksiTugasScreen> {
           const SizedBox(height: 4),
           Text(
             'Kelas $className • NIS ${_student['nis'] ?? '-'}',
-            style: const TextStyle(
-              color: AppColors.textSecondary,
+            style: TextStyle(
+              color: context.matsanamTextSecondary,
               fontSize: 11,
             ),
           ),
@@ -438,7 +440,7 @@ class _KoreksiTugasScreenState extends State<KoreksiTugasScreen> {
                   style: TextStyle(
                     color: submitted
                         ? (isLate ? AppColors.warning : AppColors.success)
-                        : AppColors.textSecondary,
+                        : context.matsanamTextSecondary,
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
@@ -449,17 +451,17 @@ class _KoreksiTugasScreenState extends State<KoreksiTugasScreen> {
           const SizedBox(height: 14),
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.folder_open_rounded,
                 color: AppColors.primary,
                 size: 18,
               ),
               const SizedBox(width: 7),
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Berkas Siswa',
                   style: TextStyle(
-                    color: AppColors.textPrimary,
+                    color: context.matsanamText,
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),
@@ -467,8 +469,8 @@ class _KoreksiTugasScreenState extends State<KoreksiTugasScreen> {
               ),
               Text(
                 '${attachments.length} File',
-                style: const TextStyle(
-                  color: AppColors.textMuted,
+                style: TextStyle(
+                  color: context.matsanamTextMuted,
                   fontSize: 10,
                 ),
               ),
@@ -480,12 +482,12 @@ class _KoreksiTugasScreenState extends State<KoreksiTugasScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.background,
+                color: context.matsanamPage,
                 borderRadius: BorderRadius.circular(9),
               ),
-              child: const Text(
+              child: Text(
                 'Tidak ada berkas lampiran.',
-                style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+                style: TextStyle(color: context.matsanamTextMuted, fontSize: 11),
               ),
             )
           else
@@ -495,7 +497,7 @@ class _KoreksiTugasScreenState extends State<KoreksiTugasScreen> {
               return Container(
                 margin: const EdgeInsets.only(bottom: 7),
                 decoration: BoxDecoration(
-                  color: AppColors.primaryLight,
+                  color: context.matsanamSoftPrimary,
                   borderRadius: BorderRadius.circular(9),
                 ),
                 child: ListTile(
@@ -510,7 +512,7 @@ class _KoreksiTugasScreenState extends State<KoreksiTugasScreen> {
                     fileName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.primary,
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
@@ -520,9 +522,9 @@ class _KoreksiTugasScreenState extends State<KoreksiTugasScreen> {
                     canDownload
                         ? 'Unduh berkas jawaban siswa'
                         : 'Berkas tersimpan; tautan unduh belum tersedia',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10,
-                      color: AppColors.textSecondary,
+                      color: context.matsanamTextSecondary,
                     ),
                   ),
                   trailing: canDownload
@@ -539,15 +541,15 @@ class _KoreksiTugasScreenState extends State<KoreksiTugasScreen> {
                                     strokeWidth: 2,
                                   ),
                                 )
-                              : const Icon(
+                              : Icon(
                                   Icons.download_rounded,
                                   color: AppColors.primary,
                                 ),
                         )
-                      : const Icon(
+                      : Icon(
                           Icons.lock_outline_rounded,
                           size: 18,
-                          color: AppColors.textMuted,
+                          color: context.matsanamTextMuted,
                         ),
                   onTap: canDownload && !_downloadingFile
                       ? () => _downloadAttachment(file)
@@ -557,10 +559,10 @@ class _KoreksiTugasScreenState extends State<KoreksiTugasScreen> {
             }),
           if ((_student['jawaban'] ?? '').toString().trim().isNotEmpty) ...[
             const SizedBox(height: 14),
-            const Text(
+            Text(
               'Jawaban Tertulis',
               style: TextStyle(
-                color: AppColors.textPrimary,
+                color: context.matsanamText,
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),
@@ -570,13 +572,13 @@ class _KoreksiTugasScreenState extends State<KoreksiTugasScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.background,
+                color: context.matsanamPage,
                 borderRadius: BorderRadius.circular(9),
               ),
               child: SelectableText(
                 _student['jawaban'].toString(),
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
+                style: TextStyle(
+                  color: context.matsanamTextSecondary,
                   fontSize: 12,
                   height: 1.5,
                 ),
@@ -585,7 +587,7 @@ class _KoreksiTugasScreenState extends State<KoreksiTugasScreen> {
           ],
           if (!submitted) ...[
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'Input nilai dapat dilakukan setelah siswa mengumpulkan tugas.',
               style: TextStyle(color: AppColors.warning, fontSize: 11),
             ),
@@ -600,17 +602,17 @@ class _KoreksiTugasScreenState extends State<KoreksiTugasScreen> {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.matsanamSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.matsanamBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Input Skor Nilai Tugas',
             style: TextStyle(
-              color: AppColors.textPrimary,
+              color: context.matsanamText,
               fontSize: 16,
               fontWeight: FontWeight.w800,
             ),
@@ -619,7 +621,7 @@ class _KoreksiTugasScreenState extends State<KoreksiTugasScreen> {
             '$taskTitle • Skala 0–100',
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+            style: TextStyle(color: context.matsanamTextMuted, fontSize: 11),
           ),
           const SizedBox(height: 14),
           TextFormField(
@@ -635,16 +637,16 @@ class _KoreksiTugasScreenState extends State<KoreksiTugasScreen> {
             decoration: InputDecoration(
               labelText: 'Nilai Akhir',
               suffixText: '/ 100',
-              prefixIcon: const Icon(Icons.grade_outlined),
+              prefixIcon: Icon(Icons.grade_outlined),
               filled: true,
-              fillColor: AppColors.background,
+              fillColor: context.matsanamPage,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.border),
+                borderSide: BorderSide(color: context.matsanamBorder),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.border),
+                borderSide: BorderSide(color: context.matsanamBorder),
               ),
             ),
             validator: (value) {
@@ -657,10 +659,10 @@ class _KoreksiTugasScreenState extends State<KoreksiTugasScreen> {
             },
           ),
           const SizedBox(height: 14),
-          const Text(
+          Text(
             'Catatan / Masukan untuk Siswa',
             style: TextStyle(
-              color: AppColors.textPrimary,
+              color: context.matsanamText,
               fontSize: 12,
               fontWeight: FontWeight.w700,
             ),
@@ -675,24 +677,24 @@ class _KoreksiTugasScreenState extends State<KoreksiTugasScreen> {
             decoration: InputDecoration(
               hintText: 'Tuliskan masukan yang membangun untuk siswa...',
               filled: true,
-              fillColor: AppColors.background,
+              fillColor: context.matsanamPage,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.border),
+                borderSide: BorderSide(color: context.matsanamBorder),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.border),
+                borderSide: BorderSide(color: context.matsanamBorder),
               ),
             ),
           ),
           Container(
             padding: const EdgeInsets.all(11),
             decoration: BoxDecoration(
-              color: AppColors.primaryLight,
+              color: context.matsanamSoftPrimary,
               borderRadius: BorderRadius.circular(9),
             ),
-            child: const Row(
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Icon(
@@ -705,7 +707,7 @@ class _KoreksiTugasScreenState extends State<KoreksiTugasScreen> {
                   child: Text(
                     'Nilai dapat diperbarui kembali. Penyimpanan akan memperbarui nilai untuk pengumpulan siswa ini.',
                     style: TextStyle(
-                      color: AppColors.textSecondary,
+                      color: context.matsanamTextSecondary,
                       fontSize: 10,
                       height: 1.4,
                     ),
@@ -725,9 +727,9 @@ class _KoreksiTugasScreenState extends State<KoreksiTugasScreen> {
       top: false,
       child: Container(
         padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: Colors.white,
-          border: Border(top: BorderSide(color: AppColors.border)),
+          border: Border(top: BorderSide(color: context.matsanamBorder)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -747,7 +749,7 @@ class _KoreksiTugasScreenState extends State<KoreksiTugasScreen> {
                           color: Colors.white,
                         ),
                       )
-                    : const Icon(Icons.save_rounded, size: 17),
+                    : Icon(Icons.save_rounded, size: 17),
                 label: Text(
                   _index + 1 < _students.length
                       ? 'Simpan & Lanjut Siswa Berikutnya'
@@ -771,14 +773,14 @@ class _KoreksiTugasScreenState extends State<KoreksiTugasScreen> {
                     onPressed: !submitted || _isSaving
                         ? null
                         : () => _saveScore(continueNext: false),
-                    icon: const Icon(Icons.save_outlined, size: 16),
-                    label: const Text(
+                    icon: Icon(Icons.save_outlined, size: 16),
+                    label: Text(
                       'Simpan Nilai Saja',
                       style: TextStyle(fontSize: 11),
                     ),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.primary,
-                      side: const BorderSide(color: AppColors.border),
+                      side: BorderSide(color: context.matsanamBorder),
                     ),
                   ),
                 ),
@@ -791,8 +793,8 @@ class _KoreksiTugasScreenState extends State<KoreksiTugasScreen> {
                             if (await _confirmDiscard() && mounted)
                               Navigator.pop(context, true);
                           },
-                    icon: const Icon(Icons.list_alt_rounded, size: 16),
-                    label: const Text(
+                    icon: Icon(Icons.list_alt_rounded, size: 16),
+                    label: Text(
                       'Daftar Siswa',
                       style: TextStyle(fontSize: 11),
                     ),

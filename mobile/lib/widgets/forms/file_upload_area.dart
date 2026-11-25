@@ -1,5 +1,7 @@
-import 'package:flutter/material.dart';
 import 'dart:io';
+
+import 'package:flutter/material.dart';
+
 import '../../utils/constants.dart';
 
 class FileUploadArea extends StatelessWidget {
@@ -12,7 +14,7 @@ class FileUploadArea extends StatelessWidget {
   final bool isLoading;
 
   const FileUploadArea({
-    Key? key,
+    super.key,
     required this.files,
     required this.onPickFiles,
     required this.onRemoveFile,
@@ -20,14 +22,14 @@ class FileUploadArea extends StatelessWidget {
     this.acceptedFormats,
     this.maxSizeMB,
     this.isLoading = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Upload Zone
         InkWell(
           onTap: isLoading ? null : onPickFiles,
           borderRadius: BorderRadius.circular(AppDimens.radiusMedium),
@@ -35,13 +37,9 @@ class FileUploadArea extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
             decoration: BoxDecoration(
-              color: AppColors.background,
+              color: colors.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(AppDimens.radiusMedium),
-              border: Border.all(
-                color: AppColors.border,
-                width: 1.5,
-                style: BorderStyle.solid,
-              ),
+              border: Border.all(color: colors.outlineVariant, width: 1.5),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -52,85 +50,83 @@ class FileUploadArea extends StatelessWidget {
                   Icon(
                     Icons.cloud_upload_outlined,
                     size: 48,
-                    color: AppColors.primary,
+                    color: colors.primary,
                   ),
                 const SizedBox(height: AppDimens.spacingMedium),
                 Text(
                   hint ?? 'Sentuh atau Tarik Berkas ke Sini',
-                  style: AppTypography.labelLarge,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: colors.onSurface,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: AppDimens.spacingXSmall),
                 Text(
                   _buildHintText(),
-                  style: AppTypography.caption,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ],
             ),
           ),
         ),
-
-        // Files List
         if (files.isNotEmpty) ...[
           const SizedBox(height: AppDimens.spacingMedium),
           ...files.asMap().entries.map((entry) {
-            final index = entry.key;
-            final file = entry.value;
             return Padding(
               padding: const EdgeInsets.only(bottom: AppDimens.spacingSmall),
-              child: _buildFileCard(file, index),
+              child: _buildFileCard(context, entry.value, entry.key),
             );
-          }).toList(),
+          }),
         ],
       ],
     );
   }
 
   String _buildHintText() {
-    final formats =
-        acceptedFormats?.join(', ').toUpperCase() ?? 'PDF, DOCX, PPTX';
+    final formats = acceptedFormats?.join(', ').toUpperCase() ?? 'PDF, DOCX, PPTX';
     final size = maxSizeMB ?? 50;
     return 'Mendukung $formats (Maks $size MB)';
   }
 
-  Widget _buildFileCard(File file, int index) {
+  Widget _buildFileCard(BuildContext context, File file, int index) {
+    final colors = Theme.of(context).colorScheme;
     final fileName = file.path.split('/').last;
     final fileExtension = fileName.split('.').last.toUpperCase();
     final fileSize = _getFileSizeString(file);
     final fileIcon = _getFileIcon(fileExtension);
     final fileColor = _getFileColor(fileExtension);
+    final dark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       padding: const EdgeInsets.all(AppDimens.spacingMedium),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(AppDimens.radiusMedium),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: colors.outlineVariant),
       ),
       child: Row(
         children: [
-          // File Icon
           Container(
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: fileColor.withOpacity(0.12),
+              color: fileColor.withValues(alpha: dark ? .22 : .12),
               borderRadius: BorderRadius.circular(AppDimens.radiusSmall),
             ),
             child: Icon(fileIcon, color: fileColor, size: 20),
           ),
           const SizedBox(width: AppDimens.spacingMedium),
-
-          // File Info
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   fileName,
-                  style: AppTypography.labelLarge.copyWith(
-                    color: AppColors.textPrimary,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: colors.onSurface,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -138,12 +134,17 @@ class FileUploadArea extends StatelessWidget {
                 const SizedBox(height: 2),
                 Row(
                   children: [
-                    Text(fileSize, style: AppTypography.caption),
+                    Text(
+                      fileSize,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
                     const SizedBox(width: 8),
                     Text(
-                      '• Siap diunduh',
-                      style: AppTypography.caption.copyWith(
-                        color: AppColors.success,
+                      '• Siap diunggah',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: dark ? const Color(0xFF6EE7B7) : const Color(0xFF059669),
                       ),
                     ),
                   ],
@@ -151,13 +152,12 @@ class FileUploadArea extends StatelessWidget {
               ],
             ),
           ),
-
-          // Delete Button
           IconButton(
+            tooltip: 'Hapus lampiran',
             onPressed: () => onRemoveFile(index),
-            icon: const Icon(
+            icon: Icon(
               Icons.delete_outline,
-              color: AppColors.textMuted,
+              color: colors.onSurfaceVariant,
               size: 20,
             ),
             padding: EdgeInsets.zero,
@@ -197,26 +197,26 @@ class FileUploadArea extends StatelessWidget {
   Color _getFileColor(String extension) {
     switch (extension.toLowerCase()) {
       case 'pdf':
-        return Colors.red;
+        return const Color(0xFFDC2626);
       case 'doc':
       case 'docx':
-        return Colors.blue;
+        return const Color(0xFF2563EB);
       case 'ppt':
       case 'pptx':
-        return Colors.orange;
+        return const Color(0xFFD97706);
       case 'xls':
       case 'xlsx':
-        return Colors.green;
+        return const Color(0xFF059669);
       case 'jpg':
       case 'jpeg':
       case 'png':
-        return Colors.purple;
+        return const Color(0xFF9333EA);
       case 'mp4':
       case 'avi':
       case 'mov':
-        return Colors.pink;
+        return const Color(0xFFDB2777);
       default:
-        return AppColors.textSecondary;
+        return const Color(0xFF64748B);
     }
   }
 

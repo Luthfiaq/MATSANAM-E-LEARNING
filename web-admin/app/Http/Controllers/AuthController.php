@@ -191,7 +191,12 @@ class AuthController extends Controller
                 $profileId = $guru->id;
             }
         } elseif ($role === 'siswa') {
-            $siswa = Siswa::where('user_id', $user->id)->first();
+            // Profile data is scoped to the authenticated student. Eager-load
+            // class and homeroom teacher so the mobile profile can show the
+            // guardian and wali kelas details already stored by Admin.
+            $siswa = Siswa::with(['kelas.waliKelas'])
+                ->where('user_id', $user->id)
+                ->first();
             if ($siswa) {
                 $profile = [
                     'id' => $siswa->id,
@@ -199,6 +204,9 @@ class AuthController extends Controller
                     'nis' => $siswa->nis,
                     'nisn' => $siswa->nisn,
                     'kelas' => $siswa->kelas?->nama_kelas,
+                    'wali_kelas' => $siswa->kelas?->waliKelas?->nama_lengkap,
+                    'nama_wali' => $siswa->nama_wali,
+                    'telepon_wali' => $siswa->telepon_wali,
                     'foto_profil' => $siswa->foto_profil,
                 ];
                 $profileId = $siswa->id;

@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../config/api_config.dart';
 import '../../../utils/constants.dart';
+import '../../../utils/theme_helpers.dart';
 
 class DaftarMateriScreen extends StatefulWidget {
   final String? mapelFilter;
@@ -186,29 +187,29 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.matsanamPage,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: context.matsanamSurface,
         elevation: 0,
         centerTitle: false,
         leading: IconButton(
           onPressed: () => Navigator.pop(context, _didChange),
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          icon: Icon(Icons.arrow_back_ios_new_rounded),
         ),
         title: Text(
           widget.mapelFilter == null ? 'Daftar Materi' : widget.mapelFilter!,
-          style: const TextStyle(
-            color: AppColors.textPrimary,
+          style: TextStyle(
+            color: context.matsanamText,
             fontSize: 17,
             fontWeight: FontWeight.w700,
           ),
         ),
         actions: [
-          IconButton(onPressed: _openTambahMateri, icon: const Icon(Icons.add)),
+          IconButton(onPressed: _openTambahMateri, icon: Icon(Icons.add)),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 1180),
@@ -226,16 +227,16 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.cloud_off_outlined,
                 size: 52,
-                color: AppColors.textSecondary,
+                color: context.matsanamTextSecondary,
               ),
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 'Materi gagal dimuat',
                 style: TextStyle(
-                  color: AppColors.textPrimary,
+                  color: context.matsanamText,
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                 ),
@@ -244,13 +245,13 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
               Text(
                 _loadError!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.textSecondary),
+                style: TextStyle(color: context.matsanamTextSecondary),
               ),
               const SizedBox(height: 16),
               OutlinedButton.icon(
                 onPressed: _loadMateri,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Coba Lagi'),
+                icon: Icon(Icons.refresh_rounded),
+                label: Text('Coba Lagi'),
               ),
             ],
           ),
@@ -263,21 +264,21 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
+            Icon(
               Icons.book_outlined,
               size: 64,
-              color: AppColors.textSecondary,
+              color: context.matsanamTextSecondary,
             ),
             const SizedBox(height: 14),
-            const Text(
+            Text(
               'Belum ada materi',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
+              style: TextStyle(color: context.matsanamTextSecondary, fontSize: 16),
             ),
             const SizedBox(height: 10),
             ElevatedButton.icon(
               onPressed: _openTambahMateri,
-              icon: const Icon(Icons.add),
-              label: const Text('Tambah Materi'),
+              icon: Icon(Icons.add),
+              label: Text('Tambah Materi'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
@@ -293,11 +294,11 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
         _buildFilterBar(),
         Expanded(
           child: _filteredMateri.isEmpty
-              ? const Center(
+              ? Center(
                   child: Text(
                     'Tidak ada materi yang cocok dengan pencarian atau filter ini.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: AppColors.textSecondary),
+                    style: TextStyle(color: context.matsanamTextSecondary),
                   ),
                 )
               : ListView.builder(
@@ -319,13 +320,13 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: AppColors.surface,
-              border: Border.all(color: AppColors.border),
+              color: context.matsanamSurface,
+              border: Border.all(color: context.matsanamBorder),
               borderRadius: BorderRadius.circular(12),
             ),
             child: TextField(
               controller: _searchController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 border: InputBorder.none,
                 prefixIcon: Icon(Icons.search_rounded),
                 hintText: 'Cari judul atau deskripsi materi...',
@@ -345,12 +346,12 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
                     selected: selected,
                     onSelected: (_) => setState(() => _selectedFilter = filter),
                     selectedColor: AppColors.primary,
-                    backgroundColor: AppColors.surface,
+                    backgroundColor: context.matsanamSurface,
                     side: BorderSide(
-                      color: selected ? AppColors.primary : AppColors.border,
+                      color: selected ? AppColors.primary : context.matsanamBorder,
                     ),
                     labelStyle: TextStyle(
-                      color: selected ? Colors.white : AppColors.textPrimary,
+                      color: selected ? Colors.white : context.matsanamText,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -474,19 +475,19 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Hapus materi?'),
+        title: Text('Hapus materi?'),
         content: Text(
           'Materi "${materi['judul'] ?? 'Tanpa judul'}" akan dihapus permanen.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Batal'),
+            child: Text('Batal'),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Hapus'),
+            child: Text('Hapus'),
           ),
         ],
       ),
@@ -600,7 +601,7 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.matsanamSurface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -635,8 +636,8 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
                         children: [
                           Text(
                             materi['judul'] ?? 'Judul Materi',
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
+                            style: TextStyle(
+                              color: context.matsanamText,
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
                             ),
@@ -644,8 +645,8 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
                           const SizedBox(height: 4),
                           Text(
                             '${_materiMapel(materi)} • ${_materiKelas(materi)}',
-                            style: const TextStyle(
-                              color: AppColors.textSecondary,
+                            style: TextStyle(
+                              color: context.matsanamTextSecondary,
                               fontSize: 12,
                             ),
                           ),
@@ -658,7 +659,7 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
                         vertical: 5,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.successLight,
+                        color: context.matsanamSoftSuccess,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
@@ -671,7 +672,7 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
                           const SizedBox(width: 4),
                           Text(
                             '${materi['downloads'] ?? 0}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: AppColors.success,
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -690,8 +691,8 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
                         .toString(),
                     80,
                   ),
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
+                  style: TextStyle(
+                    color: context.matsanamTextSecondary,
                     fontSize: 13,
                   ),
                   maxLines: 2,
@@ -704,7 +705,7 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: AppColors.background,
+                          color: context.matsanamPage,
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Row(
@@ -712,15 +713,15 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
                             Icon(
                               Icons.access_time,
                               size: 16,
-                              color: AppColors.textSecondary,
+                              color: context.matsanamTextSecondary,
                             ),
                             const SizedBox(width: 6),
                             Text(
                               (materi['created_at']?.toString() ?? '-')
                                   .split('T')
                                   .first,
-                              style: const TextStyle(
-                                color: AppColors.textSecondary,
+                              style: TextStyle(
+                                color: context.matsanamTextSecondary,
                                 fontSize: 12,
                               ),
                             ),
@@ -768,8 +769,8 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: () => _editMateri(materi),
-                        icon: const Icon(Icons.edit_outlined),
-                        label: const Text('Edit'),
+                        icon: Icon(Icons.edit_outlined),
+                        label: Text('Edit'),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
@@ -789,7 +790,7 @@ class _DaftarMateriScreenState extends State<DaftarMateriScreen> {
                       child: IconButton(
                         tooltip: 'Hapus materi',
                         onPressed: () => _deleteMateri(materi),
-                        icon: const Icon(Icons.delete_outline_rounded),
+                        icon: Icon(Icons.delete_outline_rounded),
                         color: AppColors.error,
                       ),
                     ),

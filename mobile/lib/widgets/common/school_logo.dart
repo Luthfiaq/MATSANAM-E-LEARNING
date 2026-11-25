@@ -21,23 +21,28 @@ class SchoolLogo extends StatelessWidget {
   }
 }
 
-/// Logo di dalam kartu putih bersudut membulat (onboarding & login).
+/// Logo di dalam kartu surface adaptif bertema (onboarding, splash & login).
 class SchoolLogoCard extends StatelessWidget {
   final double size;
   const SchoolLogoCard({super.key, this.size = 96});
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final dark = theme.brightness == Brightness.dark;
     return Container(
       width: size,
       height: size,
       padding: EdgeInsets.all(size * 0.09),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(size * 0.22),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.65),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
+            color: Colors.black.withValues(alpha: dark ? 0.20 : 0.08),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),

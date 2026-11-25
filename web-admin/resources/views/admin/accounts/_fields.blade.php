@@ -42,7 +42,7 @@
         </section>
 
         @if($role === 'guru')
-        <div class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 flex gap-3 text-sm text-blue-900"><span class="text-lg">ℹ</span><div><strong>Penugasan mengajar dikelola terpisah.</strong><p class="text-xs text-blue-700 mt-1">Mata pelajaran dan kelas Guru diambil dari jadwal/penugasan mengajar. Setelah akun dibuat, atur jadwal melalui menu List Penugasan Guru.</p></div></div>
+        <div class="form-info-note rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 flex gap-3 text-sm text-blue-900"><span class="text-lg">ℹ</span><div><strong>Penugasan mengajar dikelola terpisah.</strong><p class="text-xs text-blue-700 mt-1">Mata pelajaran dan kelas Guru diambil dari jadwal/penugasan mengajar. Setelah akun dibuat, atur jadwal melalui menu List Penugasan Guru.</p></div></div>
         @endif
     </div>
 
@@ -60,7 +60,7 @@
             <div class="form-section-title"><span class="section-number">{{ $isEdit ? '3' : '4' }}</span><div><h2>Status & Keamanan</h2><p>Atur akses akun ke aplikasi.</p></div></div>
             <label class="block mb-3"><span class="field-label">Status Akun</span><select name="is_active" class="field"><option value="1" @selected((string)$value('is_active', $activeDefault) === '1')>Aktif — dapat login</option><option value="0" @selected((string)$value('is_active', $activeDefault) === '0')>Nonaktif — akses diblokir</option></select></label>
             @unless($isEdit)
-            <label class="flex items-start gap-3 p-3 rounded-lg border border-blue-100 bg-blue-50"><input type="checkbox" name="must_change_password" value="1" class="mt-1 accent-blue-600" checked><span><strong class="block text-sm text-slate-800">Wajib ganti password</strong><span class="text-xs text-slate-500">Tandai akun agar password sementara diganti pada alur penggantian password yang didukung aplikasi.</span></span></label>
+            <label class="must-change-password flex items-start gap-3 p-3 rounded-lg border border-blue-100 bg-blue-50"><input type="checkbox" name="must_change_password" value="1" class="mt-1 accent-blue-600" checked><span><strong class="block text-sm text-slate-800">Wajib ganti password</strong><span class="text-xs text-slate-500">Tandai akun agar password sementara diganti pada alur penggantian password yang didukung aplikasi.</span></span></label>
             @else
             <div class="p-3 rounded-lg bg-slate-50 text-xs text-slate-600">Status permintaan ganti password: <strong>{{ $user->must_change_password ? 'Wajib diganti' : 'Tidak diwajibkan' }}</strong>. Untuk mengubah password, gunakan aksi Reset Password pada detail akun.</div>
             @endunless
@@ -69,5 +69,86 @@
 </div>
 
 <style>
-.form-panel{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:21px;box-shadow:0 1px 2px #0f172a08}.form-section-title{display:flex;align-items:flex-start;gap:11px;margin-bottom:20px}.section-number{width:27px;height:27px;display:grid;place-items:center;border-radius:8px;background:#eff6ff;color:#2563eb;font-size:12px;font-weight:800;flex-shrink:0}.form-section-title h2{font-size:15px;font-weight:700;color:#0f172a}.form-section-title p{font-size:11px;color:#94a3b8;margin-top:3px}.field-label{display:block;font-size:11px;font-weight:650;color:#334155;margin-bottom:7px}.field-label b{color:#dc2626}.error-text{display:block;color:#dc2626;font-size:11px;margin-top:5px}.field{width:100%;border:1px solid #dbe3ef;background:#f8fafc;border-radius:9px;padding:11px 12px;color:#1e293b;font-size:12px;outline:none}.field:focus{background:white;border-color:#60a5fa;box-shadow:0 0 0 3px #dbeafe}.field::placeholder{color:#94a3b8}
+/* Account create/edit form surfaces use the shared Admin theme tokens. */
+.form-panel {
+    background: var(--admin-surface, #fff);
+    color: var(--admin-text, #0f172a);
+    border: 1px solid var(--admin-border, #e2e8f0);
+    border-radius: 14px;
+    padding: 21px;
+    box-shadow: var(--admin-shadow, 0 1px 2px rgba(15,23,42,.04), 0 8px 20px rgba(15,23,42,.035));
+    transition: background-color .18s ease, border-color .18s ease, color .18s ease;
+}
+.form-section-title { display:flex; align-items:flex-start; gap:11px; margin-bottom:20px; }
+.section-number {
+    width:27px; height:27px; display:grid; place-items:center; border-radius:8px;
+    background:#eff6ff; color:#2563eb; font-size:12px; font-weight:800; flex-shrink:0;
+}
+.form-section-title h2 { font-size:15px; font-weight:700; color:var(--admin-text, #0f172a); }
+.form-section-title p { font-size:11px; color:var(--admin-text-muted, #64748b); margin-top:3px; }
+.field-label { display:block; font-size:11px; font-weight:650; color:var(--admin-text-secondary, #334155); margin-bottom:7px; }
+.field-label b { color:#dc2626; }
+.error-text { display:block; color:#dc2626; font-size:11px; margin-top:5px; }
+.field {
+    width:100%; min-height:42px; border:1px solid var(--admin-border, #dbe3ef);
+    background:var(--admin-surface-soft, #f8fafc); border-radius:9px;
+    padding:11px 12px; color:var(--admin-text, #1e293b); font-size:12px; outline:none;
+    transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease, color .15s ease;
+}
+.field:focus {
+    background:var(--admin-surface-raised, #fff); border-color:#60a5fa;
+    box-shadow:0 0 0 3px var(--admin-focus, #dbeafe);
+}
+.field::placeholder { color:var(--admin-text-muted, #94a3b8); opacity:1; }
+.form-info-note { color:var(--admin-alert-info-text, #1e40af); background:var(--admin-alert-info-bg, #eff6ff); border-color:var(--admin-border, #bfdbfe); }
+.form-info-note p { color:inherit; }
+.must-change-password { color:var(--admin-text-secondary, #475569); background:var(--admin-alert-info-bg, #eff6ff); border-color:var(--admin-border, #dbeafe); }
+.must-change-password strong { color:var(--admin-text, #0f172a); }
+.must-change-password span { color:var(--admin-text-secondary, #475569); }
+
+html[data-theme="dark"] .form-panel {
+    background:#1e293b !important;
+    color:#f1f5f9 !important;
+    border-color:#334155 !important;
+    box-shadow:0 10px 28px rgba(0,0,0,.16);
+}
+html[data-theme="dark"] .form-section-title h2 { color:#f8fafc !important; }
+html[data-theme="dark"] .form-section-title p { color:#94a3b8 !important; }
+html[data-theme="dark"] .field-label { color:#cbd5e1 !important; }
+html[data-theme="dark"] .field-label b { color:#fca5a5 !important; }
+html[data-theme="dark"] .section-number { background:rgba(37,99,235,.2) !important; color:#93c5fd !important; }
+html[data-theme="dark"] .field,
+html[data-theme="dark"] .form-panel input.field,
+html[data-theme="dark"] .form-panel select.field,
+html[data-theme="dark"] .form-panel textarea.field {
+    background:#0f172a !important;
+    color:#f1f5f9 !important;
+    border-color:#475569 !important;
+    color-scheme:dark;
+}
+html[data-theme="dark"] .field:focus {
+    background:#111f35 !important;
+    color:#f8fafc !important;
+    border-color:#60a5fa !important;
+    box-shadow:0 0 0 3px rgba(96,165,250,.2) !important;
+}
+html[data-theme="dark"] .field::placeholder { color:#94a3b8 !important; }
+html[data-theme="dark"] .field option { background:#0f172a; color:#e2e8f0; }
+html[data-theme="dark"] .must-change-password {
+    background:rgba(30,64,175,.22) !important;
+    border-color:rgba(96,165,250,.35) !important;
+    color:#cbd5e1 !important;
+}
+html[data-theme="dark"] .must-change-password strong { color:#f8fafc !important; }
+html[data-theme="dark"] .must-change-password span { color:#cbd5e1 !important; }
+html[data-theme="dark"] .form-info-note {
+    background:rgba(30,64,175,.2) !important;
+    border-color:rgba(96,165,250,.34) !important;
+    color:#dbeafe !important;
+}
+html[data-theme="dark"] .form-info-note p { color:#bfdbfe !important; }
+
+@media (max-width: 640px) {
+    .form-panel { padding:16px; border-radius:12px; }
+}
 </style>

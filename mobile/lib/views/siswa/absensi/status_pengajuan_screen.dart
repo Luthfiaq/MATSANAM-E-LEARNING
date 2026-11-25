@@ -2,7 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../../services/siswa_learning_service.dart';
-import '../../../utils/constants.dart';
+import '../../../utils/theme_helpers.dart';
 import 'upload_surat_screen.dart';
 
 class StatusPengajuanScreen extends StatefulWidget {
@@ -91,7 +91,7 @@ class _StatusPengajuanScreenState extends State<StatusPengajuanScreen> {
       SnackBar(
         content: Text(message),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: error ? AppColors.error : AppColors.success,
+        backgroundColor: error ? context.matsanamError : context.matsanamSuccess,
       ),
     );
   }
@@ -143,12 +143,12 @@ class _StatusPengajuanScreenState extends State<StatusPengajuanScreen> {
                           width: 44,
                           height: 44,
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: .10),
+                            color: Theme.of(context).colorScheme.primary.withValues(alpha: .10),
                             borderRadius: BorderRadius.circular(13),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.assignment_outlined,
-                            color: AppColors.primary,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -232,11 +232,15 @@ class _ApplicationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final status = (item['status_verifikasi'] ?? 'pending').toString();
-    final color = _statusColor(status);
+    final color = _statusColor(context, status);
     final submittedAt = _formatDateTime(item['tanggal_pengajuan']);
     final verifiedAt = _formatDateTime(item['tanggal_verifikasi']);
     final start = _formatDate(item['tanggal_mulai']);
     final end = _formatDate(item['tanggal_selesai']);
+    final scope = (item['cakupan'] ?? 'sehari_penuh').toString();
+    final reference = item['jadwal_acuan'] is Map
+        ? Map<String, dynamic>.from(item['jadwal_acuan'])
+        : <String, dynamic>{};
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -284,6 +288,32 @@ class _ApplicationCard extends StatelessWidget {
               _StatusBadge(label: _title(status), color: color),
             ],
           ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest.withValues(alpha: .55),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Cakupan: ${_scopeTitle(scope)}', style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w800)),
+                if (reference.isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Text('Mulai dari: ${reference['mapel'] ?? 'Mata pelajaran'} · ${reference['jam_mulai'] ?? '--:--'}–${reference['jam_selesai'] ?? '--:--'}', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+                ],
+                if (scope == 'pulang_lebih_awal') ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Pada tanggal mulai, izin dimulai dari mata pelajaran tersebut. Tanggal berikutnya sampai tanggal selesai berlaku untuk seluruh jadwal.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                  ),
+                ],
+              ],
+            ),
+          ),
           const SizedBox(height: 14),
           Text(
             'Alasan',
@@ -312,7 +342,7 @@ class _ApplicationCard extends StatelessWidget {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: status == 'ditolak'
-                    ? AppColors.error.withValues(alpha: .07)
+                    ? Theme.of(context).colorScheme.error.withValues(alpha: .10)
                     : scheme.surfaceContainerHighest.withValues(alpha: .6),
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -356,9 +386,9 @@ class _ApplicationCard extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.attach_file_rounded,
-                    color: AppColors.primary,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -405,14 +435,14 @@ class _ApplicationTimeline extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isFinal = status == 'disetujui' || status == 'ditolak';
-    final finalColor = _statusColor(status);
+    final finalColor = _statusColor(context, status);
     return Column(
       children: [
         _TimelineStep(
           title: 'Pengajuan dikirim',
           subtitle: submittedAt,
           state: _TimelineState.complete,
-          color: AppColors.success,
+          color: context.matsanamSuccess,
           isLast: false,
         ),
         _TimelineStep(
@@ -421,7 +451,7 @@ class _ApplicationTimeline extends StatelessWidget {
               ? verifiedAt
               : 'Pengajuan sedang menunggu pemeriksaan Guru / Admin.',
           state: isFinal ? _TimelineState.complete : _TimelineState.current,
-          color: AppColors.primary,
+          color: Theme.of(context).colorScheme.primary,
           isLast: false,
         ),
         _TimelineStep(
@@ -574,14 +604,14 @@ class _SuccessBanner extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(13),
     decoration: BoxDecoration(
-      color: AppColors.success.withValues(alpha: .10),
+      color: context.matsanamSoftSuccess,
       borderRadius: BorderRadius.circular(12),
     ),
     child: Row(
       children: [
-        const Icon(
+        Icon(
           Icons.check_circle_outline_rounded,
-          color: AppColors.success,
+          color: context.matsanamSuccess,
         ),
         const SizedBox(width: 9),
         Expanded(
@@ -611,10 +641,10 @@ class _EmptyState extends StatelessWidget {
     ),
     child: Column(
       children: [
-        const Icon(
+        Icon(
           Icons.description_outlined,
           size: 42,
-          color: AppColors.textMuted,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
         const SizedBox(height: 10),
         Text(
@@ -654,10 +684,10 @@ class _ErrorState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
+          Icon(
             Icons.cloud_off_outlined,
             size: 42,
-            color: AppColors.error,
+            color: Theme.of(context).colorScheme.error,
           ),
           const SizedBox(height: 12),
           Text(
@@ -693,12 +723,12 @@ class _InlineError extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
-      color: AppColors.error.withValues(alpha: .08),
+      color: Theme.of(context).colorScheme.error.withValues(alpha: .10),
       borderRadius: BorderRadius.circular(12),
     ),
     child: Row(
       children: [
-        const Icon(Icons.error_outline_rounded, color: AppColors.error),
+        Icon(Icons.error_outline_rounded, color: Theme.of(context).colorScheme.error),
         const SizedBox(width: 8),
         Expanded(
           child: Text(message, style: Theme.of(context).textTheme.bodySmall),
@@ -709,10 +739,16 @@ class _InlineError extends StatelessWidget {
   );
 }
 
-Color _statusColor(String status) => switch (status) {
-  'disetujui' => AppColors.success,
-  'ditolak' => AppColors.error,
-  _ => AppColors.warning,
+String _scopeTitle(String value) => switch (value) {
+  'mulai_pelajaran' => 'Pulang lebih awal', // Label kompatibilitas untuk pengajuan lama.
+  'pulang_lebih_awal' => 'Pulang lebih awal',
+  _ => 'Sehari penuh',
+};
+
+Color _statusColor(BuildContext context, String status) => switch (status) {
+  'disetujui' => context.matsanamSuccess,
+  'ditolak' => context.matsanamError,
+  _ => context.matsanamWarning,
 };
 
 String _title(dynamic value) {

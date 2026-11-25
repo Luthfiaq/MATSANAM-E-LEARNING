@@ -1,0 +1,260 @@
+/* MATSANAM Admin UI — consolidated cross-page visual system. */
+:root {
+    --admin-radius-sm: .55rem;
+    --admin-radius-md: .75rem;
+    --admin-radius-lg: 1rem;
+    --admin-control-height: 2.65rem;
+    --admin-table-head: #f1f5f9;
+    --admin-table-hover: #f8fafc;
+    --admin-alert-info-bg: #eff6ff;
+    --admin-alert-info-text: #1e40af;
+    --admin-alert-success-bg: #ecfdf5;
+    --admin-alert-success-text: #047857;
+    --admin-alert-warning-bg: #fffbeb;
+    --admin-alert-warning-text: #b45309;
+    --admin-alert-danger-bg: #fef2f2;
+    --admin-alert-danger-text: #b91c1c;
+}
+html[data-theme="dark"] {
+    --admin-table-head: #172438;
+    --admin-table-hover: #263449;
+    --admin-alert-info-bg: rgba(30, 64, 175, .22);
+    --admin-alert-info-text: #bfdbfe;
+    --admin-alert-success-bg: rgba(6, 95, 70, .24);
+    --admin-alert-success-text: #a7f3d0;
+    --admin-alert-warning-bg: rgba(146, 64, 14, .24);
+    --admin-alert-warning-text: #fde68a;
+    --admin-alert-danger-bg: rgba(153, 27, 27, .24);
+    --admin-alert-danger-text: #fecaca;
+}
+
+/* Overall rhythm and hierarchy across all views using layouts.admin. */
+#adminShell, #adminShell > div, main { min-width: 0; }
+main { color: var(--admin-text); text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }
+main > .p-6 { padding: clamp(1rem, 2.1vw, 1.5rem) !important; }
+main h1 { line-height: 1.22; letter-spacing: -.025em; }
+main h2 { line-height: 1.3; letter-spacing: -.018em; }
+main h3 { line-height: 1.35; letter-spacing: -.012em; }
+main p { text-wrap: pretty; }
+
+/* Unified page panels, cards, forms, and detail sections. */
+main .bg-white.rounded-lg, main .bg-white.rounded-xl, main .bg-white.rounded-2xl,
+main .theme-card, main .admin-panel { border-color: var(--admin-border); box-shadow: var(--admin-shadow); }
+main .rounded-xl.border, main .rounded-2xl.border, main .rounded-lg.border { border-color: var(--admin-border); }
+html[data-theme="dark"] main .bg-white, html[data-theme="dark"] main .theme-card,
+html[data-theme="dark"] main .admin-panel { color: var(--admin-text) !important; background-color: var(--admin-surface) !important; border-color: var(--admin-border) !important; }
+html[data-theme="dark"] main .bg-slate-50, html[data-theme="dark"] main .bg-gray-50 { background-color: var(--admin-canvas) !important; }
+html[data-theme="dark"] main .bg-slate-100, html[data-theme="dark"] main .bg-gray-100 { background-color: var(--admin-surface-soft) !important; }
+html[data-theme="dark"] main .bg-slate-200, html[data-theme="dark"] main .bg-gray-200 { background-color: #334155 !important; }
+
+/* Typography palette. */
+html[data-theme="light"] main .text-gray-900, html[data-theme="light"] main .text-gray-800,
+html[data-theme="light"] main .text-slate-900, html[data-theme="light"] main .text-slate-800 { color: #0f172a; }
+html[data-theme="light"] main .text-gray-700, html[data-theme="light"] main .text-slate-700 { color: #334155; }
+html[data-theme="light"] main .text-gray-600, html[data-theme="light"] main .text-slate-600 { color: #475569; }
+html[data-theme="light"] main .text-gray-500, html[data-theme="light"] main .text-slate-500 { color: #64748b; }
+html[data-theme="dark"] main .text-gray-900, html[data-theme="dark"] main .text-gray-800,
+html[data-theme="dark"] main .text-slate-900, html[data-theme="dark"] main .text-slate-800 { color: #f1f5f9 !important; }
+html[data-theme="dark"] main .text-gray-700, html[data-theme="dark"] main .text-slate-700 { color: #e2e8f0 !important; }
+html[data-theme="dark"] main .text-gray-600, html[data-theme="dark"] main .text-slate-600 { color: #cbd5e1 !important; }
+html[data-theme="dark"] main .text-gray-500, html[data-theme="dark"] main .text-slate-500,
+html[data-theme="dark"] main .text-gray-400, html[data-theme="dark"] main .text-slate-400 { color: #94a3b8 !important; }
+
+/* Semantic information/status surfaces in dark mode. */
+html[data-theme="dark"] main .bg-blue-50, html[data-theme="dark"] main .bg-indigo-50 { background-color: rgba(30,64,175,.22) !important; }
+html[data-theme="dark"] main .bg-blue-100, html[data-theme="dark"] main .bg-indigo-100 { background-color: rgba(30,64,175,.32) !important; }
+html[data-theme="dark"] main .text-blue-700, html[data-theme="dark"] main .text-blue-800,
+html[data-theme="dark"] main .text-indigo-700, html[data-theme="dark"] main .text-indigo-800 { color: #bfdbfe !important; }
+html[data-theme="dark"] main .text-blue-600, html[data-theme="dark"] main .text-indigo-600 { color: #93c5fd !important; }
+html[data-theme="dark"] main .border-blue-100, html[data-theme="dark"] main .border-blue-200,
+html[data-theme="dark"] main .border-indigo-100 { border-color: rgba(96,165,250,.34) !important; }
+
+html[data-theme="dark"] main .bg-green-50, html[data-theme="dark"] main .bg-emerald-50 { background-color: rgba(6,95,70,.24) !important; }
+html[data-theme="dark"] main .bg-green-100, html[data-theme="dark"] main .bg-emerald-100 { background-color: rgba(6,95,70,.34) !important; }
+html[data-theme="dark"] main .text-green-700, html[data-theme="dark"] main .text-green-800,
+html[data-theme="dark"] main .text-emerald-700, html[data-theme="dark"] main .text-emerald-800,
+html[data-theme="dark"] main .text-emerald-900 { color: #a7f3d0 !important; }
+html[data-theme="dark"] main .text-green-600, html[data-theme="dark"] main .text-emerald-600 { color: #6ee7b7 !important; }
+html[data-theme="dark"] main .border-green-100, html[data-theme="dark"] main .border-green-200,
+html[data-theme="dark"] main .border-emerald-100, html[data-theme="dark"] main .border-emerald-200 { border-color: rgba(52,211,153,.3) !important; }
+
+html[data-theme="dark"] main .bg-red-50, html[data-theme="dark"] main .bg-rose-50 { background-color: rgba(153,27,27,.24) !important; }
+html[data-theme="dark"] main .bg-red-100, html[data-theme="dark"] main .bg-rose-100 { background-color: rgba(153,27,27,.34) !important; }
+html[data-theme="dark"] main .text-red-700, html[data-theme="dark"] main .text-red-800,
+html[data-theme="dark"] main .text-rose-700, html[data-theme="dark"] main .text-rose-800 { color: #fecaca !important; }
+html[data-theme="dark"] main .text-red-600, html[data-theme="dark"] main .text-red-500,
+html[data-theme="dark"] main .text-rose-600 { color: #fca5a5 !important; }
+html[data-theme="dark"] main .border-red-100, html[data-theme="dark"] main .border-red-200,
+html[data-theme="dark"] main .border-rose-100, html[data-theme="dark"] main .border-rose-200 { border-color: rgba(248,113,113,.3) !important; }
+
+html[data-theme="dark"] main .bg-amber-50, html[data-theme="dark"] main .bg-yellow-50,
+html[data-theme="dark"] main .bg-orange-50 { background-color: rgba(146,64,14,.24) !important; }
+html[data-theme="dark"] main .bg-amber-100, html[data-theme="dark"] main .bg-yellow-100,
+html[data-theme="dark"] main .bg-orange-100 { background-color: rgba(146,64,14,.34) !important; }
+html[data-theme="dark"] main .text-amber-700, html[data-theme="dark"] main .text-amber-800,
+html[data-theme="dark"] main .text-yellow-700, html[data-theme="dark"] main .text-yellow-800,
+html[data-theme="dark"] main .text-orange-700 { color: #fde68a !important; }
+html[data-theme="dark"] main .text-amber-600, html[data-theme="dark"] main .text-yellow-600,
+html[data-theme="dark"] main .text-orange-600 { color: #fcd34d !important; }
+html[data-theme="dark"] main .border-amber-100, html[data-theme="dark"] main .border-amber-200,
+html[data-theme="dark"] main .border-yellow-100, html[data-theme="dark"] main .border-yellow-200,
+html[data-theme="dark"] main .border-orange-100, html[data-theme="dark"] main .border-orange-200 { border-color: rgba(251,191,36,.3) !important; }
+
+html[data-theme="dark"] main .bg-purple-50, html[data-theme="dark"] main .bg-purple-100,
+html[data-theme="dark"] main .bg-violet-50, html[data-theme="dark"] main .bg-violet-100 { background-color: rgba(109,40,217,.24) !important; }
+html[data-theme="dark"] main .text-purple-700, html[data-theme="dark"] main .text-purple-800,
+html[data-theme="dark"] main .text-violet-700 { color: #ddd6fe !important; }
+html[data-theme="dark"] main .border-purple-100, html[data-theme="dark"] main .border-purple-200,
+html[data-theme="dark"] main .border-violet-100 { border-color: rgba(167,139,250,.3) !important; }
+html[data-theme="dark"] main .status-badge[style] { background-color: rgba(153,27,27,.28) !important; color: #fecaca !important; border: 1px solid rgba(248,113,113,.28); }
+
+/* Form controls, labels, native select options and validation. */
+main label { color: var(--admin-text-secondary); font-weight: 600; }
+main input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), main select, main textarea {
+    min-height: var(--admin-control-height); border-radius: var(--admin-radius-md); border-color: var(--admin-border);
+    transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+}
+main textarea { min-height: 6rem; }
+main input:focus, main select:focus, main textarea:focus { outline: none; border-color: #60a5fa !important; box-shadow: 0 0 0 3px var(--admin-focus) !important; }
+main input::placeholder, main textarea::placeholder { color: #94a3b8; opacity: 1; }
+html[data-theme="dark"] main input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+html[data-theme="dark"] main select, html[data-theme="dark"] main textarea {
+    color: #f1f5f9 !important; background-color: #0f172a !important; border-color: #475569 !important; color-scheme: dark;
+}
+html[data-theme="dark"] main input:disabled, html[data-theme="dark"] main select:disabled,
+html[data-theme="dark"] main textarea:disabled { color: #94a3b8 !important; background-color: #1e293b !important; opacity: .82; }
+html[data-theme="dark"] main select option { color: #e2e8f0; background: #0f172a; }
+main input[type="checkbox"], main input[type="radio"] { accent-color: #2563eb; }
+main input[type="file"] { max-width: 100%; }
+
+/* Action feedback while preserving semantic Tailwind colors and handlers. */
+main button, main a[class*="bg-"] { transition: color .15s ease, background-color .15s ease, border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
+main button:active:not(:disabled), main a[class*="bg-"]:active { transform: translateY(1px); }
+main button:disabled { cursor: not-allowed; opacity: .58; }
+main button[class*="bg-blue-600"], main a[class*="bg-blue-600"] { box-shadow: 0 1px 2px rgba(37,99,235,.14); }
+main button[class*="bg-blue-600"]:hover, main a[class*="bg-blue-600"]:hover { box-shadow: 0 5px 14px rgba(37,99,235,.18); }
+main button[class*="border-slate"], main a[class*="border-slate"],
+main button[class*="border-gray"], main a[class*="border-gray"] { border-color: var(--admin-border); }
+
+/* Tables and responsive scrolling across list/report screens. */
+main .overflow-x-auto { max-width: 100%; overscroll-behavior-inline: contain; }
+main .overflow-x-auto > table { min-width: 640px; }
+main table { border-color: var(--admin-border); border-collapse: separate; border-spacing: 0; }
+main table thead { background: var(--admin-table-head); }
+main table thead th { color: var(--admin-text-secondary); font-size: .69rem; font-weight: 700; letter-spacing: .055em; line-height: 1.35; white-space: nowrap; }
+main table tbody tr { transition: background-color .12s ease; }
+main table tbody tr:hover { background-color: var(--admin-table-hover); }
+main table tbody td { vertical-align: middle; }
+html[data-theme="dark"] main table { border-color: var(--admin-border); }
+html[data-theme="dark"] main table thead, html[data-theme="dark"] main table thead tr { background-color: var(--admin-table-head) !important; }
+html[data-theme="dark"] main table thead th { color: #cbd5e1 !important; }
+html[data-theme="dark"] main table tbody { background-color: var(--admin-surface) !important; }
+html[data-theme="dark"] main table tbody td { color: #cbd5e1; }
+html[data-theme="dark"] main table tbody tr:hover { background-color: var(--admin-table-hover) !important; }
+html[data-theme="dark"] main table tfoot { background-color: #172438 !important; color: #e2e8f0 !important; }
+
+/* Laravel pagination and modal/dropdown surfaces. */
+main nav[role="navigation"] a, main nav[role="navigation"] span[aria-current="page"] span { border-radius: .55rem; }
+html[data-theme="dark"] main nav[role="navigation"] a, html[data-theme="dark"] main nav[role="navigation"] span { color: #cbd5e1; border-color: #334155; }
+html[data-theme="dark"] main nav[role="navigation"] span[aria-current="page"] span { color: #fff !important; background: #2563eb !important; border-color: #2563eb !important; }
+main [role="dialog"], main [aria-modal="true"] { color: var(--admin-text); }
+html[data-theme="dark"] main [role="dialog"] .bg-white, html[data-theme="dark"] main [aria-modal="true"] .bg-white { background-color: var(--admin-surface) !important; color: var(--admin-text) !important; }
+html[data-theme="dark"] main hr { border-color: var(--admin-border); }
+
+/* Content width and responsive behavior. */
+main .grid > .rounded-xl, main .grid > .rounded-2xl { min-width: 0; }
+main .truncate, main .break-words { overflow-wrap: anywhere; }
+main .max-w-7xl { max-width: 88rem; }
+@media (max-width: 767px) {
+    main > .p-6 { padding: 1rem !important; }
+    main h1.text-2xl { font-size: 1.35rem; }
+    main .overflow-x-auto { border-radius: .75rem; }
+    main .overflow-x-auto > table { min-width: 680px; }
+    main .grid { min-width: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+}
+@media print {
+    html, body { color-scheme: light !important; background: #fff !important; color: #111827 !important; }
+}
+
+/* Standalone Admin login is the only full page outside layouts.admin. It uses
+   the same Inter / blue identity and restores the last selected palette. */
+.admin-auth-page {
+    min-height: 100vh;
+    color: #1e293b;
+    background: radial-gradient(circle at 12% 8%, #dbeafe 0, transparent 34%), linear-gradient(145deg, #f8fafc 0%, #eff6ff 100%) !important;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+.admin-auth-page .max-w-md > .rounded-2xl,
+.admin-auth-page .max-w-md > div.rounded-2xl {
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 18px 45px rgba(15, 23, 42, .08);
+}
+.admin-auth-page input:not([type="checkbox"]) {
+    min-height: 2.75rem;
+    border-radius: .7rem;
+}
+.admin-auth-page .admin-login-help { background: #eff6ff; border-color: #dbeafe; }
+html[data-theme="dark"] .admin-auth-page {
+    color: #e2e8f0;
+    background: radial-gradient(circle at 12% 8%, rgba(37,99,235,.18) 0, transparent 34%), linear-gradient(145deg, #0b1220 0%, #0f172a 100%) !important;
+}
+html[data-theme="dark"] .admin-auth-page .text-gray-900,
+html[data-theme="dark"] .admin-auth-page .text-slate-900 { color: #f8fafc !important; }
+html[data-theme="dark"] .admin-auth-page .text-gray-700,
+html[data-theme="dark"] .admin-auth-page .text-gray-600,
+html[data-theme="dark"] .admin-auth-page .text-slate-700,
+html[data-theme="dark"] .admin-auth-page .text-slate-600 { color: #cbd5e1 !important; }
+html[data-theme="dark"] .admin-auth-page .text-gray-500,
+html[data-theme="dark"] .admin-auth-page .text-slate-500 { color: #94a3b8 !important; }
+html[data-theme="dark"] .admin-auth-page .rounded-2xl.bg-white,
+html[data-theme="dark"] .admin-auth-page .max-w-md > .rounded-2xl,
+html[data-theme="dark"] .admin-auth-page .max-w-md > div.rounded-2xl {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    box-shadow: 0 22px 50px rgba(0,0,0,.28);
+}
+html[data-theme="dark"] .admin-auth-page .admin-login-help { background: rgba(30,64,175,.2) !important; border-color: rgba(96,165,250,.28) !important; }
+html[data-theme="dark"] .admin-auth-page input:not([type="checkbox"]) {
+    background: #0f172a !important; color: #f8fafc !important; border-color: #475569 !important;
+}
+html[data-theme="dark"] .admin-auth-page input::placeholder { color: #94a3b8 !important; }
+
+
+/* MATSANAM layout correction: make data tables occupy their full panel width.
+   min-width alone does not make an auto-layout table fill the available space. */
+html .overflow-x-auto {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+}
+html .overflow-x-auto > table {
+    display: table;
+    width: 100% !important;
+    min-width: 100%;
+    table-layout: auto;
+}
+/* The verification history intentionally needs a wide table for all audit columns. */
+html .overflow-x-auto > table[class~="min-w-[1450px]"] {
+    width: max(100%, 1450px) !important;
+    min-width: 1450px !important;
+}
+html .overflow-x-auto > table th,
+html .overflow-x-auto > table td {
+    box-sizing: border-box;
+}
+@media (max-width: 767px) {
+    html .overflow-x-auto > table { min-width: 680px; }
+}
+
+/* Keep the page viewport below the fixed-height topbar and prevent stale scroll offsets. */
+#adminMain {
+    min-height: 0;
+    scroll-padding-top: 1rem;
+    overscroll-behavior-y: contain;
+}
+#adminMain > :first-child { scroll-margin-top: 1rem; }

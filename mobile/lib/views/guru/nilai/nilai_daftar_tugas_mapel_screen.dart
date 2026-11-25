@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../config/api_config.dart';
 import '../../../utils/constants.dart';
+import '../../../utils/theme_helpers.dart';
 import '../../../widgets/common/empty_state.dart';
 
 class NilaiDaftarTugasMapelScreen extends StatefulWidget {
@@ -146,21 +147,21 @@ class _NilaiDaftarTugasMapelScreenState
     final className = widget.mapelKelas['kelas']?.toString() ?? 'Kelas';
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.matsanamPage,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: context.matsanamSurface,
         elevation: 0,
         leading: IconButton(
           onPressed: () => Navigator.pop(context),
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new_rounded,
-            color: AppColors.textPrimary,
+            color: context.matsanamText,
           ),
         ),
-        title: const Text(
+        title: Text(
           'Detail Penilaian',
           style: TextStyle(
-            color: AppColors.textPrimary,
+            color: context.matsanamText,
             fontSize: 17,
             fontWeight: FontWeight.w700,
           ),
@@ -211,17 +212,17 @@ class _NilaiDaftarTugasMapelScreenState
                     controller: _searchController,
                     onChanged: (_) => setState(() {}),
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.search_rounded),
+                      prefixIcon: Icon(Icons.search_rounded),
                       hintText: 'Cari tugas, ulangan, atau asesmen...',
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: context.matsanamSurface,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(11),
-                        borderSide: const BorderSide(color: AppColors.border),
+                        borderSide: BorderSide(color: context.matsanamBorder),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(11),
-                        borderSide: const BorderSide(color: AppColors.border),
+                        borderSide: BorderSide(color: context.matsanamBorder),
                       ),
                     ),
                   ),
@@ -245,7 +246,7 @@ class _NilaiDaftarTugasMapelScreenState
                           Text(_error!, textAlign: TextAlign.center),
                           TextButton(
                             onPressed: _loadTugas,
-                            child: const Text('Coba Lagi'),
+                            child: Text('Coba Lagi'),
                           ),
                         ],
                       ),
@@ -267,8 +268,8 @@ class _NilaiDaftarTugasMapelScreenState
                     Text(
                       'Total pengumpulan pada tugas yang tampil: $totalSubmissions',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: AppColors.textMuted,
+                      style: TextStyle(
+                        color: context.matsanamTextMuted,
                         fontSize: 11,
                       ),
                     ),
@@ -309,7 +310,7 @@ class _NilaiDaftarTugasMapelScreenState
           const SizedBox(height: 14),
           Text(
             subject,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
               fontSize: 21,
               fontWeight: FontWeight.w800,
@@ -346,7 +347,7 @@ class _NilaiDaftarTugasMapelScreenState
                     ),
                     Text(
                       '${(progress * 100).toStringAsFixed(1)}%',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w800,
                         fontSize: 19,
@@ -369,7 +370,7 @@ class _NilaiDaftarTugasMapelScreenState
                   alignment: Alignment.centerLeft,
                   child: Text(
                     '$graded penilaian tersimpan',
-                    style: const TextStyle(color: Colors.white70, fontSize: 10),
+                    style: TextStyle(color: Colors.white70, fontSize: 10),
                   ),
                 ),
               ],
@@ -388,7 +389,7 @@ class _NilaiDaftarTugasMapelScreenState
     ),
     child: Text(
       label,
-      style: const TextStyle(
+      style: TextStyle(
         color: Colors.white,
         fontSize: 10,
         fontWeight: FontWeight.w600,
@@ -401,9 +402,9 @@ class _NilaiDaftarTugasMapelScreenState
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.matsanamSurface,
             borderRadius: BorderRadius.circular(11),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.matsanamBorder),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -412,8 +413,8 @@ class _NilaiDaftarTugasMapelScreenState
               const SizedBox(height: 8),
               Text(
                 value,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
+                style: TextStyle(
+                  color: context.matsanamText,
                   fontWeight: FontWeight.w800,
                   fontSize: 19,
                 ),
@@ -422,8 +423,8 @@ class _NilaiDaftarTugasMapelScreenState
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
+                style: TextStyle(
+                  color: context.matsanamTextSecondary,
                   fontSize: 10,
                 ),
               ),
@@ -442,12 +443,12 @@ class _NilaiDaftarTugasMapelScreenState
         showCheckmark: false,
         onSelected: (_) => setState(() => _filter = value),
         selectedColor: AppColors.primary,
-        backgroundColor: Colors.white,
+        backgroundColor: context.matsanamSurface,
         side: BorderSide(
-          color: selected ? AppColors.primary : AppColors.border,
+          color: selected ? AppColors.primary : context.matsanamBorder,
         ),
         labelStyle: TextStyle(
-          color: selected ? Colors.white : AppColors.textSecondary,
+          color: selected ? Colors.white : context.matsanamTextSecondary,
           fontSize: 11,
           fontWeight: FontWeight.w600,
         ),
@@ -479,14 +480,14 @@ class _NilaiDaftarTugasMapelScreenState
         ? AppColors.warning
         : submitted > 0
         ? AppColors.success
-        : AppColors.textSecondary;
+        : context.matsanamTextSecondary;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.matsanamSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.matsanamBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -500,13 +501,13 @@ class _NilaiDaftarTugasMapelScreenState
                   children: [
                     _miniTag(
                       '$type${bobot == null ? '' : ' • Bobot $bobot%'}',
-                      AppColors.primaryLight,
+                      context.matsanamSoftPrimary,
                       AppColors.primary,
                     ),
                     _miniTag(
                       'Kelas ${widget.mapelKelas['kelas'] ?? '-'}',
-                      const Color(0xFFF1F5F9),
-                      AppColors.textSecondary,
+                      context.matsanamSoftSurface,
+                      context.matsanamTextSecondary,
                     ),
                   ],
                 ),
@@ -521,8 +522,8 @@ class _NilaiDaftarTugasMapelScreenState
           const SizedBox(height: 9),
           Text(
             task['judul']?.toString() ?? 'Tugas',
-            style: const TextStyle(
-              color: AppColors.textPrimary,
+            style: TextStyle(
+              color: context.matsanamText,
               fontSize: 15,
               fontWeight: FontWeight.w800,
             ),
@@ -530,17 +531,17 @@ class _NilaiDaftarTugasMapelScreenState
           const SizedBox(height: 5),
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.schedule_rounded,
-                color: AppColors.textMuted,
+                color: context.matsanamTextMuted,
                 size: 13,
               ),
               const SizedBox(width: 5),
               Expanded(
                 child: Text(
                   dateLabel,
-                  style: const TextStyle(
-                    color: AppColors.textMuted,
+                  style: TextStyle(
+                    color: context.matsanamTextMuted,
                     fontSize: 10,
                   ),
                 ),
@@ -551,7 +552,7 @@ class _NilaiDaftarTugasMapelScreenState
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
+              color: context.matsanamPage,
               borderRadius: BorderRadius.circular(9),
             ),
             child: Column(
@@ -561,8 +562,8 @@ class _NilaiDaftarTugasMapelScreenState
                     Expanded(
                       child: Text(
                         'Pengumpulan: $submitted/$total siswa',
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
+                        style: TextStyle(
+                          color: context.matsanamTextSecondary,
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
                         ),
@@ -586,7 +587,7 @@ class _NilaiDaftarTugasMapelScreenState
                   child: LinearProgressIndicator(
                     value: progress,
                     minHeight: 6,
-                    backgroundColor: AppColors.border,
+                    backgroundColor: context.matsanamBorder,
                     valueColor: const AlwaysStoppedAnimation(AppColors.success),
                   ),
                 ),
@@ -596,7 +597,7 @@ class _NilaiDaftarTugasMapelScreenState
                     Expanded(
                       child: Text(
                         '$graded Diperiksa',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.success,
                           fontSize: 10,
                         ),
@@ -606,7 +607,7 @@ class _NilaiDaftarTugasMapelScreenState
                       child: Text(
                         '$pending Menunggu',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.warning,
                           fontSize: 10,
                         ),
@@ -616,8 +617,8 @@ class _NilaiDaftarTugasMapelScreenState
                       child: Text(
                         '$unsubmitted Belum Kumpul',
                         textAlign: TextAlign.end,
-                        style: const TextStyle(
-                          color: AppColors.textMuted,
+                        style: TextStyle(
+                          color: context.matsanamTextMuted,
                           fontSize: 10,
                         ),
                       ),
@@ -636,8 +637,8 @@ class _NilaiDaftarTugasMapelScreenState
                 '/guru/nilai/detail-siswa',
                 arguments: task,
               ).then((_) => _loadTugas(showLoader: false)),
-              icon: const Icon(Icons.rate_review_outlined, size: 17),
-              label: const Text('Input Nilai / Detail Siswa'),
+              icon: Icon(Icons.rate_review_outlined, size: 17),
+              label: Text('Input Nilai / Detail Siswa'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,

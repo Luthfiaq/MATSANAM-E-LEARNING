@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../utils/constants.dart';
 import 'status_badge.dart';
 
@@ -11,25 +12,27 @@ class SectionCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   const SectionCard({
-    Key? key,
+    super.key,
     required this.title,
     required this.child,
     this.badgeText,
     this.badgeType,
     this.padding,
     this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(AppDimens.radiusLarge),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: colors.outlineVariant),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: dark ? .12 : .025),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -49,13 +52,23 @@ class SectionCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(title, style: AppTypography.labelLarge),
-                    if (badgeText != null)
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: colors.onSurface,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    if (badgeText != null) ...[
+                      const SizedBox(width: AppDimens.spacingSmall),
                       StatusBadge(
                         text: badgeText!,
                         type: badgeType ?? BadgeType.neutral,
                         size: BadgeSize.small,
                       ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: AppDimens.spacingMedium),

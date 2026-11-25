@@ -12,6 +12,7 @@ import '../materi/siswa_materi_screen.dart';
 import '../pengaturan/profil_siswa_screen.dart';
 import '../tugas/siswa_tugas_screen.dart';
 import 'detail_hasil_penilaian_screen.dart';
+import '../../../utils/theme_helpers.dart';
 
 class SiswaNilaiScreen extends StatefulWidget {
   const SiswaNilaiScreen({super.key});
@@ -64,9 +65,9 @@ class _SiswaNilaiScreenState extends State<SiswaNilaiScreen> {
   }
 
   void _toLogin() => Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-        (_) => false,
-      );
+    MaterialPageRoute(builder: (_) => const LoginScreen()),
+    (_) => false,
+  );
 
   Future<void> _downloadRekapPdf() async {
     if (_downloadingRekap) return;
@@ -89,7 +90,9 @@ class _SiswaNilaiScreenState extends State<SiswaNilaiScreen> {
         _toLogin();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal mengunduh rekap nilai: ${error.message}')),
+          SnackBar(
+            content: Text('Gagal mengunduh rekap nilai: ${error.message}'),
+          ),
         );
       }
     } catch (error) {
@@ -121,14 +124,20 @@ class _SiswaNilaiScreenState extends State<SiswaNilaiScreen> {
     appBar: AppBar(
       actions: [
         IconButton(
-          tooltip: _downloadingRekap ? 'Mengunduh rekap nilai' : 'Unduh rekap nilai PDF',
+          tooltip: _downloadingRekap
+              ? 'Mengunduh rekap nilai'
+              : 'Unduh rekap nilai PDF',
           onPressed: _downloadingRekap ? null : _downloadRekapPdf,
           icon: _downloadingRekap
-              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
               : const Icon(Icons.picture_as_pdf_outlined),
         ),
       ],
-      title: const Column(
+      title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -137,7 +146,10 @@ class _SiswaNilaiScreenState extends State<SiswaNilaiScreen> {
           ),
           Text(
             'Nilai Akademik',
-            style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+            style: TextStyle(
+              fontSize: 11,
+              color: context.matsanamTextSecondary,
+            ),
           ),
         ],
       ),
@@ -170,11 +182,11 @@ class _SiswaNilaiScreenState extends State<SiswaNilaiScreen> {
                 final kkm = (item['kkm'] as num?)?.toDouble() ?? 0;
                 return _Card(
                   child: ListTile(
-                    leading: const CircleAvatar(
-                      backgroundColor: AppColors.primaryLight,
+                    leading: CircleAvatar(
+                      backgroundColor: context.matsanamSoftPrimary,
                       child: Icon(
                         Icons.menu_book_rounded,
-                        color: AppColors.primary,
+                        color: context.matsanamPrimary,
                       ),
                     ),
                     title: Text(
@@ -190,17 +202,17 @@ class _SiswaNilaiScreenState extends State<SiswaNilaiScreen> {
                       children: [
                         Text(
                           avg == null ? '-' : avg.toStringAsFixed(1),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
-                            color: AppColors.primary,
+                            color: context.matsanamPrimary,
                           ),
                         ),
-                        const Text(
+                        Text(
                           'Rata-rata tugas',
                           style: TextStyle(
                             fontSize: 10,
-                            color: AppColors.textSecondary,
+                            color: context.matsanamTextSecondary,
                           ),
                         ),
                       ],
@@ -249,10 +261,18 @@ class _SiswaNilaiMapelScreenState extends State<SiswaNilaiMapelScreen> {
   }
 
   Future<void> _load() async {
-    if (mounted) setState(() { _loading = true; _error = null; });
+    if (mounted)
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
     try {
       final value = await _service.nilaiMapel(widget.mapelId);
-      if (mounted) setState(() { _data = value; _loading = false; });
+      if (mounted)
+        setState(() {
+          _data = value;
+          _loading = false;
+        });
     } on ApiException catch (error) {
       if (!mounted) return;
       if (error.unauthorized) {
@@ -262,9 +282,16 @@ class _SiswaNilaiMapelScreenState extends State<SiswaNilaiMapelScreen> {
         );
         return;
       }
-      setState(() { _error = error.message; _loading = false; });
+      setState(() {
+        _error = error.message;
+        _loading = false;
+      });
     } catch (error) {
-      if (mounted) setState(() { _error = error.toString(); _loading = false; });
+      if (mounted)
+        setState(() {
+          _error = error.toString();
+          _loading = false;
+        });
     }
   }
 
@@ -292,7 +319,9 @@ class _SiswaNilaiMapelScreenState extends State<SiswaNilaiMapelScreen> {
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal mengunduh rincian nilai: ${error.message}')),
+          SnackBar(
+            content: Text('Gagal mengunduh rincian nilai: ${error.message}'),
+          ),
         );
       }
     } catch (error) {
@@ -309,7 +338,10 @@ class _SiswaNilaiMapelScreenState extends State<SiswaNilaiMapelScreen> {
   bool _matchesCategory(Map<String, dynamic> item) {
     if (_tabKategori == 'semua') return true;
     final jenis = (item['jenis'] ?? '').toString().toLowerCase();
-    final isExam = jenis.contains('ujian') || jenis.contains('quiz') || jenis.contains('ulangan');
+    final isExam =
+        jenis.contains('ujian') ||
+        jenis.contains('quiz') ||
+        jenis.contains('ulangan');
     return _tabKategori == 'ujian' ? isExam : !isExam;
   }
 
@@ -335,7 +367,11 @@ class _SiswaNilaiMapelScreenState extends State<SiswaNilaiMapelScreen> {
           widget.namaMapel ?? mapel['nama']?.toString() ?? 'Detail Nilai',
         ),
         actions: [
-          IconButton(tooltip: 'Muat ulang', onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
+          IconButton(
+            tooltip: 'Muat ulang',
+            onPressed: _load,
+            icon: const Icon(Icons.refresh_rounded),
+          ),
         ],
       ),
       body: _loading
@@ -382,19 +418,21 @@ class _SiswaNilaiMapelScreenState extends State<SiswaNilaiMapelScreen> {
                                   ),
                                   Text(
                                     'KKM: ${mapel['kkm'] ?? '-'}',
-                                    style: const TextStyle(
-                                      color: AppColors.textSecondary,
+                                    style: TextStyle(
+                                      color: context.matsanamTextSecondary,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
                             Text(
-                              rataRata == null ? '-' : rataRata.toStringAsFixed(1),
-                              style: const TextStyle(
+                              rataRata == null
+                                  ? '-'
+                                  : rataRata.toStringAsFixed(1),
+                              style: TextStyle(
                                 fontSize: 25,
                                 fontWeight: FontWeight.w800,
-                                color: AppColors.primary,
+                                color: context.matsanamPrimary,
                               ),
                             ),
                           ],
@@ -405,10 +443,14 @@ class _SiswaNilaiMapelScreenState extends State<SiswaNilaiMapelScreen> {
                           child: LinearProgressIndicator(
                             value: progress,
                             minHeight: 7,
-                            backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerHighest,
                             color: rataRata == null
-                                ? AppColors.textMuted
-                                : rataTuntas ? AppColors.success : AppColors.warning,
+                                ? context.matsanamTextMuted
+                                : rataTuntas
+                                ? context.matsanamSuccess
+                                : context.matsanamWarning,
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -418,12 +460,14 @@ class _SiswaNilaiMapelScreenState extends State<SiswaNilaiMapelScreen> {
                               rataRata == null
                                   ? Icons.info_outline_rounded
                                   : rataTuntas
-                                      ? Icons.verified_rounded
-                                      : Icons.flag_outlined,
+                                  ? Icons.verified_rounded
+                                  : Icons.flag_outlined,
                               size: 16,
                               color: rataRata == null
-                                  ? AppColors.textMuted
-                                  : rataTuntas ? AppColors.success : AppColors.warning,
+                                  ? context.matsanamTextMuted
+                                  : rataTuntas
+                                  ? context.matsanamSuccess
+                                  : context.matsanamWarning,
                             ),
                             const SizedBox(width: 6),
                             Expanded(
@@ -431,12 +475,14 @@ class _SiswaNilaiMapelScreenState extends State<SiswaNilaiMapelScreen> {
                                 rataRata == null
                                     ? 'Belum ada nilai untuk dihitung.'
                                     : rataTuntas
-                                        ? 'Rata-rata sudah mencapai KKM.'
-                                        : 'Rata-rata masih di bawah KKM.',
+                                    ? 'Rata-rata sudah mencapai KKM.'
+                                    : 'Rata-rata masih di bawah KKM.',
                                 style: TextStyle(
                                   color: rataRata == null
-                                      ? AppColors.textSecondary
-                                      : rataTuntas ? AppColors.success : AppColors.warning,
+                                      ? context.matsanamTextSecondary
+                                      : rataTuntas
+                                      ? context.matsanamSuccess
+                                      : context.matsanamWarning,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -452,14 +498,35 @@ class _SiswaNilaiMapelScreenState extends State<SiswaNilaiMapelScreen> {
                 Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: .65),
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest
+                        .withValues(alpha: .65),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Row(children: [
-                    Expanded(child: _GradeCategoryTab(label: 'Semua (${hasil.length})', active: _tabKategori == 'semua', onTap: () => setState(() => _tabKategori = 'semua'))),
-                    Expanded(child: _GradeCategoryTab(label: 'Tugas & PR', active: _tabKategori == 'tugas', onTap: () => setState(() => _tabKategori = 'tugas'))),
-                    Expanded(child: _GradeCategoryTab(label: 'Ujian & Quiz', active: _tabKategori == 'ujian', onTap: () => setState(() => _tabKategori = 'ujian'))),
-                  ]),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _GradeCategoryTab(
+                          label: 'Semua (${hasil.length})',
+                          active: _tabKategori == 'semua',
+                          onTap: () => setState(() => _tabKategori = 'semua'),
+                        ),
+                      ),
+                      Expanded(
+                        child: _GradeCategoryTab(
+                          label: 'Tugas & PR',
+                          active: _tabKategori == 'tugas',
+                          onTap: () => setState(() => _tabKategori = 'tugas'),
+                        ),
+                      ),
+                      Expanded(
+                        child: _GradeCategoryTab(
+                          label: 'Ujian & Quiz',
+                          active: _tabKategori == 'ujian',
+                          onTap: () => setState(() => _tabKategori = 'ujian'),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 12),
                 if (hasilTampil.isEmpty)
@@ -514,8 +581,8 @@ class _SiswaNilaiMapelScreenState extends State<SiswaNilaiMapelScreen> {
                                       fontSize: 20,
                                       fontWeight: FontWeight.w800,
                                       color: score == null
-                                          ? AppColors.warning
-                                          : AppColors.primary,
+                                          ? context.matsanamWarning
+                                          : context.matsanamPrimary,
                                     ),
                                   ),
                                 ],
@@ -523,8 +590,8 @@ class _SiswaNilaiMapelScreenState extends State<SiswaNilaiMapelScreen> {
                               const SizedBox(height: 6),
                               Text(
                                 '${item['jenis'] ?? 'Tugas'} • ${_date(item['tanggal_penilaian'])}',
-                                style: const TextStyle(
-                                  color: AppColors.textSecondary,
+                                style: TextStyle(
+                                  color: context.matsanamTextSecondary,
                                   fontSize: 12,
                                 ),
                               ),
@@ -536,10 +603,10 @@ class _SiswaNilaiMapelScreenState extends State<SiswaNilaiMapelScreen> {
                                     ? 'Belum Tuntas'
                                     : 'Menunggu Penilaian',
                                 color: score == null
-                                    ? AppColors.warning
+                                    ? context.matsanamWarning
                                     : complete
-                                    ? AppColors.success
-                                    : AppColors.error,
+                                    ? context.matsanamSuccess
+                                    : context.matsanamError,
                               ),
                               if ((item['catatan'] ?? '')
                                   .toString()
@@ -554,13 +621,13 @@ class _SiswaNilaiMapelScreenState extends State<SiswaNilaiMapelScreen> {
                                 Text('${item['catatan']}'),
                               ],
                               const SizedBox(height: 8),
-                              const Row(
+                              Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
                                   Text(
                                     'Lihat detail',
                                     style: TextStyle(
-                                      color: AppColors.primary,
+                                      color: context.matsanamPrimary,
                                       fontSize: 12,
                                       fontWeight: FontWeight.w800,
                                     ),
@@ -568,7 +635,7 @@ class _SiswaNilaiMapelScreenState extends State<SiswaNilaiMapelScreen> {
                                   SizedBox(width: 4),
                                   Icon(
                                     Icons.chevron_right_rounded,
-                                    color: AppColors.primary,
+                                    color: context.matsanamPrimary,
                                     size: 18,
                                   ),
                                 ],
@@ -619,7 +686,11 @@ class _GradeCategoryTab extends StatelessWidget {
   final String label;
   final bool active;
   final VoidCallback onTap;
-  const _GradeCategoryTab({required this.label, required this.active, required this.onTap});
+  const _GradeCategoryTab({
+    required this.label,
+    required this.active,
+    required this.onTap,
+  });
   @override
   Widget build(BuildContext context) => InkWell(
     borderRadius: BorderRadius.circular(10),
@@ -627,12 +698,24 @@ class _GradeCategoryTab extends StatelessWidget {
     child: Container(
       padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 5),
       decoration: BoxDecoration(
-        color: active ? Theme.of(context).colorScheme.surface : Colors.transparent,
+        color: active
+            ? Theme.of(context).colorScheme.surface
+            : Colors.transparent,
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Text(label, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis,
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
-          color: active ? AppColors.primary : AppColors.textSecondary)),
+      child: Text(
+        label,
+        textAlign: TextAlign.center,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: active
+              ? context.matsanamPrimary
+              : context.matsanamTextSecondary,
+        ),
+      ),
     ),
   );
 }
@@ -689,14 +772,14 @@ class _Empty extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 42, color: AppColors.textMuted),
+          Icon(icon, size: 42, color: context.matsanamTextMuted),
           const SizedBox(height: 12),
           Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
           const SizedBox(height: 6),
           Text(
             subtitle,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.textSecondary),
+            style: TextStyle(color: context.matsanamTextSecondary),
           ),
           if (action != null)
             TextButton(onPressed: action, child: const Text('Coba Lagi')),

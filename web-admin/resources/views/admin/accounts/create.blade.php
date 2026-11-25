@@ -10,5 +10,5 @@
         <div class="flex justify-end gap-2"><a href="{{ route('admin.accounts.index', ['role' => $role]) }}" class="btn-light">Batal</a><button type="submit" class="btn-primary">▣ Simpan & Buat Akun {{ ucfirst($role) }}</button></div>
     </form>
 </div>
-<style>.btn-primary,.btn-light{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:10px 15px;border-radius:9px;font-size:12px;font-weight:650}.btn-primary{background:#2563eb;color:#fff}.btn-primary:hover{background:#1d4ed8}.btn-light{background:#f1f5f9;color:#475569}</style>
+<style>.btn-primary,.btn-light{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:10px 15px;border-radius:9px;font-size:12px;font-weight:650}.btn-primary{background:#2563eb;color:#fff}.btn-primary:hover{background:#1d4ed8}.btn-light{background:#f1f5f9;color:#475569;border:1px solid #e2e8f0}.btn-light:hover{background:#e2e8f0}html[data-theme="dark"] .btn-light{background:#334155;color:#e2e8f0;border:1px solid #475569}html[data-theme="dark"] .btn-light:hover{background:#475569;color:#fff}</style>
 @endsection

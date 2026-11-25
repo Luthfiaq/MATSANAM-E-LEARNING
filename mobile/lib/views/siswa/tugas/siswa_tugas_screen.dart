@@ -13,6 +13,7 @@ import '../nilai/siswa_nilai_screen.dart';
 import '../nilai/detail_hasil_penilaian_screen.dart';
 import 'status_pengumpulan_screen.dart';
 import '../pengaturan/profil_siswa_screen.dart';
+import '../../../utils/theme_helpers.dart';
 
 class SiswaTugasScreen extends StatefulWidget {
   const SiswaTugasScreen({super.key});
@@ -84,7 +85,7 @@ class _SiswaTugasScreenState extends State<SiswaTugasScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
@@ -93,7 +94,10 @@ class _SiswaTugasScreenState extends State<SiswaTugasScreen> {
             ),
             Text(
               'Tugas Pembelajaran',
-              style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+              style: TextStyle(
+                fontSize: 11,
+                color: context.matsanamTextSecondary,
+              ),
             ),
           ],
         ),
@@ -163,12 +167,12 @@ class _SiswaTugasScreenState extends State<SiswaTugasScreen> {
                             graded ||
                             status == 'terlambat';
                         final color = graded
-                            ? AppColors.success
+                            ? context.matsanamSuccess
                             : late
-                            ? AppColors.error
+                            ? context.matsanamError
                             : submitted
-                            ? AppColors.primary
-                            : AppColors.warning;
+                            ? context.matsanamPrimary
+                            : context.matsanamWarning;
                         return _Card(
                           child: ListTile(
                             leading: CircleAvatar(
@@ -607,14 +611,14 @@ class _SiswaTugasDetailScreenState extends State<SiswaTugasDetailScreen> {
                         const SizedBox(height: 8),
                         Text(
                           '${_data['mapel'] ?? '-'} • ${_data['kelas'] ?? '-'}',
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
+                          style: TextStyle(
+                            color: context.matsanamTextSecondary,
                           ),
                         ),
                         Text(
                           'Guru: ${_data['guru'] ?? '-'}',
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
+                          style: TextStyle(
+                            color: context.matsanamTextSecondary,
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -665,9 +669,11 @@ class _SiswaTugasDetailScreenState extends State<SiswaTugasDetailScreen> {
                             ),
                           ),
                           const SizedBox(height: 6),
-                          const Text(
+                          Text(
                             'Pilih satu file untuk diunduh.',
-                            style: TextStyle(color: AppColors.textSecondary),
+                            style: TextStyle(
+                              color: context.matsanamTextSecondary,
+                            ),
                           ),
                           ..._taskAttachmentFiles().map((file) {
                             final name = file['name']?.toString() ?? 'Lampiran';
@@ -774,11 +780,11 @@ class _SiswaTugasDetailScreenState extends State<SiswaTugasDetailScreen> {
                             ),
                         ],
                         if (_removeExistingFile)
-                          const Padding(
+                          Padding(
                             padding: EdgeInsets.only(bottom: 8),
                             child: Text(
                               'Lampiran lama akan dihapus saat pengumpulan diperbarui.',
-                              style: TextStyle(color: AppColors.warning),
+                              style: TextStyle(color: context.matsanamWarning),
                             ),
                           ),
                         if (_files.isNotEmpty) ...[
@@ -832,13 +838,13 @@ class _SiswaTugasDetailScreenState extends State<SiswaTugasDetailScreen> {
                             ],
                           ),
                         if (!locked)
-                          const Padding(
+                          Padding(
                             padding: EdgeInsets.only(top: 4),
                             child: Text(
                               'Kamu dapat memilih beberapa file sekaligus. Batas 20 MB berlaku untuk setiap file.',
                               style: TextStyle(
                                 fontSize: 11,
-                                color: AppColors.textSecondary,
+                                color: context.matsanamTextSecondary,
                               ),
                             ),
                           ),
@@ -848,20 +854,20 @@ class _SiswaTugasDetailScreenState extends State<SiswaTugasDetailScreen> {
                           const SizedBox(height: 4),
                           Text(
                             'Mengunggah lampiran ${(100 * (_uploadProgress ?? 0)).round()}%',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11,
-                              color: AppColors.textSecondary,
+                              color: context.matsanamTextSecondary,
                             ),
                           ),
                         ],
                         if (_uploadFailed)
-                          const Padding(
+                          Padding(
                             padding: EdgeInsets.only(top: 8),
                             child: Text(
                               'Pengiriman belum terkonfirmasi. Retry memakai ID yang sama agar lampiran tidak terkirim ganda.',
                               style: TextStyle(
                                 fontSize: 11,
-                                color: AppColors.warning,
+                                color: context.matsanamWarning,
                               ),
                             ),
                           ),
@@ -869,19 +875,21 @@ class _SiswaTugasDetailScreenState extends State<SiswaTugasDetailScreen> {
                           const Divider(height: 24),
                           Text(
                             'Nilai: ${nilai['nilai']}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w800,
-                              color: AppColors.success,
+                              color: context.matsanamSuccess,
                             ),
                           ),
                           Text(
                             'Feedback Guru: ${nilai['catatan'] ?? 'Belum ada feedback.'}',
                           ),
                         ] else if (submission.isNotEmpty)
-                          const Text(
+                          Text(
                             'Menunggu penilaian Guru.',
-                            style: TextStyle(color: AppColors.textSecondary),
+                            style: TextStyle(
+                              color: context.matsanamTextSecondary,
+                            ),
                           ),
                         const SizedBox(height: 14),
                         if (!locked)
@@ -909,10 +917,10 @@ class _SiswaTugasDetailScreenState extends State<SiswaTugasDetailScreen> {
                             ),
                           ),
                         if (locked)
-                          const Text(
+                          Text(
                             'Pengumpulan dikunci karena Guru sudah memberikan nilai.',
                             style: TextStyle(
-                              color: AppColors.success,
+                              color: context.matsanamSuccess,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -962,7 +970,7 @@ class _SiswaTugasDetailScreenState extends State<SiswaTugasDetailScreen> {
           width: 145,
           child: Text(
             label,
-            style: const TextStyle(color: AppColors.textSecondary),
+            style: TextStyle(color: context.matsanamTextSecondary),
           ),
         ),
         Expanded(
@@ -1049,14 +1057,14 @@ class _Empty extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 42, color: AppColors.textMuted),
+          Icon(icon, size: 42, color: context.matsanamTextMuted),
           const SizedBox(height: 12),
           Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
           const SizedBox(height: 6),
           Text(
             subtitle,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.textSecondary),
+            style: TextStyle(color: context.matsanamTextSecondary),
           ),
           if (action != null)
             TextButton(onPressed: action, child: const Text('Coba Lagi')),

@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../config/api_config.dart';
 import '../../../utils/constants.dart';
+import '../../../utils/theme_helpers.dart';
 import '../../../utils/session.dart';
 import '../../../widgets/common/empty_state.dart';
 import '../../../widgets/common/guru_profile_summary_card.dart';
@@ -125,21 +126,21 @@ class _NilaiPilihMapelKelasScreenState
       (sum, row) => sum + ((row['tugas_menunggu'] as num?)?.toInt() ?? 0),
     );
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.matsanamPage,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: context.matsanamSurface,
         elevation: 0,
         leading: IconButton(
           onPressed: () => Navigator.maybePop(context),
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new_rounded,
-            color: AppColors.textPrimary,
+            color: context.matsanamText,
           ),
         ),
-        title: const Text(
+        title: Text(
           'Penilaian Siswa',
           style: TextStyle(
-            color: AppColors.textPrimary,
+            color: context.matsanamText,
             fontSize: 17,
             fontWeight: FontWeight.w700,
           ),
@@ -148,7 +149,7 @@ class _NilaiPilihMapelKelasScreenState
           IconButton(
             tooltip: 'Profil Guru',
             onPressed: () => Navigator.pushNamed(context, '/pengaturan'),
-            icon: const CircleAvatar(
+            icon: CircleAvatar(
               radius: 15,
               backgroundColor: AppColors.primary,
               child: Icon(Icons.person_outline, color: Colors.white, size: 18),
@@ -179,17 +180,17 @@ class _NilaiPilihMapelKelasScreenState
                     onChanged: (_) => setState(() {}),
                     decoration: InputDecoration(
                       hintText: 'Cari mata pelajaran atau kelas penilaian...',
-                      prefixIcon: const Icon(Icons.search_rounded),
+                      prefixIcon: Icon(Icons.search_rounded),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: context.matsanamSurface,
                       contentPadding: const EdgeInsets.symmetric(vertical: 12),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.border),
+                        borderSide: BorderSide(color: context.matsanamBorder),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.border),
+                        borderSide: BorderSide(color: context.matsanamBorder),
                       ),
                     ),
                   ),
@@ -208,11 +209,11 @@ class _NilaiPilihMapelKelasScreenState
                   const SizedBox(height: 20),
                   Row(
                     children: [
-                      const Expanded(
+                      Expanded(
                         child: Text(
                           'Daftar Mata Pelajaran',
                           style: TextStyle(
-                            color: AppColors.textPrimary,
+                            color: context.matsanamText,
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                           ),
@@ -220,7 +221,7 @@ class _NilaiPilihMapelKelasScreenState
                       ),
                       Text(
                         '${groups.length} Mapel',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.primary,
                           fontWeight: FontWeight.w700,
                           fontSize: 12,
@@ -231,8 +232,8 @@ class _NilaiPilihMapelKelasScreenState
                   const SizedBox(height: 4),
                   Text(
                     '$pending tugas perlu ditinjau • pilih kelas untuk melihat daftar penilaian',
-                    style: const TextStyle(
-                      color: AppColors.textMuted,
+                    style: TextStyle(
+                      color: context.matsanamTextMuted,
                       fontSize: 11,
                     ),
                   ),
@@ -262,12 +263,12 @@ class _NilaiPilihMapelKelasScreenState
         onSelected: (_) => setState(() => _selectedClass = label),
         showCheckmark: false,
         selectedColor: AppColors.primary,
-        backgroundColor: Colors.white,
+        backgroundColor: context.matsanamSurface,
         side: BorderSide(
-          color: selected ? AppColors.primary : AppColors.border,
+          color: selected ? AppColors.primary : context.matsanamBorder,
         ),
         labelStyle: TextStyle(
-          color: selected ? Colors.white : AppColors.textSecondary,
+          color: selected ? Colors.white : context.matsanamTextSecondary,
           fontSize: 12,
           fontWeight: FontWeight.w600,
         ),
@@ -289,9 +290,9 @@ class _NilaiPilihMapelKelasScreenState
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.matsanamSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.matsanamBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -302,10 +303,10 @@ class _NilaiPilihMapelKelasScreenState
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEFF6FF),
+                  color: context.matsanamSoftPrimary,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.menu_book_rounded,
                   color: AppColors.primary,
                 ),
@@ -317,16 +318,16 @@ class _NilaiPilihMapelKelasScreenState
                   children: [
                     Text(
                       group.key,
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
+                      style: TextStyle(
+                        color: context.matsanamText,
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     Text(
                       '${schedules.length} kelas • $students siswa',
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
+                      style: TextStyle(
+                        color: context.matsanamTextSecondary,
                         fontSize: 11,
                       ),
                     ),
@@ -337,8 +338,8 @@ class _NilaiPilihMapelKelasScreenState
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                 decoration: BoxDecoration(
                   color: pending > 0
-                      ? AppColors.warningLight
-                      : AppColors.successLight,
+                      ? context.matsanamSoftWarning
+                      : context.matsanamSoftSuccess,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -353,7 +354,7 @@ class _NilaiPilihMapelKelasScreenState
             ],
           ),
           const SizedBox(height: 12),
-          const Divider(height: 1, color: AppColors.border),
+          Divider(height: 1, color: context.matsanamBorder),
           const SizedBox(height: 8),
           ...schedules.map((row) {
             final className = (row['kelas'] ?? 'Kelas').toString();
@@ -362,18 +363,18 @@ class _NilaiPilihMapelKelasScreenState
               padding: const EdgeInsets.symmetric(vertical: 6),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.groups_2_outlined,
                     size: 17,
-                    color: AppColors.textMuted,
+                    color: context.matsanamTextMuted,
                   ),
                   const SizedBox(width: 7),
                   Expanded(
                     child: Text(
                       '$className • ${row['jumlah_siswa'] ?? 0} siswa',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.textPrimary,
+                        color: context.matsanamText,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -386,7 +387,7 @@ class _NilaiPilihMapelKelasScreenState
                     ),
                     child: Text(
                       count > 0 ? 'Buka Penilaian →' : 'Lihat Tugas →',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                       ),

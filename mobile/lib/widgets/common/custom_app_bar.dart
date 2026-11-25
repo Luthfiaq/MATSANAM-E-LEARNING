@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../utils/constants.dart';
+
 import 'status_badge.dart';
 
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -16,7 +16,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final List<Widget>? actions;
 
   const CustomAppBar({
-    Key? key,
+    super.key,
     required this.title,
     this.subtitle,
     this.showBackButton = true,
@@ -28,36 +28,47 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.statusBadgeText,
     this.statusBadgeType,
     this.actions,
-  }) : super(key: key);
+  });
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final textTheme = theme.textTheme;
+
     return AppBar(
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
+      foregroundColor: colors.onSurface,
+      surfaceTintColor: Colors.transparent,
       elevation: 0,
       centerTitle: false,
       leading: showBackButton
           ? IconButton(
               onPressed: onBackPressed ?? () => Navigator.pop(context),
-              icon: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: AppColors.textPrimary,
-              ),
+              icon: const Icon(Icons.arrow_back_ios_new_rounded),
             )
           : null,
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(title, style: AppTypography.heading3.copyWith(fontSize: 18)),
+          Text(
+            title,
+            style: textTheme.titleMedium?.copyWith(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: colors.onSurface,
+            ),
+          ),
           if (subtitle != null) ...[
             const SizedBox(height: 2),
             Text(
               subtitle!,
-              style: AppTypography.bodySmall.copyWith(
-                color: AppColors.textSecondary,
+              style: textTheme.bodySmall?.copyWith(
+                color: colors.onSurfaceVariant,
                 fontSize: 12,
               ),
             ),
@@ -65,20 +76,21 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           if (statusBadgeText != null) ...[
             const SizedBox(height: 4),
             Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
                   width: 6,
                   height: 6,
                   decoration: BoxDecoration(
-                    color: _getBadgeColor(),
+                    color: _getBadgeColor(context),
                     shape: BoxShape.circle,
                   ),
                 ),
                 const SizedBox(width: 6),
                 Text(
                   statusBadgeText!,
-                  style: AppTypography.labelSmall.copyWith(
-                    color: AppColors.textSecondary,
+                  style: textTheme.labelSmall?.copyWith(
+                    color: colors.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -89,27 +101,21 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       actions: [
         if (showNotification)
           IconButton(
+            tooltip: 'Notifikasi',
             onPressed: onNotificationTap ?? () {},
-            icon: const Icon(
-              Icons.notifications_outlined,
-              color: AppColors.textPrimary,
-            ),
+            icon: const Icon(Icons.notifications_outlined),
           ),
         if (showProfile)
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: GestureDetector(
               onTap: onProfileTap ?? () {},
-              child: Container(
-                width: 36,
-                height: 36,
-                decoration: const BoxDecoration(
-                  color: AppColors.primary,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
+              child: CircleAvatar(
+                radius: 18,
+                backgroundColor: colors.primary,
+                child: Icon(
                   Icons.person_outline,
-                  color: Colors.white,
+                  color: colors.onPrimary,
                   size: 20,
                 ),
               ),
@@ -120,22 +126,30 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     );
   }
 
-  Color _getBadgeColor() {
-    if (statusBadgeType == null) return AppColors.success;
-
-    switch (statusBadgeType!) {
+  Color _getBadgeColor(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    switch (statusBadgeType ?? BadgeType.success) {
       case BadgeType.success:
-        return AppColors.success;
+        return _successColor(context);
       case BadgeType.warning:
-        return AppColors.warning;
+        return _warningColor(context);
       case BadgeType.danger:
-        return AppColors.danger;
+        return colors.error;
       case BadgeType.info:
-        return AppColors.info;
       case BadgeType.primary:
-        return AppColors.primary;
+        return colors.primary;
       case BadgeType.neutral:
-        return AppColors.textSecondary;
+        return colors.onSurfaceVariant;
     }
   }
+
+  Color _successColor(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+      ? const Color(0xFF34D399)
+      : const Color(0xFF059669);
+
+  Color _warningColor(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+      ? const Color(0xFFFBBF24)
+      : const Color(0xFFD97706);
 }

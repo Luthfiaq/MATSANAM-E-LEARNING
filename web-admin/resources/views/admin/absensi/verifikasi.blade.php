@@ -132,11 +132,18 @@
                     $teleponWali = $selectedItem->siswa->telepon_wali ?? null;
                     $jenisSurat = ucfirst($selectedItem->jenis ?? 'Sakit');
                     $alasan = $selectedItem->alasan ?? 'Tidak ada keterangan';
+                    $cakupan = $selectedItem->cakupan ?: 'sehari_penuh';
+                    $cakupanLabel = match ($cakupan) {
+                        'mulai_pelajaran' => 'Pulang lebih awal', // Pengajuan lama.
+                        'pulang_lebih_awal' => 'Pulang lebih awal',
+                        default => 'Sehari penuh',
+                    };
+                    $jadwalAcuan = $selectedItem->jadwalAcuan;
                     $statusVerif = strtoupper($selectedItem->status_verifikasi ?? 'PENDING');
                     $isPending = in_array(strtolower($selectedItem->status_verifikasi ?? 'pending'), ['pending', 'menunggu', ''], true);
                     $tglMulai = $selectedItem->tanggal_mulai ? \Carbon\Carbon::parse($selectedItem->tanggal_mulai)->format('d M Y') : '-';
-                    $tglSelesai = $selectedItem->tanggal_selesai ? \Carbon\Carbon::parse($selectedItem->tanggal_selesai) : null;
-                    $durasiHari = ($tglMulai && $tglSelesai) ? (\Carbon\Carbon::parse($selectedItem->tanggal_mulai)->diffInDays($selectedItem->tanggal_selesai) + 1) . ' Hari' : '1 Hari';
+                    $tglSelesai = $selectedItem->tanggal_selesai ? \Carbon\Carbon::parse($selectedItem->tanggal_selesai)->format('d M Y') : $tglMulai;
+                    $durasiHari = ($selectedItem->tanggal_mulai && $selectedItem->tanggal_selesai) ? (\Carbon\Carbon::parse($selectedItem->tanggal_mulai)->diffInDays(\Carbon\Carbon::parse($selectedItem->tanggal_selesai)) + 1) . ' Hari' : '1 Hari';
                     $fileUrl = $selectedItem->file_surat ? route('admin.absensi.surat.file', $selectedItem->id) : null;
                     $isPdf = $selectedItem->file_surat && strtolower(pathinfo($selectedItem->file_surat, PATHINFO_EXTENSION)) === 'pdf';
                 @endphp
@@ -175,7 +182,7 @@
                         </div>
                         <div>
                             <p class="text-[10px] uppercase font-semibold text-slate-400">Rentang Tanggal</p>
-                            <p class="font-bold text-slate-800 mt-0.5">{{ $tglMulai }}</p>
+                            <p class="font-bold text-slate-800 mt-0.5">{{ $tglMulai }}@if($tglSelesai !== $tglMulai) – {{ $tglSelesai }}@endif</p>
                         </div>
                         <div>
                             <p class="text-[10px] uppercase font-semibold text-slate-400">Total Hari Efektif</p>
@@ -185,6 +192,30 @@
                             <p class="text-[10px] uppercase font-semibold text-slate-400">Kontak Wali</p>
                             <p class="font-bold text-slate-800 mt-0.5">{{ $teleponWali ?: 'Tidak tersedia' }}</p>
                         </div>
+                    </div>
+
+                    <div class="rounded-xl border border-blue-100 bg-blue-50/60 p-4">
+                        <p class="text-[10px] font-semibold uppercase tracking-wide text-blue-700">Cakupan Dampak Absensi</p>
+                        <p class="mt-1 text-sm font-bold text-slate-900">{{ $cakupanLabel }}</p>
+                        @if($jadwalAcuan)
+                            <p class="mt-1 text-xs text-slate-600">
+                                {{ $jadwalAcuan->mataPelajaran->nama ?? 'Mata pelajaran' }}
+                                • {{ substr((string) $jadwalAcuan->jam_mulai, 0, 5) }}–{{ substr((string) $jadwalAcuan->jam_selesai, 0, 5) }}
+                                @if($cakupan === 'pulang_lebih_awal')
+                                    — menjadi awal cakupan izin/sakit pada tanggal mulai
+                                @else
+                                    — menjadi awal cakupan izin/sakit
+                                @endif
+                            </p>
+                        @endif
+                        <p class="mt-1 text-xs text-slate-600">
+                            @if($cakupan === 'pulang_lebih_awal')
+                                Pada tanggal mulai, mata pelajaran acuan dan pelajaran setelahnya mengikuti jenis surat. Pada tanggal berikutnya sampai tanggal selesai, seluruh jadwal mengikuti jenis surat.
+                            @else
+                                Seluruh jadwal pada rentang tanggal mengikuti jenis surat.
+                            @endif
+                            Catatan Hadir yang sudah valid tidak akan diubah menjadi Izin/Sakit.
+                        </p>
                     </div>
 
                     {{-- Pratinjau Dokumen Terlampir --}}

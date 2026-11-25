@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../services/siswa_learning_service.dart';
 import '../../../utils/constants.dart';
 import '../nilai/detail_hasil_penilaian_screen.dart';
+import '../../../utils/theme_helpers.dart';
 
 /// Displays the current submission state using the existing Siswa task detail API.
 /// The screen intentionally shows only fields returned by Laravel today.
@@ -128,11 +129,14 @@ class _StatusPengumpulanScreenState extends State<StatusPengumpulanScreen> {
     final isLate =
         submission['status']?.toString() == 'terlambat' ||
         status == 'terlambat';
+    // Four progress stages follow the current Figma flow. When there is no
+    // submission yet, the second stage is the active step; once submitted,
+    // teacher review becomes the active step until a grade exists.
     final stage = isGraded
-        ? 3
+        ? 4
         : hasSubmission
-        ? 2
-        : 1;
+        ? 3
+        : 2;
     final submissionFiles = _submissionFiles(submission);
 
     return Scaffold(
@@ -178,11 +182,11 @@ class _StatusPengumpulanScreenState extends State<StatusPengumpulanScreen> {
                     isLast: false,
                   ),
                   _TimelineStep(
-                    title: 'Penilaian Guru',
+                    title: 'Sedang Diperiksa Guru',
                     detail: isGraded
-                        ? 'Nilai diterbitkan ${_date(grade['tanggal_penilaian'])}'
+                        ? 'Pemeriksaan selesai pada ${_date(grade['tanggal_penilaian'])}.'
                         : hasSubmission
-                        ? 'Menunggu Guru memeriksa pengumpulan.'
+                        ? 'Pengumpulan menunggu pemeriksaan Guru.'
                         : 'Aktif setelah tugas dikumpulkan.',
                     state: isGraded
                         ? _TimelineState.complete
@@ -190,6 +194,17 @@ class _StatusPengumpulanScreenState extends State<StatusPengumpulanScreen> {
                         ? _TimelineState.current
                         : _TimelineState.pending,
                     icon: Icons.fact_check_outlined,
+                    isLast: false,
+                  ),
+                  _TimelineStep(
+                    title: 'Nilai Diterbitkan',
+                    detail: isGraded
+                        ? 'Nilai diterbitkan ${_date(grade['tanggal_penilaian'])}.'
+                        : 'Nilai akan tampil setelah Guru menyelesaikan penilaian.',
+                    state: isGraded
+                        ? _TimelineState.complete
+                        : _TimelineState.pending,
+                    icon: Icons.verified_outlined,
                     isLast: true,
                   ),
                 ],
@@ -217,8 +232,10 @@ class _StatusPengumpulanScreenState extends State<StatusPengumpulanScreen> {
                         ? (isLate ? 'Terlambat' : 'Tepat waktu')
                         : _notSubmittedDetail(status),
                     valueColor: hasSubmission
-                        ? (isLate ? AppColors.error : AppColors.success)
-                        : AppColors.warning,
+                        ? (isLate
+                              ? context.matsanamError
+                              : context.matsanamSuccess)
+                        : context.matsanamWarning,
                   ),
                   if (submission['jawaban'] != null &&
                       submission['jawaban'].toString().trim().isNotEmpty) ...[
@@ -232,7 +249,7 @@ class _StatusPengumpulanScreenState extends State<StatusPengumpulanScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppColors.background,
+                        color: context.matsanamPage,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(submission['jawaban'].toString()),
@@ -256,14 +273,14 @@ class _StatusPengumpulanScreenState extends State<StatusPengumpulanScreen> {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.primaryLight,
+                          color: context.matsanamSoftPrimary,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.insert_drive_file_outlined,
-                              color: AppColors.primary,
+                              color: context.matsanamPrimary,
                             ),
                             const SizedBox(width: 10),
                             Expanded(
@@ -298,51 +315,90 @@ class _StatusPengumpulanScreenState extends State<StatusPengumpulanScreen> {
                       padding: const EdgeInsets.only(top: 12),
                       child: Text(
                         'Belum ada catatan pengumpulan untuk tugas ini.',
-                        style: TextStyle(color: AppColors.textSecondary),
+                        style: TextStyle(color: context.matsanamTextSecondary),
                       ),
                     ),
                 ],
               ),
             ),
-            if (isGraded) ...[
-              const SizedBox(height: 14),
-              _SectionCard(
-                title: 'Hasil Penilaian',
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${_number(grade['nilai']).toStringAsFixed(0)} / ${_number(_data['bobot'], fallback: 100).toStringAsFixed(0)}',
-                      style: const TextStyle(
-                        fontSize: 30,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Feedback Guru: ${_text(grade['catatan'], fallback: 'Belum ada catatan dari Guru.')} ',
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => DetailHasilPenilaianScreen(
-                              tugasId: widget.tugasId,
-                            ),
+            const SizedBox(height: 14),
+            _SectionCard(
+              title: 'Hasil Penilaian',
+              trailing: _StatusBadge(
+                label: isGraded
+                    ? 'Sudah Dinilai'
+                    : hasSubmission
+                    ? 'Menunggu Penilaian'
+                    : 'Belum Ada Pengumpulan',
+                color: isGraded
+                    ? context.matsanamSuccess
+                    : hasSubmission
+                    ? context.matsanamPrimary
+                    : context.matsanamTextMuted,
+              ),
+              child: isGraded
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${_number(grade['nilai']).toStringAsFixed(0)} / ${_number(_data['bobot'], fallback: 100).toStringAsFixed(0)}',
+                          style: TextStyle(
+                            fontSize: 30,
+                            fontWeight: FontWeight.w900,
+                            color: context.matsanamPrimary,
                           ),
                         ),
-                        icon: const Icon(Icons.assessment_outlined),
-                        label: const Text('Lihat Detail Hasil Penilaian'),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Feedback Guru: ${_text(grade['catatan'], fallback: 'Belum ada catatan dari Guru.')}',
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => DetailHasilPenilaianScreen(
+                                  tugasId: widget.tugasId,
+                                ),
+                              ),
+                            ),
+                            icon: const Icon(Icons.assessment_outlined),
+                            label: const Text('Lihat Detail Hasil Penilaian'),
+                          ),
+                        ),
+                      ],
+                    )
+                  : Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: context.matsanamSoftPrimary,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            hasSubmission
+                                ? Icons.hourglass_top_rounded
+                                : Icons.assignment_late_outlined,
+                            color: context.matsanamPrimary,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              hasSubmission
+                                  ? 'Pengumpulan sudah tercatat. Nilai dan catatan Guru akan tampil di sini setelah proses penilaian selesai.'
+                                  : 'Belum ada nilai karena tugas belum dikumpulkan. Setelah pengumpulan tercatat dan dinilai, hasilnya akan tampil di sini.',
+                              style: const TextStyle(height: 1.45),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ],
+            ),
             const SizedBox(height: 12),
             const _PrivacyNote(),
           ],
@@ -366,7 +422,7 @@ class _TaskSummaryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.matsanamBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -376,9 +432,9 @@ class _TaskSummaryCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   '${data['mapel'] ?? '-'} • ${data['kelas'] ?? '-'}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: AppColors.textSecondary,
+                    color: context.matsanamTextSecondary,
                   ),
                 ),
               ),
@@ -393,7 +449,7 @@ class _TaskSummaryCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             'Guru pengampu: ${_text(data['guru'])}',
-            style: const TextStyle(color: AppColors.textSecondary),
+            style: TextStyle(color: context.matsanamTextSecondary),
           ),
           const Divider(height: 24),
           _InfoRow(label: 'Skor maksimal', value: '${data['bobot'] ?? 100}'),
@@ -421,7 +477,7 @@ class _SectionCard extends StatelessWidget {
     decoration: BoxDecoration(
       color: Theme.of(context).colorScheme.surface,
       borderRadius: BorderRadius.circular(18),
-      border: Border.all(color: AppColors.border),
+      border: Border.all(color: context.matsanamBorder),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -465,10 +521,10 @@ class _TimelineStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = switch (state) {
-      _TimelineState.complete => AppColors.success,
-      _TimelineState.current => AppColors.primary,
-      _TimelineState.pending => AppColors.textMuted,
-      _TimelineState.overdue => AppColors.error,
+      _TimelineState.complete => context.matsanamSuccess,
+      _TimelineState.current => context.matsanamPrimary,
+      _TimelineState.pending => context.matsanamTextMuted,
+      _TimelineState.overdue => context.matsanamError,
     };
 
     return IntrinsicHeight(
@@ -501,8 +557,8 @@ class _TimelineStep extends StatelessWidget {
                       width: 2,
                       margin: const EdgeInsets.symmetric(vertical: 3),
                       color: state == _TimelineState.complete
-                          ? AppColors.success.withValues(alpha: .45)
-                          : AppColors.border,
+                          ? context.matsanamSuccess.withValues(alpha: .45)
+                          : context.matsanamBorder,
                     ),
                   ),
               ],
@@ -522,8 +578,8 @@ class _TimelineStep extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     detail,
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
+                    style: TextStyle(
+                      color: context.matsanamTextSecondary,
                       fontSize: 12,
                       height: 1.4,
                     ),
@@ -548,13 +604,13 @@ class _StageBadge extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
     decoration: BoxDecoration(
-      color: AppColors.primaryLight,
+      color: context.matsanamSoftPrimary,
       borderRadius: BorderRadius.circular(20),
     ),
     child: Text(
-      'Tahap $stage dari 3',
-      style: const TextStyle(
-        color: AppColors.primaryDark,
+      'Tahap $stage dari 4',
+      style: TextStyle(
+        color: context.matsanamPrimary,
         fontSize: 11,
         fontWeight: FontWeight.w800,
       ),
@@ -597,8 +653,8 @@ class _InfoRow extends StatelessWidget {
           width: 142,
           child: Text(
             label,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
+            style: TextStyle(
+              color: context.matsanamTextSecondary,
               fontSize: 12,
             ),
           ),
@@ -625,13 +681,17 @@ class _PrivacyNote extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
-      color: AppColors.primaryLight,
+      color: context.matsanamSoftPrimary,
       borderRadius: BorderRadius.circular(12),
     ),
-    child: const Row(
+    child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(Icons.verified_user_outlined, color: AppColors.primary, size: 18),
+        Icon(
+          Icons.verified_user_outlined,
+          color: context.matsanamPrimary,
+          size: 18,
+        ),
         SizedBox(width: 9),
         Expanded(
           child: Text(
@@ -656,10 +716,10 @@ class _LoadError extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
+          Icon(
             Icons.cloud_off_outlined,
             size: 42,
-            color: AppColors.error,
+            color: context.matsanamError,
           ),
           const SizedBox(height: 12),
           const Text(

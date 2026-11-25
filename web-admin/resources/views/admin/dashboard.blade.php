@@ -3,6 +3,7 @@
 @section('title', 'Dashboard')
 
 @section('content')
+<div id="adminDashboard" class="space-y-1">
 <!-- Welcome Banner -->
 <div class="relative overflow-hidden rounded-xl p-6 mb-6" style="background: linear-gradient(180deg, #004ac6, #2563eb, #0053db);">
     <div class="flex-1 bg-[#FFFFFF1A] w-[216px] absolute top-0 bottom-0 right-0 rounded-xl blur-[40px]"></div>
@@ -305,4 +306,28 @@
     </div>
     @endif
 </div>
+</div>
+
+<style>
+#adminDashboard > .relative.overflow-hidden { border-radius: 1.15rem; box-shadow: 0 10px 26px rgba(30, 64, 175, .12); }
+#adminDashboard .bg-white.rounded-lg,
+#adminDashboard .bg-white.rounded-xl { border: 1px solid var(--admin-border); border-radius: 1rem; box-shadow: var(--admin-shadow); }
+#adminDashboard .bg-white.rounded-lg { overflow: hidden; }
+#adminDashboard table th { white-space: nowrap; }
+#adminDashboard table td { vertical-align: middle; }
+html[data-theme="dark"] #adminDashboard .text-slate-900,
+html[data-theme="dark"] #adminDashboard .text-gray-900 { color: #f1f5f9 !important; }
+html[data-theme="dark"] #adminDashboard .text-slate-600,
+html[data-theme="dark"] #adminDashboard .text-gray-600 { color: #cbd5e1 !important; }
+html[data-theme="dark"] #adminDashboard [class~="text-[#006C4A]"] { color: #6ee7b7 !important; }
+html[data-theme="dark"] #adminDashboard [class~="text-[#004AC6]"] { color: #93c5fd !important; }
+html[data-theme="dark"] #adminDashboard [class~="text-[#F59E0B]"] { color: #fbbf24 !important; }
+@media (max-width: 640px) {
+    #adminDashboard > .relative.overflow-hidden { padding: 1.1rem !important; }
+    #adminDashboard > .relative.overflow-hidden > .flex { align-items: flex-start; }
+    #adminDashboard > .relative.overflow-hidden h1 { font-size: 1.25rem; line-height: 1.65rem; }
+    #adminDashboard .bg-white.rounded-lg .px-6 { padding-left: .9rem; padding-right: .9rem; }
+}
+</style>
+
 @endsection

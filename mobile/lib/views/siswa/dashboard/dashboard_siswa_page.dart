@@ -15,6 +15,7 @@ import '../nilai/siswa_nilai_screen.dart';
 import '../notifikasi/siswa_notifikasi_screen.dart';
 import '../pengaturan/profil_siswa_screen.dart';
 import '../tugas/siswa_tugas_screen.dart';
+import '../materi/siswa_materi_detail_screen.dart';
 
 class DashboardSiswaPage extends StatefulWidget {
   const DashboardSiswaPage({super.key});
@@ -201,9 +202,9 @@ class _DashboardSiswaPageState extends State<DashboardSiswaPage> {
               onTap: _bukaJadwal,
               child: Text(
                 'Lihat Semua',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12.5,
-                  color: AppColors.primary,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
             ),
@@ -240,10 +241,10 @@ class _DashboardSiswaPageState extends State<DashboardSiswaPage> {
               onTap: _bukaTugas,
               child: Text(
                 'Semua (${d.deadlineTotal})',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.primary,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
             ),
@@ -558,6 +559,7 @@ class _Banner extends StatelessWidget {
   }
 }
 
+
 class _StatsRow extends StatelessWidget {
   final DashboardSiswa data;
   const _StatsRow({required this.data});
@@ -566,6 +568,7 @@ class _StatsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final hadir = data.kehadiranPersen;
     final rerata = data.rerataNilai;
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       children: [
         Expanded(
@@ -574,8 +577,8 @@ class _StatsRow extends StatelessWidget {
             value: '${data.tugasAktif}',
             caption: 'Tugas Aktif',
             icon: Icons.assignment_outlined,
-            color: AppColors.primary,
-            soft: AppColors.infoLight,
+            color: dark ? const Color(0xFF60A5FA) : AppColors.primary,
+            soft: dark ? const Color(0xFF1E3A8A) : AppColors.infoLight,
           ),
         ),
         const SizedBox(width: 10),
@@ -585,8 +588,8 @@ class _StatsRow extends StatelessWidget {
             value: hadir != null ? '$hadir%' : '-',
             caption: 'Bulan Ini',
             icon: Icons.check_circle_outline_rounded,
-            color: AppColors.success,
-            soft: AppColors.successLight,
+            color: dark ? const Color(0xFF34D399) : AppColors.success,
+            soft: dark ? const Color(0xFF123D31) : AppColors.successLight,
           ),
         ),
         const SizedBox(width: 10),
@@ -596,8 +599,8 @@ class _StatsRow extends StatelessWidget {
             value: rerata != null ? rerata.toStringAsFixed(1) : '-',
             caption: 'Nilai Tugas',
             icon: Icons.star_border_rounded,
-            color: const Color(0xFFF59E0B),
-            soft: AppColors.warningLight,
+            color: dark ? const Color(0xFFFBBF24) : const Color(0xFFF59E0B),
+            soft: dark ? const Color(0xFF4B3718) : AppColors.warningLight,
           ),
         ),
       ],
@@ -623,15 +626,23 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 12, 10, 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border(left: BorderSide(color: color, width: 3.5)),
+        border: Border(
+          left: BorderSide(color: color, width: 3.5),
+          top: BorderSide(color: colors.outlineVariant.withValues(alpha: 0.55)),
+          right: BorderSide(color: colors.outlineVariant.withValues(alpha: 0.55)),
+          bottom: BorderSide(color: colors.outlineVariant.withValues(alpha: 0.55)),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withValues(
+              alpha: Theme.of(context).brightness == Brightness.dark ? 0.16 : 0.04,
+            ),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -645,10 +656,10 @@ class _StatCard extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
+                  color: colors.onSurfaceVariant,
                 ),
               ),
               Container(
@@ -665,18 +676,18 @@ class _StatCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 25,
               fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
+              color: colors.onSurface,
             ),
           ),
           const SizedBox(height: 2),
           Text(
             caption,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11.5,
-              color: AppColors.textSecondary,
+              color: colors.onSurfaceVariant,
             ),
           ),
         ],
@@ -686,6 +697,9 @@ class _StatCard extends StatelessWidget {
 }
 
 /* ===================== Akses cepat ===================== */
+
+/* ===================== Akses cepat ===================== */
+
 
 class _AksesCepat extends StatelessWidget {
   final VoidCallback onScan;
@@ -703,40 +717,32 @@ class _AksesCepat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+      decoration: _kartu(context),
       child: Column(
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Akses Cepat',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
+                  color: colors.onSurface,
                 ),
               ),
               GestureDetector(
                 onTap: onBantuan,
-                child: const Text(
+                child: Text(
                   'Bantuan Siswa',
                   style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
+                    color: colors.primary,
                   ),
                 ),
               ),
@@ -749,7 +755,7 @@ class _AksesCepat extends StatelessWidget {
                 child: _AksesItem(
                   icon: Icons.qr_code_scanner_rounded,
                   label: 'Scan QR\nAbsen',
-                  bg: AppColors.primary,
+                  bg: dark ? const Color(0xFF1E3A8A) : AppColors.primary,
                   fg: Colors.white,
                   badge: true,
                   onTap: onScan,
@@ -759,8 +765,8 @@ class _AksesCepat extends StatelessWidget {
                 child: _AksesItem(
                   icon: Icons.menu_book_rounded,
                   label: 'Materi\nBelajar',
-                  bg: const Color(0xFFE0E7FF),
-                  fg: AppColors.primaryDark,
+                  bg: dark ? const Color(0xFF1E3A8A) : const Color(0xFFE0E7FF),
+                  fg: dark ? const Color(0xFFBFDBFE) : AppColors.primaryDark,
                   onTap: onMateri,
                 ),
               ),
@@ -768,8 +774,8 @@ class _AksesCepat extends StatelessWidget {
                 child: _AksesItem(
                   icon: Icons.cloud_upload_outlined,
                   label: 'Kumpul\nTugas',
-                  bg: AppColors.secondaryLight,
-                  fg: AppColors.success,
+                  bg: dark ? const Color(0xFF123D31) : AppColors.secondaryLight,
+                  fg: dark ? const Color(0xFF6EE7B7) : AppColors.success,
                   onTap: onKumpul,
                 ),
               ),
@@ -777,8 +783,8 @@ class _AksesCepat extends StatelessWidget {
                 child: _AksesItem(
                   icon: Icons.bar_chart_rounded,
                   label: 'Cek\nNilai',
-                  bg: const Color(0xFFE0E7FF),
-                  fg: AppColors.primaryDark,
+                  bg: dark ? const Color(0xFF1E3A8A) : const Color(0xFFE0E7FF),
+                  fg: dark ? const Color(0xFFBFDBFE) : AppColors.primaryDark,
                   onTap: onNilai,
                 ),
               ),
@@ -795,8 +801,8 @@ class _AksesItem extends StatelessWidget {
   final String label;
   final Color bg;
   final Color fg;
-  final bool badge;
   final VoidCallback onTap;
+  final bool badge;
   const _AksesItem({
     required this.icon,
     required this.label,
@@ -808,6 +814,7 @@ class _AksesItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
@@ -835,7 +842,7 @@ class _AksesItem extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: AppColors.error,
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 1.5),
+                      border: Border.all(color: colors.surface, width: 1.5),
                     ),
                     child: const Icon(
                       Icons.photo_camera_rounded,
@@ -850,11 +857,11 @@ class _AksesItem extends StatelessWidget {
           Text(
             label,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               height: 1.25,
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              color: colors.onSurface,
             ),
           ),
         ],
@@ -864,6 +871,9 @@ class _AksesItem extends StatelessWidget {
 }
 
 /* ===================== Section & kartu ===================== */
+
+/* ===================== Section & kartu ===================== */
+
 
 class _SectionHeader extends StatelessWidget {
   final Color color;
@@ -877,6 +887,7 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Row(
       children: [
         Icon(Icons.circle, size: 9, color: color),
@@ -884,10 +895,10 @@ class _SectionHeader extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16.5,
               fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
+              color: colors.onSurface,
             ),
           ),
         ),
@@ -897,17 +908,23 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-BoxDecoration _kartu() => BoxDecoration(
-  color: Colors.white,
-  borderRadius: BorderRadius.circular(18),
-  boxShadow: [
-    BoxShadow(
-      color: Colors.black.withValues(alpha: 0.04),
-      blurRadius: 8,
-      offset: const Offset(0, 2),
+BoxDecoration _kartu(BuildContext context) {
+  final dark = Theme.of(context).brightness == Brightness.dark;
+  return BoxDecoration(
+    color: Theme.of(context).colorScheme.surface,
+    borderRadius: BorderRadius.circular(18),
+    border: Border.all(
+      color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.55),
     ),
-  ],
-);
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: dark ? 0.16 : 0.04),
+        blurRadius: 8,
+        offset: const Offset(0, 2),
+      ),
+    ],
+  );
+}
 
 class _EmptyCard extends StatelessWidget {
   final IconData icon;
@@ -916,21 +933,22 @@ class _EmptyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 16),
-      decoration: _kartu(),
+      decoration: _kartu(context),
       child: Column(
         children: [
-          Icon(icon, size: 30, color: const Color(0xFF94A3B8)),
+          Icon(icon, size: 30, color: colors.onSurfaceVariant),
           const SizedBox(height: 8),
           Text(
             text,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13.5,
-              color: AppColors.textSecondary,
+              color: colors.onSurfaceVariant,
             ),
           ),
         ],
@@ -938,6 +956,7 @@ class _EmptyCard extends StatelessWidget {
     );
   }
 }
+
 
 class _JadwalCard extends StatelessWidget {
   final JadwalHariIni jadwal;
@@ -952,28 +971,29 @@ class _JadwalCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fase = jadwal.faseSekarang(now);
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final colors = Theme.of(context).colorScheme;
     final (chipText, chipBg, chipFg) = switch (fase) {
       JadwalFase.berlangsung => (
-        'Sedang Berlangsung',
-        AppColors.successLight,
-        AppColors.success,
-      ),
+          'Sedang Berlangsung',
+          dark ? const Color(0xFF123D31) : AppColors.successLight,
+          dark ? const Color(0xFF34D399) : AppColors.success,
+        ),
       JadwalFase.akan => (
-        'Akan Datang',
-        AppColors.infoLight,
-        AppColors.primaryDark,
-      ),
+          'Akan Datang',
+          dark ? const Color(0xFF1E3A8A) : AppColors.infoLight,
+          dark ? const Color(0xFFBFDBFE) : AppColors.primaryDark,
+        ),
       JadwalFase.selesai => (
-        'Selesai',
-        const Color(0xFFE2E8F0),
-        AppColors.textSecondary,
-      ),
+          'Selesai',
+          dark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+          colors.onSurfaceVariant,
+        ),
     };
-
     final matematika = jadwal.mapel.toLowerCase().contains('matematika');
 
     return Container(
-      decoration: _kartu(),
+      decoration: _kartu(context),
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
@@ -985,10 +1005,7 @@ class _JadwalCard extends StatelessWidget {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: chipBg,
                         borderRadius: BorderRadius.circular(14),
@@ -1010,18 +1027,11 @@ class _JadwalCard extends StatelessWidget {
                       ),
                     ),
                     const Spacer(),
-                    const Icon(
-                      Icons.access_time_rounded,
-                      size: 14,
-                      color: AppColors.textSecondary,
-                    ),
+                    Icon(Icons.access_time_rounded, size: 14, color: colors.onSurfaceVariant),
                     const SizedBox(width: 4),
                     Text(
                       '${jadwal.jamMulai} - ${jadwal.jamSelesai} WIB',
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        color: AppColors.textSecondary,
-                      ),
+                      style: TextStyle(fontSize: 12.5, color: colors.onSurfaceVariant),
                     ),
                   ],
                 ),
@@ -1035,29 +1045,22 @@ class _JadwalCard extends StatelessWidget {
                         children: [
                           Text(
                             jadwal.mapel,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary,
+                              color: colors.onSurface,
                             ),
                           ),
                           const SizedBox(height: 6),
                           Row(
                             children: [
-                              const Icon(
-                                Icons.person_outline_rounded,
-                                size: 15,
-                                color: AppColors.textSecondary,
-                              ),
+                              Icon(Icons.person_outline_rounded, size: 15, color: colors.onSurfaceVariant),
                               const SizedBox(width: 5),
                               Expanded(
                                 child: Text(
                                   jadwal.guru,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    color: AppColors.textSecondary,
-                                  ),
+                                  style: TextStyle(fontSize: 13, color: colors.onSurfaceVariant),
                                 ),
                               ),
                             ],
@@ -1065,18 +1068,11 @@ class _JadwalCard extends StatelessWidget {
                           const SizedBox(height: 3),
                           Row(
                             children: [
-                              const Icon(
-                                Icons.meeting_room_outlined,
-                                size: 15,
-                                color: AppColors.textSecondary,
-                              ),
+                              Icon(Icons.meeting_room_outlined, size: 15, color: colors.onSurfaceVariant),
                               const SizedBox(width: 5),
                               Text(
                                 'Ruang ${jadwal.ruangan}',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: AppColors.textSecondary,
-                                ),
+                                style: TextStyle(fontSize: 13, color: colors.onSurfaceVariant),
                               ),
                             ],
                           ),
@@ -1088,15 +1084,13 @@ class _JadwalCard extends StatelessWidget {
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
-                        color: AppColors.infoLight,
+                        color: dark ? const Color(0xFF1E3A8A) : AppColors.infoLight,
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Icon(
-                        matematika
-                            ? Icons.calculate_outlined
-                            : Icons.auto_stories_outlined,
+                        matematika ? Icons.calculate_outlined : Icons.auto_stories_outlined,
                         size: 25,
-                        color: AppColors.primary,
+                        color: dark ? const Color(0xFFBFDBFE) : AppColors.primary,
                       ),
                     ),
                   ],
@@ -1106,19 +1100,19 @@ class _JadwalCard extends StatelessWidget {
           ),
           Container(
             width: double.infinity,
-            color: const Color(0xFFEFF4FD),
+            color: dark ? const Color(0xFF263449) : const Color(0xFFEFF4FD),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             child: Row(
               children: [
-                const Icon(Icons.circle, size: 9, color: AppColors.success),
+                Icon(Icons.circle, size: 9, color: dark ? const Color(0xFF34D399) : AppColors.success),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'Toleransi s/d ${jadwal.batasToleransi} WIB',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color: colors.onSurface,
                     ),
                   ),
                 ),
@@ -1132,6 +1126,7 @@ class _JadwalCard extends StatelessWidget {
   }
 }
 
+
 class _AksiPresensi extends StatelessWidget {
   final JadwalHariIni jadwal;
   final JadwalFase fase;
@@ -1144,25 +1139,33 @@ class _AksiPresensi extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final colors = Theme.of(context).colorScheme;
     if (jadwal.sudahAbsen) {
-      final s = (jadwal.statusAbsen ?? '').trim().toLowerCase();
-      final label = s.isEmpty
+      final status = (jadwal.statusAbsen ?? '').trim().toLowerCase();
+      final label = status.isEmpty
           ? 'Tercatat'
-          : '${s[0].toUpperCase()}${s.substring(1)}';
-      final ok = s == 'hadir';
+          : '${status[0].toUpperCase()}${status.substring(1)}';
+      final hadir = status == 'hadir';
+      final foreground = hadir
+          ? (dark ? const Color(0xFF34D399) : AppColors.success)
+          : (dark ? const Color(0xFFFBBF24) : AppColors.warning);
+      final background = hadir
+          ? (dark ? const Color(0xFF123D31) : AppColors.successLight)
+          : (dark ? const Color(0xFF4B3718) : AppColors.warningLight);
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
-          color: ok ? AppColors.successLight : AppColors.warningLight,
+          color: background,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              ok ? Icons.check_circle_rounded : Icons.info_outline_rounded,
+              hadir ? Icons.check_circle_rounded : Icons.info_outline_rounded,
               size: 15,
-              color: ok ? AppColors.success : AppColors.warning,
+              color: foreground,
             ),
             const SizedBox(width: 5),
             Text(
@@ -1170,7 +1173,7 @@ class _AksiPresensi extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w700,
-                color: ok ? AppColors.success : AppColors.warning,
+                color: foreground,
               ),
             ),
           ],
@@ -1193,19 +1196,18 @@ class _AksiPresensi extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
           minimumSize: Size.zero,
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
     }
 
     return Text(
       fase == JadwalFase.akan ? 'Belum dimulai' : 'Tidak tercatat',
-      style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+      style: TextStyle(fontSize: 12.5, color: colors.onSurfaceVariant),
     );
   }
 }
+
 
 class _TugasCard extends StatelessWidget {
   final DeadlineTugas tugas;
@@ -1214,24 +1216,24 @@ class _TugasCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final merah = tugas.sisaMenit < 6 * 60;
-    final chipBg = merah ? AppColors.error : const Color(0xFFF59E0B);
-    final persen = (tugas.progress * 100).round();
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final colors = Theme.of(context).colorScheme;
+    final urgent = tugas.sisaMenit < 6 * 60;
+    final chipBg = urgent ? AppColors.error : const Color(0xFFF59E0B);
+    final percent = (tugas.progress * 100).round();
     final matematika = tugas.mapel.toLowerCase().contains('matematika');
+    final softPrimary = dark ? const Color(0xFF1E3A8A) : const Color(0xFFE0E7FF);
 
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: _kartu(),
+      decoration: _kartu(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: chipBg,
                   borderRadius: BorderRadius.circular(14),
@@ -1250,36 +1252,31 @@ class _TugasCard extends StatelessWidget {
                 child: Text(
                   tugas.mapel,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    color: AppColors.textSecondary,
-                  ),
+                  style: TextStyle(fontSize: 12.5, color: colors.onSurfaceVariant),
                 ),
               ),
               Container(
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: matematika
-                      ? const Color(0xFFE0E7FF)
-                      : AppColors.warningLight,
+                  color: matematika ? softPrimary : (dark ? const Color(0xFF4B3718) : AppColors.warningLight),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: matematika
-                    ? const Center(
+                    ? Center(
                         child: Text(
                           'Σ',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
-                            color: AppColors.primaryDark,
+                            color: dark ? const Color(0xFFBFDBFE) : AppColors.primaryDark,
                           ),
                         ),
                       )
-                    : const Icon(
+                    : Icon(
                         Icons.edit_note_rounded,
                         size: 22,
-                        color: AppColors.warning,
+                        color: dark ? const Color(0xFFFBBF24) : AppColors.warning,
                       ),
               ),
             ],
@@ -1287,10 +1284,10 @@ class _TugasCard extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             tugas.judul,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16.5,
               fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
+              color: colors.onSurface,
             ),
           ),
           if (tugas.totalSiswa > 0) ...[
@@ -1300,17 +1297,14 @@ class _TugasCard extends StatelessWidget {
               children: [
                 Text(
                   'Pengumpulan Kelas: ${tugas.sudahKumpul}/${tugas.totalSiswa} Siswa',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
+                  style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant),
                 ),
                 Text(
-                  '$persen%',
-                  style: const TextStyle(
+                  '$percent%',
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.primary,
+                    color: colors.primary,
                   ),
                 ),
               ],
@@ -1321,8 +1315,8 @@ class _TugasCard extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: tugas.progress,
                 minHeight: 7,
-                backgroundColor: const Color(0xFFE2E8F0),
-                color: AppColors.primary,
+                backgroundColor: dark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                color: colors.primary,
               ),
             ),
           ],
@@ -1331,69 +1325,48 @@ class _TugasCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               if (tugas.adaLampiran)
-                const Row(
+                Row(
                   children: [
-                    Icon(
-                      Icons.attach_file_rounded,
-                      size: 16,
-                      color: AppColors.textSecondary,
-                    ),
-                    SizedBox(width: 4),
+                    Icon(Icons.attach_file_rounded, size: 16, color: colors.onSurfaceVariant),
+                    const SizedBox(width: 4),
                     Text(
                       'Ada File Lampiran',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
+                      style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant),
                     ),
                   ],
                 )
               else
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE8EEF9),
+                    color: dark ? const Color(0xFF263449) : const Color(0xFFE8EEF9),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     tugas.jenisLabel,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
+                      color: colors.onSurfaceVariant,
                     ),
                   ),
                 ),
-              merah
+              urgent
                   ? ElevatedButton(
                       onPressed: onTap,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
+                        backgroundColor: colors.primary,
+                        foregroundColor: colors.onPrimary,
                         elevation: 0,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 9,
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            'Kerjakan',
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
+                          Text('Kerjakan', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
                           SizedBox(width: 4),
                           Icon(Icons.arrow_forward_rounded, size: 15),
                         ],
@@ -1402,24 +1375,16 @@ class _TugasCard extends StatelessWidget {
                   : TextButton(
                       onPressed: onTap,
                       style: TextButton.styleFrom(
-                        backgroundColor: const Color(0xFFE0E7FF),
-                        foregroundColor: AppColors.primaryDark,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 9,
-                        ),
+                        backgroundColor: softPrimary,
+                        foregroundColor: dark ? const Color(0xFFBFDBFE) : AppColors.primaryDark,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
                       child: const Text(
                         'Rincian',
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w700,
-                        ),
+                        style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
                       ),
                     ),
             ],
@@ -1430,6 +1395,7 @@ class _TugasCard extends StatelessWidget {
   }
 }
 
+
 class _MateriCard extends StatelessWidget {
   final MateriBaru materi;
   final VoidCallback onTap;
@@ -1437,26 +1403,28 @@ class _MateriCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final colors = Theme.of(context).colorScheme;
+    final softPrimary = dark ? const Color(0xFF1E3A8A) : const Color(0xFFE0E7FF);
+    final softInfo = dark ? const Color(0xFF1E3A8A) : AppColors.infoLight;
+    final primaryIcon = dark ? const Color(0xFFBFDBFE) : AppColors.primaryDark;
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),
       child: Container(
         padding: const EdgeInsets.all(12),
-        decoration: _kartu(),
+        decoration: _kartu(context),
         child: Row(
           children: [
             Container(
               width: 54,
               height: 54,
               decoration: BoxDecoration(
-                color: const Color(0xFFE0E7FF),
+                color: softPrimary,
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: const Icon(
-                Icons.play_lesson_outlined,
-                size: 27,
-                color: AppColors.primaryDark,
-              ),
+              child: Icon(Icons.play_lesson_outlined, size: 27, color: primaryIcon),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1467,21 +1435,18 @@ class _MateriCard extends StatelessWidget {
                     children: [
                       if (materi.ekstensi.isNotEmpty)
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 7,
-                            vertical: 2,
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                           margin: const EdgeInsets.only(right: 6),
                           decoration: BoxDecoration(
-                            color: AppColors.infoLight,
+                            color: softInfo,
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
                             materi.ekstensi,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.primaryDark,
+                              color: primaryIcon,
                             ),
                           ),
                         ),
@@ -1489,10 +1454,7 @@ class _MateriCard extends StatelessWidget {
                         child: Text(
                           materi.mapel,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          ),
+                          style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant),
                         ),
                       ),
                     ],
@@ -1502,10 +1464,10 @@ class _MateriCard extends StatelessWidget {
                     materi.judul,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15.5,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
+                      color: colors.onSurface,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -1513,10 +1475,7 @@ class _MateriCard extends StatelessWidget {
                     'Diunggah oleh ${materi.guru}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
+                    style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant),
                   ),
                 ],
               ),
@@ -1526,14 +1485,10 @@ class _MateriCard extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: const Color(0xFFE0E7FF),
+                color: softPrimary,
                 borderRadius: BorderRadius.circular(11),
               ),
-              child: const Icon(
-                Icons.chevron_right_rounded,
-                size: 22,
-                color: AppColors.primaryDark,
-              ),
+              child: Icon(Icons.chevron_right_rounded, size: 22, color: primaryIcon),
             ),
           ],
         ),
@@ -1541,6 +1496,7 @@ class _MateriCard extends StatelessWidget {
     );
   }
 }
+
 
 class _ErrorView extends StatelessWidget {
   final String message;
@@ -1549,25 +1505,19 @@ class _ErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(28),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              Icons.cloud_off_rounded,
-              size: 52,
-              color: Color(0xFF94A3B8),
-            ),
+            Icon(Icons.cloud_off_rounded, size: 52, color: colors.onSurfaceVariant),
             const SizedBox(height: 12),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 14, color: colors.onSurfaceVariant),
             ),
             const SizedBox(height: 18),
             ElevatedButton.icon(
@@ -1575,11 +1525,9 @@ class _ErrorView extends StatelessWidget {
               icon: const Icon(Icons.refresh_rounded, size: 18),
               label: const Text('Coba Lagi'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                backgroundColor: colors.primary,
+                foregroundColor: colors.onPrimary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
           ],
@@ -1588,3 +1536,4 @@ class _ErrorView extends StatelessWidget {
     );
   }
 }
+

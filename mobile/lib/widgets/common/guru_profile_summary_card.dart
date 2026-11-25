@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../utils/constants.dart';
-
-/// Ringkasan profil guru dari data autentikasi yang sudah disimpan saat login.
+/// Ringkasan profil guru dari data autentikasi yang disimpan saat login.
 class GuruProfileSummaryCard extends StatelessWidget {
   const GuruProfileSummaryCard({super.key, required this.profileFuture});
 
@@ -10,6 +8,7 @@ class GuruProfileSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return FutureBuilder<Map<String, dynamic>?>(
       future: profileFuture,
       builder: (context, snapshot) {
@@ -19,9 +18,9 @@ class GuruProfileSummaryCard extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: colors.surface,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: colors.outlineVariant),
           ),
           child: Row(
             children: [
@@ -29,12 +28,12 @@ class GuruProfileSummaryCard extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEFF6FF),
+                  color: colors.primaryContainer,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.badge_outlined,
-                  color: AppColors.primary,
+                  color: colors.onPrimaryContainer,
                   size: 26,
                 ),
               ),
@@ -43,11 +42,10 @@ class GuruProfileSummaryCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'GURU PENGAMPU',
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 10,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: colors.onSurfaceVariant,
                         fontWeight: FontWeight.w700,
                         letterSpacing: .6,
                       ),
@@ -57,9 +55,8 @@ class GuruProfileSummaryCard extends StatelessWidget {
                       name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 15,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: colors.onSurface,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -67,20 +64,15 @@ class GuruProfileSummaryCard extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         'NIP. $nip',
-                        style: const TextStyle(
-                          color: AppColors.textMuted,
-                          fontSize: 11,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: colors.onSurfaceVariant,
                         ),
                       ),
                     ],
                   ],
                 ),
               ),
-              const Icon(
-                Icons.tune_rounded,
-                color: AppColors.textSecondary,
-                size: 20,
-              ),
+              Icon(Icons.tune_rounded, color: colors.onSurfaceVariant, size: 20),
             ],
           ),
         );

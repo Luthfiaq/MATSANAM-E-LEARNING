@@ -289,9 +289,12 @@ class SiswaLearningService {
     return downloadAuthorizedFile('${ApiConfig.siswaNilai}/rekap/pdf');
   }
 
-  Future<List<Map<String, dynamic>>> jadwal({String? hari}) async {
+  Future<List<Map<String, dynamic>>> jadwal({String? hari, String? tanggal}) async {
     final uri = Uri.parse(ApiConfig.siswaJadwal).replace(
-      queryParameters: {if (hari != null && hari.isNotEmpty) 'hari': hari},
+      queryParameters: {
+        if (hari != null && hari.isNotEmpty) 'hari': hari,
+        if (tanggal != null && tanggal.isNotEmpty) 'tanggal': tanggal,
+      },
     );
     final payload = await _get(uri.toString());
     return _mapList(payload['data']);
@@ -316,22 +319,35 @@ class SiswaLearningService {
 
   Future<Map<String, dynamic>> scanQr({
     required String qrData,
-    required double latitude,
-    required double longitude,
+    double? latitude,
+    double? longitude,
     double? accuracy,
   }) async {
+    // Latitude dan longitude harus dikirim berpasangan.
+    if ((latitude == null) != (longitude == null)) {
+      throw ArgumentError('Latitude dan longitude harus dikirim berpasangan.');
+    }
+
+    final payload = <String, dynamic>{'qr_data': qrData};
+
+    // Koordinat hanya dikirim jika tersedia.
+    if (latitude != null && longitude != null) {
+      payload['latitude'] = latitude;
+      payload['longitude'] = longitude;
+
+      if (accuracy != null) {
+        payload['accuracy'] = accuracy;
+      }
+    }
+
     final response = await http
         .post(
           Uri.parse(ApiConfig.siswaScanQr),
           headers: ApiConfig.headers(await _token()),
-          body: jsonEncode({
-            'qr_data': qrData,
-            'latitude': latitude,
-            'longitude': longitude,
-            if (accuracy != null) 'accuracy': accuracy,
-          }),
+          body: jsonEncode(payload),
         )
         .timeout(ApiConfig.timeout);
+
     return _decodeResponse(response);
   }
 

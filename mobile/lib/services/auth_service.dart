@@ -101,7 +101,7 @@ class AuthService {
       final user = await Session.getUser();
       if (user == null || user.isEmpty) return null;
       final profile = await Session.getProfile();
-      return {'user': user, if (profile != null) 'profile': profile};
+      return {'user': user, 'profile': ?profile};
     }
 
     try {
@@ -124,16 +124,16 @@ class AuthService {
 
       if (response.statusCode != 200) {
         // Gangguan server/rute tidak boleh dianggap sebagai token kedaluwarsa.
-        return cachedAuthData();
+        return await cachedAuthData();
       }
 
       final payload = _decode(response.body);
       if (payload['success'] != true || payload['data'] is! Map) {
-        return cachedAuthData();
+        return await cachedAuthData();
       }
 
       final data = Map<String, dynamic>.from(payload['data'] as Map);
-      if (data['user'] is! Map) return cachedAuthData();
+      if (data['user'] is! Map) return await cachedAuthData();
       return data;
     } on SocketException {
       return await cachedAuthData();

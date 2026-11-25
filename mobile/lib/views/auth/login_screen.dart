@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
+import '../../utils/app_theme_state.dart';
 import '../../utils/constants.dart';
 import '../../widgets/common/school_logo.dart';
 import '../siswa/dashboard/dashboard_siswa_page.dart';
@@ -53,6 +54,9 @@ class _LoginScreenState extends State<LoginScreen> {
         final data = result['data'] as Map<String, dynamic>;
         final user = data['user'] as Map<String, dynamic>;
         final role = user['role']?.toString();
+        if (role == 'guru' || role == 'siswa') {
+          AppThemeState.setActiveRole(role!);
+        }
         final Widget tujuan;
         if (user['must_change_password'] == true) {
           tujuan = const ChangePasswordScreen(wajib: true);
@@ -106,34 +110,46 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+
   InputDecoration _dekor({
     required String hint,
     required IconData icon,
     Widget? suffix,
   }) {
-    OutlineInputBorder b(Color c, [double w = 1]) => OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: c, width: w),
-    );
+    final colors = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    OutlineInputBorder border(Color color, [double width = 1]) =>
+        OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: color, width: width),
+        );
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 15),
-      prefixIcon: Icon(icon, color: const Color(0xFF94A3B8), size: 22),
+      hintStyle: TextStyle(
+        color: colors.onSurfaceVariant.withValues(alpha: 0.78),
+        fontSize: 15,
+      ),
+      prefixIcon: Icon(icon, color: colors.onSurfaceVariant, size: 22),
       suffixIcon: suffix,
       filled: true,
-      fillColor: AppColors.background,
+      fillColor: dark ? const Color(0xFF263449) : const Color(0xFFF1F5F9),
       contentPadding: const EdgeInsets.symmetric(vertical: 16),
-      enabledBorder: b(AppColors.border),
-      focusedBorder: b(AppColors.primary, 1.6),
-      errorBorder: b(AppColors.error),
-      focusedErrorBorder: b(AppColors.error, 1.6),
+      enabledBorder: border(colors.outlineVariant),
+      focusedBorder: border(colors.primary, 1.6),
+      errorBorder: border(colors.error),
+      focusedErrorBorder: border(colors.error, 1.6),
     );
   }
 
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final dark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -143,49 +159,46 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SchoolLogoCard(size: 84),
                 const SizedBox(height: 14),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: AppColors.primaryLight,
+                    color: colors.primaryContainer,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFFBFD6FB)),
+                    border: Border.all(color: colors.outlineVariant),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.circle, size: 7, color: AppColors.success),
-                      SizedBox(width: 6),
+                      const SizedBox(width: 6),
                       Text(
                         'MADRASAH DIGITAL ACADEMIC',
                         style: TextStyle(
                           fontSize: 11,
                           letterSpacing: 0.6,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.primaryDark,
+                          color: colors.onPrimaryContainer,
                         ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'MTsN 6 Nganjuk',
                   style: TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
+                    color: colors.onSurface,
                   ),
                 ),
                 const SizedBox(height: 6),
-                const Text(
+                Text(
                   'Gerbang Layanan Terpadu e-Learning &\nPresensi',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,
                     height: 1.4,
-                    color: AppColors.textSecondary,
+                    color: colors.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(height: 22),
@@ -193,12 +206,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: colors.surface,
                     borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: AppColors.border),
+                    border: Border.all(color: colors.outlineVariant),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
+                        color: Colors.black.withValues(alpha: dark ? 0.18 : 0.05),
                         blurRadius: 16,
                         offset: const Offset(0, 6),
                       ),
@@ -209,34 +222,35 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Selamat Datang',
                           style: TextStyle(
                             fontSize: 19,
                             fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimary,
+                            color: colors.onSurface,
                           ),
                         ),
                         const SizedBox(height: 4),
-                        const Text(
+                        Text(
                           'Masukkan email dan kata sandi Anda',
                           style: TextStyle(
                             fontSize: 13.5,
-                            color: AppColors.textSecondary,
+                            color: colors.onSurfaceVariant,
                           ),
                         ),
                         const SizedBox(height: 18),
-                        const Text(
+                        Text(
                           'Email',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
+                            color: colors.onSurface,
                           ),
                         ),
                         const SizedBox(height: 8),
                         TextFormField(
                           controller: _emailC,
+                          style: TextStyle(color: colors.onSurface, fontSize: 15),
                           keyboardType: TextInputType.emailAddress,
                           textInputAction: TextInputAction.next,
                           autofillHints: const [AutofillHints.email],
@@ -244,29 +258,28 @@ class _LoginScreenState extends State<LoginScreen> {
                             hint: 'nama@matsanam.sch.id',
                             icon: Icons.mail_outline_rounded,
                           ),
-                          validator: (v) {
-                            final t = (v ?? '').trim();
-                            if (t.isEmpty) return 'Email wajib diisi';
-                            if (!RegExp(
-                              r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-                            ).hasMatch(t)) {
+                          validator: (value) {
+                            final text = (value ?? '').trim();
+                            if (text.isEmpty) return 'Email wajib diisi';
+                            if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(text)) {
                               return 'Format email tidak valid';
                             }
                             return null;
                           },
                         ),
                         const SizedBox(height: 16),
-                        const Text(
+                        Text(
                           'Kata Sandi',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
+                            color: colors.onSurface,
                           ),
                         ),
                         const SizedBox(height: 8),
                         TextFormField(
                           controller: _passC,
+                          style: TextStyle(color: colors.onSurface, fontSize: 15),
                           obscureText: _obscure,
                           textInputAction: TextInputAction.done,
                           autofillHints: const [AutofillHints.password],
@@ -279,14 +292,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                 _obscure
                                     ? Icons.visibility_off_outlined
                                     : Icons.visibility_outlined,
-                                color: const Color(0xFF94A3B8),
+                                color: colors.onSurfaceVariant,
                                 size: 22,
                               ),
-                              onPressed: () =>
-                                  setState(() => _obscure = !_obscure),
+                              onPressed: () => setState(() => _obscure = !_obscure),
                             ),
                           ),
-                          validator: (v) => (v == null || v.isEmpty)
+                          validator: (value) => (value == null || value.isEmpty)
                               ? 'Kata sandi wajib diisi'
                               : null,
                         ),
@@ -298,35 +310,36 @@ class _LoginScreenState extends State<LoginScreen> {
                               height: 24,
                               child: Checkbox(
                                 value: _remember,
-                                onChanged: (v) =>
-                                    setState(() => _remember = v ?? false),
-                                activeColor: AppColors.primary,
+                                onChanged: (value) =>
+                                    setState(() => _remember = value ?? false),
+                                activeColor: colors.primary,
+                                checkColor: colors.onPrimary,
+                                side: BorderSide(
+                                  color: colors.outline,
+                                  width: 1.4,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(5),
-                                ),
-                                side: const BorderSide(
-                                  color: Color(0xFFCBD5E1),
-                                  width: 1.4,
                                 ),
                               ),
                             ),
                             const SizedBox(width: 8),
-                            const Text(
+                            Text(
                               'Ingat Saya',
                               style: TextStyle(
                                 fontSize: 13.5,
-                                color: AppColors.textSecondary,
+                                color: colors.onSurfaceVariant,
                               ),
                             ),
                             const Spacer(),
                             GestureDetector(
                               onTap: () => _infoAdmin('Lupa Kata Sandi?'),
-                              child: const Text(
+                              child: Text(
                                 'Lupa Kata Sandi?',
                                 style: TextStyle(
                                   fontSize: 13.5,
                                   fontWeight: FontWeight.w700,
-                                  color: AppColors.primary,
+                                  color: colors.primary,
                                 ),
                               ),
                             ),
@@ -338,24 +351,24 @@ class _LoginScreenState extends State<LoginScreen> {
                             width: double.infinity,
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: AppColors.errorLight,
+                              color: colors.errorContainer,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.error_outline_rounded,
                                   size: 18,
-                                  color: AppColors.error,
+                                  color: colors.error,
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
                                     _error!,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 13,
-                                      color: AppColors.error,
+                                      color: colors.onErrorContainer,
                                     ),
                                   ),
                                 ),
@@ -370,26 +383,26 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: ElevatedButton(
                             onPressed: _loading ? null : _masuk,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                              disabledBackgroundColor: AppColors.primary
-                                  .withValues(alpha: 0.6),
-                              disabledForegroundColor: Colors.white,
+                              backgroundColor: colors.primary,
+                              foregroundColor: colors.onPrimary,
+                              disabledBackgroundColor:
+                                  colors.primary.withValues(alpha: 0.6),
+                              disabledForegroundColor: colors.onPrimary,
                               elevation: 0,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14),
                               ),
                             ),
                             child: _loading
-                                ? const SizedBox(
+                                ? SizedBox(
                                     width: 22,
                                     height: 22,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2.4,
-                                      color: Colors.white,
+                                      color: colors.onPrimary,
                                     ),
                                   )
-                                : const Row(
+                                : Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Text(
@@ -397,12 +410,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                         style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w600,
+                                          color: colors.onPrimary,
                                         ),
                                       ),
-                                      SizedBox(width: 8),
+                                      const SizedBox(width: 8),
                                       Icon(
                                         Icons.arrow_forward_rounded,
                                         size: 20,
+                                        color: colors.onPrimary,
                                       ),
                                     ],
                                   ),
@@ -415,19 +430,19 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 22),
                 GestureDetector(
                   onTap: () => _infoAdmin('Kendala Masuk Akun'),
-                  child: const Text.rich(
+                  child: Text.rich(
                     TextSpan(
                       style: TextStyle(
                         fontSize: 13,
-                        color: AppColors.textSecondary,
+                        color: colors.onSurfaceVariant,
                       ),
                       children: [
-                        TextSpan(text: 'Kendala masuk akun? '),
+                        const TextSpan(text: 'Kendala masuk akun? '),
                         TextSpan(
                           text: 'Hubungi Admin TU Madrasah',
                           style: TextStyle(
                             fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
+                            color: colors.primary,
                           ),
                         ),
                       ],
@@ -436,37 +451,28 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Row(
+                Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.verified_outlined,
                       size: 15,
                       color: AppColors.success,
                     ),
-                    SizedBox(width: 5),
+                    const SizedBox(width: 5),
                     Text(
                       'Kemenag RI',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
+                      style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant),
                     ),
-                    SizedBox(width: 8),
+                    const SizedBox(width: 8),
                     Text(
                       '•',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
+                      style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant),
                     ),
-                    SizedBox(width: 8),
+                    const SizedBox(width: 8),
                     Text(
                       'Matsanam Mobile v2.4',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
+                      style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant),
                     ),
                   ],
                 ),
@@ -478,3 +484,4 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
+

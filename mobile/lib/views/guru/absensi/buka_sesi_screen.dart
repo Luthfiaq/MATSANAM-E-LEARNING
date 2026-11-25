@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../config/api_config.dart';
 import '../../../utils/constants.dart';
+import '../../../utils/theme_helpers.dart';
 import '../../../widgets/common/qr_code_widget.dart';
 import '../../../widgets/common/status_badge.dart';
 import '../../../widgets/common/progress_bar_with_label.dart';
@@ -336,8 +337,12 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
               'kelas': widget.jadwal['kelas'] ?? '9A',
               'session_id': _sessionId,
               'qr_data': _qrData,
-              'lokasi_latitude': _locationMode == 'mts' ? _schoolLatitude : null,
-              'lokasi_longitude': _locationMode == 'mts' ? _schoolLongitude : null,
+              'lokasi_latitude': _locationMode == 'mts'
+                  ? _schoolLatitude
+                  : null,
+              'lokasi_longitude': _locationMode == 'mts'
+                  ? _schoolLongitude
+                  : null,
               'radius_meter': _locationMode == 'mts' ? _radius : null,
               'toleransi_keterlambatan': _toleransi,
               'expired_at': _expiredAt?.toIso8601String(),
@@ -476,7 +481,7 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.matsanamPage,
       appBar: CustomAppBar(
         title: widget.jadwal['mata_pelajaran']?.toString() ?? 'Absensi',
         subtitle: widget.jadwal['kelas']?.toString() ?? '',
@@ -504,9 +509,9 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: context.matsanamSurface,
               borderRadius: BorderRadius.circular(AppDimens.radiusLarge),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: context.matsanamBorder),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -519,11 +524,11 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
                       size: 20,
                     ),
                     const SizedBox(width: 8),
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         'Kode QR Interaktif',
                         style: TextStyle(
-                          color: AppColors.textPrimary,
+                          color: context.matsanamText,
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
                         ),
@@ -536,16 +541,18 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
                       ),
                       decoration: BoxDecoration(
                         color: _sessionActive
-                            ? AppColors.successLight
-                            : AppColors.background,
+                            ? context.matsanamSoftSuccess
+                            : context.matsanamSoftSurface,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         _sessionActive ? 'Live Sync' : 'Belum Aktif',
                         style: TextStyle(
                           color: _sessionActive
-                              ? AppColors.success
-                              : AppColors.textMuted,
+                              ? (context.matsanamIsDark
+                                    ? const Color(0xFF6EE7B7)
+                                    : AppColors.success)
+                              : context.matsanamTextMuted,
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
                         ),
@@ -715,9 +722,9 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
     return Container(
       padding: AppDimens.paddingLarge,
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.matsanamSurface,
         borderRadius: BorderRadius.circular(AppDimens.radiusLarge),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.matsanamBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -727,7 +734,10 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
             children: [
               Text(
                 'Kehadiran Real-time',
-                style: AppTypography.labelLarge.copyWith(fontSize: 16),
+                style: AppTypography.labelLarge.copyWith(
+                  color: context.matsanamText,
+                  fontSize: 16,
+                ),
               ),
               StatusBadge(
                 text: '$_presentStudents/$_totalStudents',
@@ -757,22 +767,27 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
     return Container(
       padding: AppDimens.paddingLarge,
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.matsanamSurface,
         borderRadius: BorderRadius.circular(AppDimens.radiusLarge),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.matsanamBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.history,
                 size: 20,
-                color: AppColors.textSecondary,
+                color: context.matsanamTextSecondary,
               ),
               const SizedBox(width: AppDimens.spacingSmall),
-              Text('Scan Terbaru', style: AppTypography.labelLarge),
+              Text(
+                'Scan Terbaru',
+                style: AppTypography.labelLarge.copyWith(
+                  color: context.matsanamText,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: AppDimens.spacingMedium),
@@ -788,7 +803,7 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
                         width: 32,
                         height: 32,
                         decoration: BoxDecoration(
-                          color: AppColors.successLight,
+                          color: context.matsanamSoftSuccess,
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
@@ -805,12 +820,15 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
                             Text(
                               scan['nama'] ?? 'Siswa',
                               style: AppTypography.bodyMedium.copyWith(
+                                color: context.matsanamText,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
                             Text(
                               scan['waktu'] ?? 'Baru saja',
-                              style: AppTypography.caption,
+                              style: AppTypography.caption.copyWith(
+                                color: context.matsanamTextMuted,
+                              ),
                             ),
                           ],
                         ),
@@ -836,9 +854,9 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
     return Container(
       padding: AppDimens.paddingLarge,
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.matsanamSurface,
         borderRadius: BorderRadius.circular(AppDimens.radiusLarge),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.matsanamBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -849,7 +867,7 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: AppColors.primaryLight,
+                  color: context.matsanamSoftPrimary,
                   borderRadius: BorderRadius.circular(AppDimens.radiusMedium),
                 ),
                 child: const Icon(
@@ -863,20 +881,24 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Lokasi Absensi', style: AppTypography.labelLarge),
+                    Text(
+                      'Lokasi Absensi',
+                      style: AppTypography.labelLarge.copyWith(
+                        color: context.matsanamText,
+                      ),
+                    ),
                     Text(
                       isSchoolMode
                           ? 'Validasi di area MTsN 6 Nganjuk'
                           : 'Siswa dapat melakukan absensi dari mana saja',
-                      style: AppTypography.bodySmall,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: context.matsanamTextSecondary,
+                      ),
                     ),
                   ],
                 ),
               ),
-              StatusBadge(
-                text: 'Siap',
-                type: BadgeType.success,
-              ),
+              StatusBadge(text: 'Siap', type: BadgeType.success),
             ],
           ),
           const SizedBox(height: AppDimens.spacingMedium),
@@ -927,13 +949,15 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: AppColors.successLight,
+                color: context.matsanamSoftSuccess,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Text(
+              child: Text(
                 'Koordinat sekolah: -7.6722077, 112.0538249',
                 style: TextStyle(
-                  color: AppColors.success,
+                  color: context.matsanamIsDark
+                      ? const Color(0xFF6EE7B7)
+                      : AppColors.success,
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                 ),
@@ -943,11 +967,16 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Radius absensi', style: AppTypography.labelLarge),
+                Text(
+                  'Radius absensi',
+                  style: AppTypography.labelLarge.copyWith(
+                    color: context.matsanamText,
+                  ),
+                ),
                 Text(
                   '$_radius meter',
                   style: AppTypography.labelLarge.copyWith(
-                    color: AppColors.primary,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
               ],
@@ -974,9 +1003,9 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
     return Container(
       padding: AppDimens.paddingLarge,
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.matsanamSurface,
         borderRadius: BorderRadius.circular(AppDimens.radiusLarge),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.matsanamBorder),
       ),
       child: Row(
         children: [
@@ -986,12 +1015,16 @@ class _BukaSesiScreenState extends State<BukaSesiScreen> {
               children: [
                 Text(
                   'Toleransi Keterlambatan',
-                  style: AppTypography.labelLarge,
+                  style: AppTypography.labelLarge.copyWith(
+                    color: context.matsanamText,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Tambahan 15 menit untuk absen',
-                  style: AppTypography.bodySmall,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: context.matsanamTextSecondary,
+                  ),
                 ),
               ],
             ),

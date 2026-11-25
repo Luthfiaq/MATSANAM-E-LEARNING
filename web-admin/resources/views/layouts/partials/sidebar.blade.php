@@ -17,7 +17,7 @@
     }
 @endphp
 
-<aside id="adminSidebar" class="w-64 shrink-0 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col h-full overflow-y-auto">
+<aside id="adminSidebar" aria-label="Navigasi Admin" class="w-64 shrink-0 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col h-full overflow-y-auto">
     <div class="h-[69px] px-5 flex items-center gap-3 border-b border-slate-100 dark:border-slate-700 shrink-0">
         <div class="w-10 h-10 rounded-xl bg-blue-600 text-white grid place-items-center font-bold text-xl shadow-sm">M</div>
         <div class="leading-tight min-w-0">
@@ -26,7 +26,7 @@
         </div>
     </div>
 
-    <nav class="flex-1 p-3 space-y-5 text-sm">
+    <nav class="flex-1 p-3 space-y-5 text-sm" aria-label="Menu utama">
         <section>
             <p class="px-3 mb-2 text-[10px] font-bold tracking-[.12em] text-slate-400">NAVIGASI UTAMA</p>
             <a href="{{ route('admin.dashboard') }}" class="nav-link {{ request()->routeIs('admin.dashboard') ? 'nav-active' : '' }}">
@@ -72,12 +72,14 @@
             <a href="{{ route('admin.master-data.jadwal-pelajaran.index') }}" class="nav-link {{ request()->routeIs('admin.master-data.jadwal-pelajaran.*') ? 'nav-active' : '' }}"><span class="nav-icon">▦</span><span>Jadwal Pelajaran</span></a>
         </section>
 
+        {{-- Disembunyikan sesuai keputusan navigasi Admin. Route Manajemen Materi/Tugas/Nilai tetap tersedia.
         <section>
             <p class="px-3 mb-2 text-[10px] font-bold tracking-[.12em] text-slate-400">PEMBELAJARAN</p>
             <a href="{{ route('admin.materi.index') }}" class="nav-link {{ request()->routeIs('admin.materi.*') ? 'nav-active' : '' }}"><span class="nav-icon">▧</span><span>Manajemen Materi</span></a>
             <a href="{{ route('admin.tugas.index') }}" class="nav-link {{ request()->routeIs('admin.tugas.*') ? 'nav-active' : '' }}"><span class="nav-icon">☷</span><span>Manajemen Tugas</span></a>
             <a href="{{ route('admin.nilai.index') }}" class="nav-link {{ request()->routeIs('admin.nilai.*') ? 'nav-active' : '' }}"><span class="nav-icon">▤</span><span>Manajemen Nilai</span></a>
         </section>
+        --}}
 
         <section>
             <p class="px-3 mb-2 text-[10px] font-bold tracking-[.12em] text-slate-400">VERIFIKASI & IZIN</p>
@@ -114,11 +116,14 @@
 </aside>
 
 <style>
-.nav-link{display:flex;align-items:center;gap:.7rem;padding:.62rem .78rem;border-radius:.65rem;color:#334155;font-size:.82rem;transition:background-color .15s ease,color .15s ease,box-shadow .15s ease;margin:.12rem 0}
+.nav-link{display:flex;align-items:center;gap:.7rem;padding:.68rem .82rem;border-radius:.72rem;color:#334155;font-size:.82rem;font-weight:500;transition:background-color .15s ease,color .15s ease,box-shadow .15s ease;margin:.12rem 0;min-height:40px}
 .dark .nav-link{color:#cbd5e1}
 .nav-link:not(.nav-active):hover{background:#eff6ff;color:#1d4ed8}
 .dark .nav-link:not(.nav-active):hover{background:#334155;color:#bfdbfe}
 .nav-link.nav-active,.nav-link.nav-active:hover,.nav-link.nav-active:focus{background:#2563eb!important;color:#fff!important;box-shadow:0 3px 8px #2563eb24}
 .nav-link.nav-active .nav-icon{color:#fff!important}
-.nav-icon{display:inline-grid;place-items:center;width:20px;font-size:17px;line-height:1;flex:none}
+.nav-icon{display:inline-grid;place-items:center;width:20px;font-size:17px;line-height:1;flex:none;opacity:.9}
+#adminSidebar nav section > p, #adminSidebar nav section > div:first-child{letter-spacing:.11em}
+#adminSidebar .nav-link:focus-visible{outline:2px solid #60a5fa;outline-offset:2px}
+@media (prefers-reduced-motion: reduce){.nav-link{transition:none}}
 </style>

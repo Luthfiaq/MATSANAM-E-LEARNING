@@ -6,7 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../services/siswa_learning_service.dart';
-import '../../../utils/constants.dart';
+import '../../../utils/theme_helpers.dart';
 import 'rekap_absensi_screen.dart';
 import 'status_pengajuan_screen.dart';
 import 'upload_surat_screen.dart';
@@ -66,17 +66,26 @@ class _AbsensiScreenState extends State<AbsensiScreen> {
       _processing = true;
       _message = 'Memvalidasi QR dan lokasi perangkat…';
     });
-    await _scannerController.stop();
-
     try {
-      // QR payload is signed by a server-stored one-time token. The server still
-      // decides the real location mode; this flag only avoids asking for GPS
-      // when the active session is configured as unrestricted.
-      final locationMode = decoded['mode_lokasi']?.toString() ?? 'mts';
+      await _scannerController.stop();
+      // QR payload hanya menjadi petunjuk UI. Backend tetap memvalidasi mode
+      // lokasi berdasarkan sesi yang tersimpan di database.
+      final locationMode = (decoded['mode_lokasi'] ?? 'sekolah')
+          .toString()
+          .trim()
+          .toLowerCase();
+      final isFreeLocation =
+          locationMode == 'bebas' ||
+          locationMode == 'dimana_saja' ||
+          locationMode == 'dimana saja';
+
       Position? position;
-      if (locationMode != 'bebas') {
+      if (!isFreeLocation) {
         position = await _getCurrentPosition();
       }
+
+      // Pada mode bebas, latitude/longitude memang null. SiswaLearningService
+      // harus menerima double? dan tidak mengirim field GPS yang null.
       final response = await _service.scanQr(
         qrData: rawValue,
         latitude: position?.latitude,
@@ -150,10 +159,11 @@ class _AbsensiScreenState extends State<AbsensiScreen> {
     try {
       await _scannerController.start();
     } catch (error) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _message = 'Kamera tidak dapat dimulai: ${_cleanError(error)}',
         );
+      }
     }
   }
 
@@ -188,6 +198,7 @@ class _AbsensiScreenState extends State<AbsensiScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(title: const Text('Presensi QR')),
@@ -204,7 +215,7 @@ class _AbsensiScreenState extends State<AbsensiScreen> {
                   color: theme.dividerColor.withValues(alpha: .55),
                 ),
               ),
-              child: const Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
@@ -215,7 +226,7 @@ class _AbsensiScreenState extends State<AbsensiScreen> {
                   Text(
                     'Arahkan kamera ke QR sesi yang sedang aktif. Aplikasi akan memeriksa token, kelas, masa berlaku, dan lokasi sesuai radius yang ditetapkan Guru.',
                     style: TextStyle(
-                      color: AppColors.textSecondary,
+                      color: colorScheme.onSurfaceVariant,
                       height: 1.4,
                       fontSize: 12,
                     ),
@@ -356,14 +367,16 @@ class _AbsensiScreenState extends State<AbsensiScreen> {
                 padding: const EdgeInsets.all(13),
                 decoration: BoxDecoration(
                   color: _success
-                      ? AppColors.successLight
-                      : AppColors.warningLight,
+                      ? context.matsanamSoftSuccess
+                      : context.matsanamSoftWarning,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   _message!,
                   style: TextStyle(
-                    color: _success ? AppColors.success : AppColors.warning,
+                    color: _success
+                        ? context.matsanamSuccess
+                        : context.matsanamWarning,
                     fontWeight: FontWeight.w600,
                     fontSize: 12,
                   ),
@@ -414,12 +427,12 @@ class _AbsensiScreenState extends State<AbsensiScreen> {
               label: const Text('Lihat Riwayat Absensi'),
             ),
             const SizedBox(height: 5),
-            const Text(
+            Text(
               'Catatan: izin kamera dan lokasi diperlukan. Di Chrome, izinkan keduanya untuk localhost atau gunakan HTTPS saat menguji melalui alamat jaringan.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 10,
-                color: AppColors.textSecondary,
+                color: colorScheme.onSurfaceVariant,
                 height: 1.4,
               ),
             ),

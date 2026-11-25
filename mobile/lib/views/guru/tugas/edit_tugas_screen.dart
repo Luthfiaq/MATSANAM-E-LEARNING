@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../services/guru_tugas_service.dart';
 import '../../../utils/constants.dart';
+import '../../../utils/theme_helpers.dart';
 import '../../../utils/camera_task_attachment.dart';
 
 class EditTugasScreen extends StatefulWidget {
@@ -237,16 +238,16 @@ class _EditTugasScreenState extends State<EditTugasScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Hapus lampiran?'),
+        title: Text('Hapus lampiran?'),
         content: Text('File "$name" akan dihapus dari tugas ini.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Batal'),
+            child: Text('Batal'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Hapus'),
+            child: Text('Hapus'),
           ),
         ],
       ),
@@ -281,18 +282,18 @@ class _EditTugasScreenState extends State<EditTugasScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Hapus semua lampiran?'),
+        title: Text('Hapus semua lampiran?'),
         content: Text(
           '${_existingFiles.length} file lampiran tugas akan dihapus. Tindakan ini tidak dapat dibatalkan.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Batal'),
+            child: Text('Batal'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Hapus semua'),
+            child: Text('Hapus semua'),
           ),
         ],
       ),
@@ -462,22 +463,22 @@ class _EditTugasScreenState extends State<EditTugasScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.matsanamPage,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: context.matsanamSurface,
         elevation: 0,
         centerTitle: false,
         leading: IconButton(
           onPressed: () => Navigator.pop(context),
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new_rounded,
-            color: AppColors.textPrimary,
+            color: context.matsanamText,
           ),
         ),
-        title: const Text(
+        title: Text(
           'Edit Tugas',
           style: TextStyle(
-            color: AppColors.textPrimary,
+            color: context.matsanamText,
             fontSize: 17,
             fontWeight: FontWeight.w700,
           ),
@@ -501,8 +502,8 @@ class _EditTugasScreenState extends State<EditTugasScreen> {
                           ),
                           child: Text(
                             _scheduleText(),
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
+                            style: TextStyle(
+                              color: context.matsanamText,
                             ),
                           ),
                         ),
@@ -554,13 +555,13 @@ class _EditTugasScreenState extends State<EditTugasScreen> {
                             width: double.infinity,
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: AppColors.surface,
+                              color: context.matsanamSurface,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.border),
+                              border: Border.all(color: context.matsanamBorder),
                             ),
                             child: Row(
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.access_time_rounded,
                                   color: AppColors.warning,
                                 ),
@@ -572,15 +573,15 @@ class _EditTugasScreenState extends State<EditTugasScreen> {
                                         : _formatDateTime(_selectedDeadline!),
                                     style: TextStyle(
                                       color: _selectedDeadline == null
-                                          ? AppColors.textSecondary
-                                          : AppColors.textPrimary,
+                                          ? context.matsanamTextSecondary
+                                          : context.matsanamText,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ),
-                                const Icon(
+                                Icon(
                                   Icons.chevron_right_rounded,
-                                  color: AppColors.textSecondary,
+                                  color: context.matsanamTextSecondary,
                                 ),
                               ],
                             ),
@@ -598,7 +599,7 @@ class _EditTugasScreenState extends State<EditTugasScreen> {
                             children: [
                               Text(
                                 '${_existingFiles.length} lampiran tersimpan',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -606,8 +607,8 @@ class _EditTugasScreenState extends State<EditTugasScreen> {
                                 onPressed: (_isSaving || _isManagingFiles)
                                     ? null
                                     : _deleteAllExistingFiles,
-                                icon: const Icon(Icons.delete_sweep_outlined),
-                                label: const Text('Hapus semua'),
+                                icon: Icon(Icons.delete_sweep_outlined),
+                                label: Text('Hapus semua'),
                               ),
                             ],
                           ),
@@ -617,7 +618,7 @@ class _EditTugasScreenState extends State<EditTugasScreen> {
                             final available = file['available'] != false;
                             return ListTile(
                               contentPadding: EdgeInsets.zero,
-                              leading: const Icon(
+                              leading: Icon(
                                 Icons.insert_drive_file_outlined,
                               ),
                               title: Text(
@@ -641,14 +642,14 @@ class _EditTugasScreenState extends State<EditTugasScreen> {
                                             !available)
                                         ? null
                                         : () => _downloadExistingFile(file),
-                                    icon: const Icon(Icons.download_outlined),
+                                    icon: Icon(Icons.download_outlined),
                                   ),
                                   IconButton(
                                     tooltip: 'Hapus file ini',
                                     onPressed: (_isSaving || _isManagingFiles)
                                         ? null
                                         : () => _deleteExistingFile(file),
-                                    icon: const Icon(
+                                    icon: Icon(
                                       Icons.delete_outline_rounded,
                                     ),
                                   ),
@@ -656,11 +657,11 @@ class _EditTugasScreenState extends State<EditTugasScreen> {
                               ),
                             );
                           }),
-                          const Divider(),
+                          Divider(),
                         ] else
-                          const Text(
+                          Text(
                             'Belum ada lampiran pada tugas ini.',
-                            style: TextStyle(color: AppColors.textSecondary),
+                            style: TextStyle(color: context.matsanamTextSecondary),
                           ),
                         Row(
                           children: [
@@ -669,8 +670,8 @@ class _EditTugasScreenState extends State<EditTugasScreen> {
                                 onPressed: (_isSaving || _isManagingFiles)
                                     ? null
                                     : _pickFiles,
-                                icon: const Icon(Icons.upload_file_rounded),
-                                label: const Text('Pilih File'),
+                                icon: Icon(Icons.upload_file_rounded),
+                                label: Text('Pilih File'),
                                 style: OutlinedButton.styleFrom(
                                   minimumSize: const Size.fromHeight(48),
                                 ),
@@ -682,8 +683,8 @@ class _EditTugasScreenState extends State<EditTugasScreen> {
                                 onPressed: (_isSaving || _isManagingFiles)
                                     ? null
                                     : _capturePhoto,
-                                icon: const Icon(Icons.camera_alt_outlined),
-                                label: const Text('Ambil Foto'),
+                                icon: Icon(Icons.camera_alt_outlined),
+                                label: Text('Ambil Foto'),
                                 style: OutlinedButton.styleFrom(
                                   minimumSize: const Size.fromHeight(48),
                                 ),
@@ -692,10 +693,10 @@ class _EditTugasScreenState extends State<EditTugasScreen> {
                           ],
                         ),
                         const SizedBox(height: 6),
-                        const Text(
+                        Text(
                           'Setiap file maksimal 20 MB. Maksimal 20 file per proses tambah; file baru ditambahkan tanpa menghapus lampiran lama.',
                           style: TextStyle(
-                            color: AppColors.textSecondary,
+                            color: context.matsanamTextSecondary,
                             fontSize: 11,
                           ),
                         ),
@@ -705,9 +706,9 @@ class _EditTugasScreenState extends State<EditTugasScreen> {
                           const SizedBox(height: 4),
                           Text(
                             'Mengunggah lampiran ${(100 * (_uploadProgress ?? 0)).round()}%',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11,
-                              color: AppColors.textSecondary,
+                              color: context.matsanamTextSecondary,
                             ),
                           ),
                         ],
@@ -729,7 +730,7 @@ class _EditTugasScreenState extends State<EditTugasScreen> {
                             children: [
                               Text(
                                 '${_newFiles.length} file baru dipilih',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -737,8 +738,8 @@ class _EditTugasScreenState extends State<EditTugasScreen> {
                                 onPressed: (_isSaving || _isManagingFiles)
                                     ? null
                                     : () => setState(_newFiles.clear),
-                                icon: const Icon(Icons.delete_sweep_outlined),
-                                label: const Text('Hapus semua pilihan'),
+                                icon: Icon(Icons.delete_sweep_outlined),
+                                label: Text('Hapus semua pilihan'),
                               ),
                             ],
                           ),
@@ -747,7 +748,7 @@ class _EditTugasScreenState extends State<EditTugasScreen> {
                             final file = entry.value;
                             return ListTile(
                               contentPadding: EdgeInsets.zero,
-                              leading: const Icon(Icons.attach_file_rounded),
+                              leading: Icon(Icons.attach_file_rounded),
                               title: Text(
                                 file.name,
                                 maxLines: 2,
@@ -761,7 +762,7 @@ class _EditTugasScreenState extends State<EditTugasScreen> {
                                     : () => setState(
                                         () => _newFiles.removeAt(index),
                                       ),
-                                icon: const Icon(Icons.close_rounded),
+                                icon: Icon(Icons.close_rounded),
                               ),
                             );
                           }),
@@ -782,7 +783,7 @@ class _EditTugasScreenState extends State<EditTugasScreen> {
                                   color: Colors.white,
                                 ),
                               )
-                            : const Icon(Icons.check_rounded),
+                            : Icon(Icons.check_rounded),
                         label: Text(
                           _uploadFailed
                               ? 'Coba Simpan Lagi'
@@ -817,17 +818,17 @@ class _EditTugasScreenState extends State<EditTugasScreen> {
     width: double.infinity,
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
-      color: AppColors.surface,
+      color: context.matsanamSurface,
       borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: AppColors.border),
+      border: Border.all(color: context.matsanamBorder),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
-          style: const TextStyle(
-            color: AppColors.textPrimary,
+          style: TextStyle(
+            color: context.matsanamText,
             fontSize: 16,
             fontWeight: FontWeight.w700,
           ),
@@ -841,11 +842,11 @@ class _EditTugasScreenState extends State<EditTugasScreen> {
   InputDecoration _inputDecoration(String label) => InputDecoration(
     labelText: label,
     filled: true,
-    fillColor: AppColors.surface,
+    fillColor: context.matsanamSurface,
     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(10),
-      borderSide: BorderSide(color: AppColors.border),
+      borderSide: BorderSide(color: context.matsanamBorder),
     ),
   );
 

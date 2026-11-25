@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../config/api_config.dart';
 import '../../../utils/constants.dart';
+import '../../../utils/theme_helpers.dart';
 
 class TambahMateriScreen extends StatefulWidget {
   final Map<String, dynamic> initialSchedule;
@@ -310,16 +311,16 @@ class _TambahMateriScreenState extends State<TambahMateriScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.matsanamPage,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: context.matsanamSurface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           onPressed: () => Navigator.maybePop(context),
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          icon: Icon(Icons.arrow_back_ios_new_rounded),
         ),
-        title: const Text('Tambah Materi', style: AppTypography.heading3),
+        title: Text('Tambah Materi', style: context.matsanamHeading3),
       ),
       body: _isLoadingSchedules
           ? const Center(child: CircularProgressIndicator())
@@ -330,22 +331,22 @@ class _TambahMateriScreenState extends State<TambahMateriScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.event_busy_outlined,
                       size: 48,
-                      color: AppColors.textSecondary,
+                      color: context.matsanamTextSecondary,
                     ),
                     const SizedBox(height: 12),
                     Text(
                       _scheduleError!,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: AppColors.textSecondary),
+                      style: TextStyle(color: context.matsanamTextSecondary),
                     ),
                     const SizedBox(height: 16),
                     OutlinedButton.icon(
                       onPressed: _loadSchedules,
-                      icon: const Icon(Icons.refresh_rounded),
-                      label: const Text('Coba Lagi'),
+                      icon: Icon(Icons.refresh_rounded),
+                      label: Text('Coba Lagi'),
                     ),
                   ],
                 ),
@@ -367,7 +368,7 @@ class _TambahMateriScreenState extends State<TambahMateriScreen> {
                           DropdownButtonFormField<int>(
                             value: _selectedJadwalId,
                             isExpanded: true,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Mata Pelajaran & Kelas',
                               border: OutlineInputBorder(),
                             ),
@@ -403,7 +404,7 @@ class _TambahMateriScreenState extends State<TambahMateriScreen> {
                           TextFormField(
                             controller: _judulController,
                             textCapitalization: TextCapitalization.sentences,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Judul Materi',
                               hintText: 'Contoh: Sistem Persamaan Linear',
                               border: OutlineInputBorder(),
@@ -419,7 +420,7 @@ class _TambahMateriScreenState extends State<TambahMateriScreen> {
                             controller: _deskripsiController,
                             maxLines: 3,
                             textCapitalization: TextCapitalization.sentences,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Deskripsi',
                               hintText: 'Ringkasan isi materi...',
                               alignLabelWithHint: true,
@@ -477,12 +478,12 @@ class _TambahMateriScreenState extends State<TambahMateriScreen> {
                                     color: Colors.white,
                                   ),
                                 )
-                              : const Icon(Icons.cloud_upload_outlined),
+                              : Icon(Icons.cloud_upload_outlined),
                           label: Text(
                             _isSaving
                                 ? 'Menyimpan...'
                                 : 'Simpan & Terbitkan Materi',
-                            style: const TextStyle(fontWeight: FontWeight.w700),
+                            style: TextStyle(fontWeight: FontWeight.w700),
                           ),
                         ),
                       ),
@@ -501,9 +502,9 @@ class _TambahMateriScreenState extends State<TambahMateriScreen> {
   }) => Container(
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
-      color: AppColors.surface,
+      color: context.matsanamSurface,
       borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: AppColors.border),
+      border: Border.all(color: context.matsanamBorder),
       boxShadow: [
         BoxShadow(
           color: Colors.black.withValues(alpha: .025),
@@ -515,11 +516,11 @@ class _TambahMateriScreenState extends State<TambahMateriScreen> {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: AppTypography.heading3),
+        Text(title, style: context.matsanamHeading3),
         const SizedBox(height: 4),
         Text(
           subtitle,
-          style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+          style: TextStyle(color: context.matsanamTextSecondary, fontSize: 12),
         ),
         const SizedBox(height: 16),
         ...children,
@@ -534,7 +535,7 @@ class _TambahMateriScreenState extends State<TambahMateriScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.primaryLight,
+        color: context.matsanamSoftPrimary,
         borderRadius: BorderRadius.circular(13),
         border: Border.all(color: AppColors.primary.withValues(alpha: .25)),
       ),
@@ -551,21 +552,21 @@ class _TambahMateriScreenState extends State<TambahMateriScreen> {
           Text(
             _selectedFile?.name ?? 'Pilih file ${_selectedType.toUpperCase()}',
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
+            style: TextStyle(
+              color: context.matsanamText,
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'PDF atau video • Maksimal 10 MB',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+            style: TextStyle(color: context.matsanamTextSecondary, fontSize: 11),
           ),
           if (_selectedFile != null) ...[
             const SizedBox(height: 7),
             Text(
               '${(_selectedFile!.size / (1024 * 1024)).toStringAsFixed(2)} MB',
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.primary,
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
@@ -580,7 +581,7 @@ class _TambahMateriScreenState extends State<TambahMateriScreen> {
   Widget _linkField() => TextFormField(
     controller: _linkController,
     keyboardType: TextInputType.url,
-    decoration: const InputDecoration(
+    decoration: InputDecoration(
       labelText: 'URL Materi',
       hintText: 'https://...',
       prefixIcon: Icon(Icons.link_rounded),

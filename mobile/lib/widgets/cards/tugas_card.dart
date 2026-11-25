@@ -7,10 +7,8 @@ class TugasCard extends StatelessWidget {
   final bool prioritas;
   final bool deadlineMepet;
   final String deadline;
-
   final String statusDeadline;
   final Color statusColor;
-
   final VoidCallback onTap;
 
   const TugasCard({
@@ -21,23 +19,26 @@ class TugasCard extends StatelessWidget {
     required this.prioritas,
     required this.deadlineMepet,
     required this.deadline,
-
     required this.statusDeadline,
     required this.statusColor,
-
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final neutralPanel = colors.surfaceContainerHighest;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: colors.outlineVariant),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: dark ? .12 : .035),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -45,7 +46,6 @@ class TugasCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // GARIS ATAS
           if (prioritas)
             Container(
               height: 4,
@@ -59,7 +59,6 @@ class TugasCard extends StatelessWidget {
                 ),
               ),
             ),
-
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -67,32 +66,25 @@ class TugasCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Icon(
-                      Icons.functions,
-                      size: 16,
-                      color: Color(0xFF2563EB),
-                    ),
-
+                    Icon(Icons.functions, size: 16, color: colors.primary),
                     const SizedBox(width: 6),
-
                     Expanded(
                       child: Text(
-                        "$mapel • $guru",
-                        style: const TextStyle(
+                        '$mapel • $guru',
+                        style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF2563EB),
+                          color: colors.primary,
                         ),
                       ),
                     ),
-
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
                         vertical: 5,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.red.shade50,
+                        color: statusColor.withValues(alpha: dark ? .2 : .1),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
@@ -106,32 +98,32 @@ class TugasCard extends StatelessWidget {
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 8),
-
                 SizedBox(
                   width: double.infinity,
                   child: Text(
                     judul,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF1E293B),
+                      color: colors.onSurface,
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 10),
-
                 Row(
                   children: [
-                    const Icon(Icons.access_time, size: 16, color: Colors.red),
+                    Icon(
+                      Icons.access_time,
+                      size: 16,
+                      color: deadlineMepet ? colors.error : colors.onSurfaceVariant,
+                    ),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         deadline,
-                        style: const TextStyle(
-                          color: Colors.red,
+                        style: TextStyle(
+                          color: deadlineMepet ? colors.error : colors.onSurfaceVariant,
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
                         ),
@@ -139,91 +131,49 @@ class TugasCard extends StatelessWidget {
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 6),
-
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          "🏆 Bobot: 10 Poin",
-                          style: TextStyle(fontSize: 12),
-                        ),
-                      ),
-
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          "👤 Tugas Mandiri",
-                          style: TextStyle(fontSize: 12),
-                        ),
-                      ),
+                      _MetaPill(label: '🏆 Bobot: 10 Poin', color: neutralPanel, textColor: colors.onSurfaceVariant),
+                      _MetaPill(label: '👤 Tugas Mandiri', color: neutralPanel, textColor: colors.onSurfaceVariant),
                     ],
                   ),
                 ),
                 const SizedBox(height: 12),
-
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
+                    color: neutralPanel,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Text(
-                    "Kerjakan latihan soal dan unggah foto jawaban dengan jelas sesuai instruksi guru.",
-                    style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
+                  child: Text(
+                    'Kerjakan latihan soal dan unggah foto jawaban dengan jelas sesuai instruksi guru.',
+                    style: TextStyle(color: colors.onSurfaceVariant, fontSize: 13),
                   ),
                 ),
-
                 const SizedBox(height: 10),
-
                 SizedBox(
                   width: double.infinity,
                   height: 48,
                   child: ElevatedButton(
                     onPressed: onTap,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: deadlineMepet
-                          ? const Color(0xFF2563EB)
-                          : const Color(0xFFFFFFFF),
-
-                      side: deadlineMepet
-                          ? BorderSide.none
-                          : const BorderSide(color: Color(0xFFD6DCE5)),
-
+                      backgroundColor: deadlineMepet ? colors.primary : colors.surface,
+                      foregroundColor: deadlineMepet ? colors.onPrimary : colors.primary,
+                      side: deadlineMepet ? BorderSide.none : BorderSide(color: colors.outlineVariant),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
                     child: Text(
                       deadlineMepet
-                          ? "🚀 Kumpulkan Tugas Sekarang"
-                          : "📖 Buka & Kerjakan",
-                      style: TextStyle(
-                        color: deadlineMepet
-                            ? Colors.white
-                            : const Color(0xFF2563EB),
-                        fontWeight: FontWeight.w600,
-                      ),
+                          ? '🚀 Kumpulkan Tugas Sekarang'
+                          : '📖 Buka & Kerjakan',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ),
                 ),
@@ -234,4 +184,18 @@ class TugasCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _MetaPill extends StatelessWidget {
+  const _MetaPill({required this.label, required this.color, required this.textColor});
+  final String label;
+  final Color color;
+  final Color textColor;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(8)),
+    child: Text(label, style: TextStyle(fontSize: 12, color: textColor)),
+  );
 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../services/guru_tugas_service.dart';
 import '../../../utils/constants.dart';
+import '../../../utils/theme_helpers.dart';
 import '../../../utils/camera_task_attachment.dart';
 
 class TambahTugasScreen extends StatefulWidget {
@@ -331,22 +332,22 @@ class _TambahTugasScreenState extends State<TambahTugasScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.matsanamPage,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: context.matsanamSurface,
         elevation: 0,
         centerTitle: false,
         leading: IconButton(
           onPressed: () => Navigator.pop(context),
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new_rounded,
-            color: AppColors.textPrimary,
+            color: context.matsanamText,
           ),
         ),
-        title: const Text(
+        title: Text(
           'Buat Tugas Baru',
           style: TextStyle(
-            color: AppColors.textPrimary,
+            color: context.matsanamText,
             fontSize: 17,
             fontWeight: FontWeight.w700,
           ),
@@ -420,13 +421,13 @@ class _TambahTugasScreenState extends State<TambahTugasScreen> {
                             width: double.infinity,
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: AppColors.surface,
+                              color: context.matsanamSurface,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.border),
+                              border: Border.all(color: context.matsanamBorder),
                             ),
                             child: Row(
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.access_time_rounded,
                                   color: AppColors.warning,
                                 ),
@@ -438,15 +439,15 @@ class _TambahTugasScreenState extends State<TambahTugasScreen> {
                                         : _formatDateTime(_selectedDeadline!),
                                     style: TextStyle(
                                       color: _selectedDeadline == null
-                                          ? AppColors.textSecondary
-                                          : AppColors.textPrimary,
+                                          ? context.matsanamTextSecondary
+                                          : context.matsanamText,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ),
-                                const Icon(
+                                Icon(
                                   Icons.chevron_right_rounded,
-                                  color: AppColors.textSecondary,
+                                  color: context.matsanamTextSecondary,
                                 ),
                               ],
                             ),
@@ -463,8 +464,8 @@ class _TambahTugasScreenState extends State<TambahTugasScreen> {
                             Expanded(
                               child: OutlinedButton.icon(
                                 onPressed: _isSaving ? null : _pickFiles,
-                                icon: const Icon(Icons.upload_file_rounded),
-                                label: const Text('Pilih File'),
+                                icon: Icon(Icons.upload_file_rounded),
+                                label: Text('Pilih File'),
                                 style: OutlinedButton.styleFrom(
                                   minimumSize: const Size.fromHeight(48),
                                 ),
@@ -474,8 +475,8 @@ class _TambahTugasScreenState extends State<TambahTugasScreen> {
                             Expanded(
                               child: OutlinedButton.icon(
                                 onPressed: _isSaving ? null : _capturePhoto,
-                                icon: const Icon(Icons.camera_alt_outlined),
-                                label: const Text('Ambil Foto'),
+                                icon: Icon(Icons.camera_alt_outlined),
+                                label: Text('Ambil Foto'),
                                 style: OutlinedButton.styleFrom(
                                   minimumSize: const Size.fromHeight(48),
                                 ),
@@ -484,10 +485,10 @@ class _TambahTugasScreenState extends State<TambahTugasScreen> {
                           ],
                         ),
                         const SizedBox(height: 6),
-                        const Text(
+                        Text(
                           'Setiap file maksimal 20 MB. Maksimal 20 file dalam satu unggahan.',
                           style: TextStyle(
-                            color: AppColors.textSecondary,
+                            color: context.matsanamTextSecondary,
                             fontSize: 11,
                           ),
                         ),
@@ -497,9 +498,9 @@ class _TambahTugasScreenState extends State<TambahTugasScreen> {
                           const SizedBox(height: 4),
                           Text(
                             'Mengunggah lampiran ${(100 * (_uploadProgress ?? 0)).round()}%',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11,
-                              color: AppColors.textSecondary,
+                              color: context.matsanamTextSecondary,
                             ),
                           ),
                         ],
@@ -521,7 +522,7 @@ class _TambahTugasScreenState extends State<TambahTugasScreen> {
                             children: [
                               Text(
                                 '${_selectedFiles.length} file dipilih',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -529,8 +530,8 @@ class _TambahTugasScreenState extends State<TambahTugasScreen> {
                                 onPressed: _isSaving
                                     ? null
                                     : () => setState(_selectedFiles.clear),
-                                icon: const Icon(Icons.delete_sweep_outlined),
-                                label: const Text('Hapus semua'),
+                                icon: Icon(Icons.delete_sweep_outlined),
+                                label: Text('Hapus semua'),
                               ),
                             ],
                           ),
@@ -539,7 +540,7 @@ class _TambahTugasScreenState extends State<TambahTugasScreen> {
                             final file = entry.value;
                             return ListTile(
                               contentPadding: EdgeInsets.zero,
-                              leading: const Icon(Icons.attach_file_rounded),
+                              leading: Icon(Icons.attach_file_rounded),
                               title: Text(
                                 file.name,
                                 maxLines: 2,
@@ -553,7 +554,7 @@ class _TambahTugasScreenState extends State<TambahTugasScreen> {
                                     : () => setState(
                                         () => _selectedFiles.removeAt(index),
                                       ),
-                                icon: const Icon(Icons.delete_outline_rounded),
+                                icon: Icon(Icons.delete_outline_rounded),
                               ),
                             );
                           }),
@@ -574,7 +575,7 @@ class _TambahTugasScreenState extends State<TambahTugasScreen> {
                                   color: Colors.white,
                                 ),
                               )
-                            : const Icon(Icons.check_rounded),
+                            : Icon(Icons.check_rounded),
                         label: Text(
                           _uploadFailed ? 'Coba Simpan Lagi' : 'Simpan Tugas',
                           style: TextStyle(
@@ -606,14 +607,14 @@ class _TambahTugasScreenState extends State<TambahTugasScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.cloud_off_rounded, size: 42, color: AppColors.error),
+          Icon(Icons.cloud_off_rounded, size: 42, color: AppColors.error),
           const SizedBox(height: 12),
           Text(_loadError!, textAlign: TextAlign.center),
           const SizedBox(height: 12),
           ElevatedButton.icon(
             onPressed: _loadSchedules,
-            icon: const Icon(Icons.refresh_rounded),
-            label: const Text('Coba Lagi'),
+            icon: Icon(Icons.refresh_rounded),
+            label: Text('Coba Lagi'),
           ),
         ],
       ),
@@ -622,7 +623,7 @@ class _TambahTugasScreenState extends State<TambahTugasScreen> {
 
   Widget _buildScheduleField() {
     if (_schedules.isEmpty) {
-      return const Text(
+      return Text(
         'Belum ada jadwal mengajar yang dapat dipilih. Periksa penugasan Guru di web admin.',
       );
     }
@@ -653,17 +654,17 @@ class _TambahTugasScreenState extends State<TambahTugasScreen> {
     width: double.infinity,
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
-      color: AppColors.surface,
+      color: context.matsanamSurface,
       borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: AppColors.border),
+      border: Border.all(color: context.matsanamBorder),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
-          style: const TextStyle(
-            color: AppColors.textPrimary,
+          style: TextStyle(
+            color: context.matsanamText,
             fontSize: 16,
             fontWeight: FontWeight.w700,
           ),
@@ -677,11 +678,11 @@ class _TambahTugasScreenState extends State<TambahTugasScreen> {
   InputDecoration _inputDecoration(String label) => InputDecoration(
     labelText: label,
     filled: true,
-    fillColor: AppColors.surface,
+    fillColor: context.matsanamSurface,
     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(10),
-      borderSide: BorderSide(color: AppColors.border),
+      borderSide: BorderSide(color: context.matsanamBorder),
     ),
   );
 

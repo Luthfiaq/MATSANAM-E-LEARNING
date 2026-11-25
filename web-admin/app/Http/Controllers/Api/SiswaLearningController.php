@@ -828,14 +828,36 @@ class SiswaLearningController extends Controller
         $siswa = $this->siswa($request);
         $validated = $request->validate([
             'hari' => ['nullable', Rule::in(['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'])],
+            'tanggal' => ['nullable', 'date'],
         ]);
-        $jadwal = $this->jadwalKelasQuery($siswa)
-            ->with(['mataPelajaran', 'guru'])
-            ->when(! empty($validated['hari']), fn ($query) => $query->where('hari', $validated['hari']))
-            ->orderByRaw("CASE hari WHEN 'Senin' THEN 1 WHEN 'Selasa' THEN 2 WHEN 'Rabu' THEN 3 WHEN 'Kamis' THEN 4 WHEN 'Jumat' THEN 5 WHEN 'Sabtu' THEN 6 ELSE 7 END")
-            ->orderBy('jam_mulai')
-            ->get()
-            ->map(fn ($item) => [
+
+        $hari = $validated['hari'] ?? null;
+        $tanggal = isset($validated['tanggal'])
+            ? Carbon::parse($validated['tanggal'])->toDateString()
+            : null;
+        if ($tanggal !== null) {
+            $hari = [1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu'][Carbon::parse($tanggal)->dayOfWeekIso] ?? null;
+        }
+
+        $jadwalRows = ($tanggal !== null && $hari === null)
+            ? collect()
+            : $this->jadwalKelasQuery($siswa)
+                ->with(['mataPelajaran', 'guru'])
+                ->when($hari, fn ($query) => $query->where('hari', $hari))
+                ->orderBy('jam_mulai')
+                ->get();
+        $attendanceBySchedule = $tanggal !== null
+            ? AbsensiHarian::query()
+                ->where('siswa_id', $siswa->id)
+                ->whereDate('tanggal', $tanggal)
+                ->whereIn('jadwal_id', $jadwalRows->pluck('id'))
+                ->get()
+                ->keyBy('jadwal_id')
+            : collect();
+
+        $jadwal = $jadwalRows->map(function ($item) use ($attendanceBySchedule) {
+            $attendance = $attendanceBySchedule->get($item->id);
+            return [
                 'id' => $item->id,
                 'hari' => $item->hari,
                 'jam_mulai' => substr($item->jam_mulai, 0, 5),
@@ -844,7 +866,10 @@ class SiswaLearningController extends Controller
                 'mapel_id' => $item->mapel_id,
                 'guru' => $item->guru?->nama_lengkap,
                 'ruangan' => $item->ruangan,
-            ])->values();
+                'absensi_status' => $attendance?->status,
+                'absensi_keterangan' => $attendance?->keterangan,
+            ];
+        })->values();
 
         return response()->json([
             'success' => true,
@@ -877,6 +902,7 @@ class SiswaLearningController extends Controller
         $items = $query->paginate(20)->withQueryString();
         $items->getCollection()->transform(fn ($item) => [
             'id' => $item->id,
+            'jadwal_id' => $item->jadwal_id,
             'tanggal' => $item->tanggal?->toDateString(),
             'status' => $item->status,
             'waktu_absen' => $item->waktu_absen,
@@ -915,10 +941,21 @@ class SiswaLearningController extends Controller
         $siswa = $this->siswa($request);
         $validated = $request->validate([
             'qr_data' => ['required', 'string', 'max:5000'],
-            'latitude' => ['required', 'numeric', 'between:-90,90'],
-            'longitude' => ['required', 'numeric', 'between:-180,180'],
-            'accuracy' => ['nullable', 'numeric', 'min:0', 'max:1000'],
+            // GPS is conditional: mode bebas does not require coordinates.
+            // The session's persisted mode below is the source of truth.
+            'latitude' => ['sometimes', 'nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['sometimes', 'nullable', 'numeric', 'between:-180,180'],
+            'accuracy' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:1000'],
         ]);
+
+        $hasLatitude = $request->filled('latitude');
+        $hasLongitude = $request->filled('longitude');
+        if ($hasLatitude !== $hasLongitude) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Koordinat latitude dan longitude harus dikirim berpasangan.',
+            ], 422);
+        }
 
         $payload = json_decode($validated['qr_data'], true);
         if (! is_array($payload) || empty($payload['sesi_id']) || empty($payload['qr_token'])) {
@@ -961,34 +998,59 @@ class SiswaLearningController extends Controller
             return response()->json(['success' => false, 'message' => 'Sesi ini bukan bagian dari periode akademik aktif.'], 409);
         }
 
-        $latitude = (float) $validated['latitude'];
-        $longitude = (float) $validated['longitude'];
-        $distance = $this->distanceMeters(
-            $latitude,
-            $longitude,
-            (float) $sesi->lokasi_latitude,
-            (float) $sesi->lokasi_longitude
-        );
-        $radius = max(1, (int) $sesi->radius_meter);
-        $accuracy = isset($validated['accuracy']) ? (float) $validated['accuracy'] : null;
-        if ($accuracy !== null && $accuracy > $radius) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Akurasi lokasi belum cukup untuk radius presensi. Pindah ke area terbuka dan coba lagi.',
-                'data' => ['akurasi_meter' => (int) round($accuracy), 'radius_meter' => $radius],
-            ], 422);
-        }
-        if ($distance > $radius) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Lokasi Anda berada di luar radius presensi yang ditentukan Guru.',
-                'data' => ['jarak_meter' => (int) round($distance), 'radius_meter' => $radius],
-            ], 422);
+        // Never trust mode_lokasi from the QR payload or the student's device.
+        // Read it from the attendance session saved by the Guru endpoint.
+        $modeLokasi = strtolower(trim((string) ($sesi->mode_lokasi ?? 'mts')));
+        $isFreeLocation = $modeLokasi === 'bebas';
+        $distance = null;
+        $radius = null;
+
+        if (! $isFreeLocation) {
+            if (! $hasLatitude || ! $hasLongitude) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Lokasi perangkat diperlukan untuk presensi di area sekolah. Aktifkan GPS lalu pindai kembali.',
+                ], 422);
+            }
+
+            if ($sesi->lokasi_latitude === null || $sesi->lokasi_longitude === null) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Koordinat lokasi sekolah pada sesi ini tidak tersedia. Minta Guru membuka sesi baru.',
+                ], 409);
+            }
+
+            $latitude = (float) $validated['latitude'];
+            $longitude = (float) $validated['longitude'];
+            $radius = max(1, (int) ($sesi->radius_meter ?? config('absensi.default_radius_meter', 150)));
+            $distance = $this->distanceMeters(
+                $latitude,
+                $longitude,
+                (float) $sesi->lokasi_latitude,
+                (float) $sesi->lokasi_longitude
+            );
+            $accuracy = isset($validated['accuracy']) ? (float) $validated['accuracy'] : null;
+
+            if ($accuracy !== null && $accuracy > $radius) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akurasi lokasi belum cukup untuk radius presensi. Pindah ke area terbuka dan coba lagi.',
+                    'data' => ['akurasi_meter' => (int) round($accuracy), 'radius_meter' => $radius],
+                ], 422);
+            }
+
+            if ($distance > $radius) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Lokasi Anda berada di luar radius presensi yang ditentukan Guru.',
+                    'data' => ['jarak_meter' => (int) round($distance), 'radius_meter' => $radius],
+                ], 422);
+            }
         }
 
         $schoolDateForDuplicateCheck = null;
         try {
-            $result = DB::transaction(function () use ($siswa, $sesi, $validated, $distance, $radius, &$schoolDateForDuplicateCheck) {
+            $result = DB::transaction(function () use ($siswa, $sesi, $validated, $distance, $radius, $modeLokasi, &$schoolDateForDuplicateCheck) {
                 // Re-read and lock the session: a teacher may have stopped it or
                 // regenerated its QR after the first validation above.
                 $lockedSession = AbsensiSesi::with('jadwal')
@@ -1043,6 +1105,16 @@ class SiswaLearningController extends Controller
                     ];
                 }
 
+                // Session location mode is immutable for this flow. Check it
+                // again after locking so the decision still matches the record.
+                $lockedModeLokasi = strtolower(trim((string) ($lockedSession->mode_lokasi ?? 'mts')));
+                if ($lockedModeLokasi !== $modeLokasi) {
+                    return [
+                        'error' => 'Mode lokasi sesi berubah. Silakan pindai QR terbaru dari Guru.',
+                        'status' => 409,
+                    ];
+                }
+
                 $recordedAtSchool = $recordedAtUtc->copy()->setTimezone('Asia/Jakarta');
                 $schoolDate = $recordedAtSchool->toDateString();
                 $schoolDateForDuplicateCheck = $schoolDate;
@@ -1069,7 +1141,9 @@ class SiswaLearningController extends Controller
                     'status' => 'hadir',
                     'waktu_absen' => $recordedAtSchool->format('H:i:s'),
                     'metode' => 'qr',
-                    'keterangan' => 'Presensi QR sesi #' . $lockedSession->id . ' (jarak ' . (int) round($distance) . ' meter).',
+                    'keterangan' => $distance === null
+                        ? 'Presensi QR sesi #' . $lockedSession->id . ' (mode bebas).'
+                        : 'Presensi QR sesi #' . $lockedSession->id . ' (jarak ' . (int) round($distance) . ' meter).',
                 ]);
 
                 return [
@@ -1118,7 +1192,8 @@ class SiswaLearningController extends Controller
                 'waktu_absen' => $recordedTime,
                 'tanggal' => $today,
                 'mapel' => $sesi->jadwal->mataPelajaran?->nama,
-                'jarak_meter' => (int) round($distance),
+                'mode_lokasi' => $modeLokasi,
+                'jarak_meter' => $distance === null ? null : (int) round($distance),
                 'radius_meter' => $radius,
             ],
         ], 201);
@@ -1138,7 +1213,7 @@ class SiswaLearningController extends Controller
     {
         $siswa = $this->siswa($request);
         $fileService = app(SuratAbsensiFileService::class);
-        $surat = SuratAbsensi::with('verifikator')
+        $surat = SuratAbsensi::with(['verifikator', 'jadwalAcuan.mataPelajaran'])
             ->where('siswa_id', $siswa->id)
             ->latest()
             ->get()
@@ -1148,6 +1223,13 @@ class SiswaLearningController extends Controller
                 return [
                     'id' => $item->id,
                     'jenis' => $item->jenis,
+                    'cakupan' => $item->cakupan ?: 'sehari_penuh',
+                    'jadwal_acuan' => $item->jadwalAcuan ? [
+                        'id' => $item->jadwalAcuan->id,
+                        'mapel' => $item->jadwalAcuan->mataPelajaran?->nama,
+                        'jam_mulai' => substr((string) $item->jadwalAcuan->jam_mulai, 0, 5),
+                        'jam_selesai' => substr((string) $item->jadwalAcuan->jam_selesai, 0, 5),
+                    ] : null,
                     'tanggal_mulai' => $item->tanggal_mulai?->toDateString(),
                     'tanggal_selesai' => $item->tanggal_selesai?->toDateString(),
                     'alasan' => $item->alasan,

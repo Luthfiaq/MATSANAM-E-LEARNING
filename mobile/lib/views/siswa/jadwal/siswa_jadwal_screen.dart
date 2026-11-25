@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../services/siswa_learning_service.dart';
-import '../../../utils/constants.dart';
 
 class SiswaJadwalScreen extends StatefulWidget {
   const SiswaJadwalScreen({super.key});
@@ -83,7 +82,7 @@ class _SiswaJadwalScreenState extends State<SiswaJadwalScreen> {
                   ),
                 )
               : _items.isEmpty
-              ? const Center(
+              ? Center(
                   child: Padding(
                     padding: EdgeInsets.all(28),
                     child: Column(
@@ -92,7 +91,7 @@ class _SiswaJadwalScreenState extends State<SiswaJadwalScreen> {
                         Icon(
                           Icons.event_busy_outlined,
                           size: 44,
-                          color: AppColors.textMuted,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                         SizedBox(height: 10),
                         Text(
@@ -103,7 +102,7 @@ class _SiswaJadwalScreenState extends State<SiswaJadwalScreen> {
                         Text(
                           'Tidak ada jadwal pelajaran pada hari ini.',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: AppColors.textSecondary),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                         ),
                       ],
                     ),
@@ -138,16 +137,16 @@ class _SiswaJadwalScreenState extends State<SiswaJadwalScreen> {
                                 children: [
                                   Text(
                                     '${item['jam_mulai'] ?? '-'}',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontWeight: FontWeight.w800,
-                                      color: AppColors.primary,
+                                      color: Theme.of(context).colorScheme.primary,
                                     ),
                                   ),
                                   Text(
                                     '${item['jam_selesai'] ?? '-'}',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 12,
-                                      color: AppColors.textSecondary,
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                                     ),
                                   ),
                                 ],
@@ -157,7 +156,7 @@ class _SiswaJadwalScreenState extends State<SiswaJadwalScreen> {
                               width: 3,
                               height: 58,
                               decoration: BoxDecoration(
-                                color: AppColors.primary,
+                                color: Theme.of(context).colorScheme.primary,
                                 borderRadius: BorderRadius.circular(3),
                               ),
                             ),
@@ -176,15 +175,15 @@ class _SiswaJadwalScreenState extends State<SiswaJadwalScreen> {
                                   const SizedBox(height: 5),
                                   Text(
                                     'Guru: ${item['guru'] ?? '-'}',
-                                    style: const TextStyle(
-                                      color: AppColors.textSecondary,
+                                    style: TextStyle(
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                                       fontSize: 12,
                                     ),
                                   ),
                                   Text(
                                     'Ruang: ${item['ruangan'] ?? '-'}',
-                                    style: const TextStyle(
-                                      color: AppColors.textSecondary,
+                                    style: TextStyle(
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                                       fontSize: 12,
                                     ),
                                   ),
