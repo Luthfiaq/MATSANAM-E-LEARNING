@@ -1,4 +1,9 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../../services/api_exception.dart';
 import '../../../services/siswa_learning_service.dart';
@@ -24,6 +29,7 @@ class _SiswaNilaiScreenState extends State<SiswaNilaiScreen> {
 
   List<Map<String, dynamic>> _items = [];
   bool _loading = true;
+  bool _downloadingRekap = false;
   String? _error;
   String _query = '';
 
@@ -98,12 +104,29 @@ class _SiswaNilaiScreenState extends State<SiswaNilaiScreen> {
     }).toList();
   }
 
-  void _onUnduhRekapPdf() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Unduh PDF rekap nilai semester sedang disiapkan.'),
-      ),
-    );
+  Future<void> _onUnduhRekapPdf() async {
+    if (_downloadingRekap) return;
+    setState(() => _downloadingRekap = true);
+    try {
+      final Uint8List bytes = await _service.unduhRekapNilaiPdf();
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/rekap_nilai_semester.pdf');
+      await file.writeAsBytes(bytes, flush: true);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('PDF rekap nilai berhasil diunduh.')),
+      );
+      await OpenFilex.open(file.path);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal mengunduh PDF: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _downloadingRekap = false);
+      }
+    }
   }
 
   @override
@@ -480,14 +503,15 @@ class _SiswaNilaiScreenState extends State<SiswaNilaiScreen> {
                             ),
                             const SizedBox(width: 8),
                             ElevatedButton.icon(
-                              onPressed: _onUnduhRekapPdf,
+                              onPressed:
+                                  _downloadingRekap ? null : _onUnduhRekapPdf,
                               icon: const Icon(
                                 Icons.download_rounded,
                                 size: 15,
                               ),
-                              label: const Text(
-                                'Unduh PDF',
-                                style: TextStyle(
+                              label: Text(
+                                _downloadingRekap ? 'Mengunduh...' : 'Unduh PDF',
+                                style: const TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                 ),

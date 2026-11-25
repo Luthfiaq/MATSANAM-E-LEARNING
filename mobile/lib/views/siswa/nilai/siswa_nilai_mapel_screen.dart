@@ -1,5 +1,10 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../../services/siswa_learning_service.dart';
 import '../../../utils/constants.dart';
@@ -27,6 +32,7 @@ class _SiswaNilaiMapelScreenState extends State<SiswaNilaiMapelScreen> {
   final _service = SiswaLearningService();
   Map<String, dynamic> _data = {};
   bool _loading = true;
+  bool _downloadingPdf = false;
   String? _error;
   String _tabKategori = 'semua';
 
@@ -55,6 +61,31 @@ class _SiswaNilaiMapelScreenState extends State<SiswaNilaiMapelScreen> {
           _error = e.toString();
           _loading = false;
         });
+      }
+    }
+  }
+
+  Future<void> _unduhPdf() async {
+    if (_downloadingPdf) return;
+    setState(() => _downloadingPdf = true);
+    try {
+      final Uint8List bytes = await _service.unduhNilaiMapelPdf(widget.mapelId);
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/nilai_mapel_${widget.mapelId}.pdf');
+      await file.writeAsBytes(bytes, flush: true);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('PDF rincian nilai berhasil diunduh.')),
+      );
+      await OpenFilex.open(file.path);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal mengunduh PDF: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _downloadingPdf = false);
       }
     }
   }
@@ -101,8 +132,8 @@ class _SiswaNilaiMapelScreenState extends State<SiswaNilaiMapelScreen> {
     final mapel = _data['mapel'] is Map
         ? Map<String, dynamic>.from(_data['mapel'])
         : <String, dynamic>{};
-    final semuaHasil = _data['hasil'] is List<dynamic>
-      ? (_data['hasil'] as List<dynamic>)
+    final semuaHasil = _data['hasil'] is List
+      ? (_data['hasil'] as List)
         .whereType<Map>()
             .map((e) => Map<String, dynamic>.from(e))
             .toList()
@@ -673,19 +704,13 @@ class _SiswaNilaiMapelScreenState extends State<SiswaNilaiMapelScreen> {
                     SizedBox(
                       height: 48,
                       child: ElevatedButton.icon(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Unduh rincian nilai mapel PDF sedang disiapkan.',
-                              ),
-                            ),
-                          );
-                        },
+                        onPressed: _downloadingPdf ? null : _unduhPdf,
                         icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
-                        label: const Text(
-                          'Unduh Rincian Nilai Mapel PDF',
-                          style: TextStyle(
+                        label: Text(
+                          _downloadingPdf
+                              ? 'Mengunduh PDF...'
+                              : 'Unduh Rincian Nilai Mapel PDF',
+                          style: const TextStyle(
                             fontSize: 13.5,
                             fontWeight: FontWeight.w700,
                           ),

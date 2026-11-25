@@ -47,9 +47,12 @@ Route::middleware(['auth:sanctum', 'active.account', 'role:guru,siswa'])->group(
         Route::get('/tugas/{id}/file', [SiswaLearningController::class, 'tugasFile']);
         Route::post('/tugas/{id}/kumpulkan', [SiswaLearningController::class, 'tugasKumpulkan']);
         Route::get('/pengumpulan/{id}/file', [SiswaLearningController::class, 'pengumpulanFile']);
-
+        
         Route::get('/nilai', [SiswaLearningController::class, 'nilaiIndex']);
+        Route::get('/nilai/rekap/pdf', [SiswaLearningController::class, 'nilaiRekapPdf']);
         Route::get('/nilai/mapel/{mapelId}', [SiswaLearningController::class, 'nilaiByMapel']);
+        Route::get('/nilai/mapel/{mapelId}/pdf', [SiswaLearningController::class, 'nilaiMapelPdf']);
+
         Route::get('/jadwal', [SiswaLearningController::class, 'jadwal']);
         Route::get('/absensi/riwayat', [SiswaLearningController::class, 'riwayatAbsensi']);
         Route::post('/absensi/scan', [SiswaLearningController::class, 'scanQr'])->middleware('throttle:10,1');

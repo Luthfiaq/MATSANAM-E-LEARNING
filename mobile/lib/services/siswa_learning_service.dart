@@ -67,9 +67,6 @@ class SiswaLearningService {
     final raw = Uri.parse(rawUrl);
     final apiBase = Uri.parse(ApiConfig.baseUrl);
 
-    // Laravel url() may emit APP_URL (often 127.0.0.1). On Android emulator
-    // or a phone that host is wrong; always use the API host selected by
-    // API_BASE_URL while preserving the protected endpoint path.
     return apiBase.replace(
       path: raw.path,
       query: raw.hasQuery ? raw.query : null,
@@ -237,6 +234,14 @@ class SiswaLearningService {
     return _map(payload['data']);
   }
 
+  Future<Uint8List> unduhNilaiMapelPdf(int mapelId) {
+    return downloadAuthorizedFile('${ApiConfig.siswaNilai}/mapel/$mapelId/pdf');
+  }
+
+  Future<Uint8List> unduhRekapNilaiPdf() {
+    return downloadAuthorizedFile('${ApiConfig.siswaNilai}/rekap/pdf');
+  }
+
   Future<List<Map<String, dynamic>>> jadwal({String? hari}) async {
     final uri = Uri.parse(ApiConfig.siswaJadwal).replace(
       queryParameters: {if (hari != null && hari.isNotEmpty) 'hari': hari},
@@ -290,10 +295,11 @@ class SiswaLearningService {
 
   static Map<String, dynamic> _map(dynamic value) =>
       value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
-  static List<Map<String, dynamic>> _mapList(dynamic value) => value is List
-      ? value
-            .whereType<Map>()
-            .map((item) => Map<String, dynamic>.from(item))
-            .toList()
-      : <Map<String, dynamic>>[];
+    static List<Map<String, dynamic>> _mapList(dynamic value) =>
+      value is List<dynamic>
+        ? value
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList()
+        : <Map<String, dynamic>>[];
 }

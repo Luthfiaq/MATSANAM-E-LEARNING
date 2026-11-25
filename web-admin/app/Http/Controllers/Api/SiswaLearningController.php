@@ -15,10 +15,12 @@ use App\Models\Siswa;
 use App\Models\SuratAbsensi;
 use App\Services\SuratAbsensiFileService;
 use App\Services\MatsanamNotificationService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class SiswaLearningController extends Controller
@@ -267,14 +269,10 @@ class SiswaLearningController extends Controller
                 $removeOldFile,
                 &$oldFile
             ) {
-                // Lock the task row so deletion and submission cannot race. The same
-                // lock is taken by Guru/Admin delete handlers before checking submissions.
                 $lockedTask = Penugasan::query()
                     ->lockForUpdate()
                     ->findOrFail($tugas->id);
 
-                // Re-check class access in case an Admin moved the task after the
-                // initial request lookup but before this transaction acquired the lock.
                 abort_unless(
                     $lockedTask->jadwal()
                         ->where('kelas_id', $siswa->kelas_id)
@@ -488,6 +486,100 @@ class SiswaLearningController extends Controller
         ]);
     }
 
+    public function nilaiMapelPdf(Request $request, int $mapelId)
+    {
+        $siswa = $this->siswa($request);
+        abort_unless(
+            $this->jadwalKelasQuery($siswa)->where('mapel_id', $mapelId)->exists(),
+            404,
+            'Mata pelajaran tidak ditemukan untuk kelas Anda.'
+        );
+
+        $mapel = MataPelajaran::findOrFail($mapelId);
+        $periode = $this->periodeAktif();
+
+        $items = PengumpulanTugas::with(['penugasan.jadwal.mataPelajaran', 'penugasan.guru', 'nilai.guru'])
+            ->where('siswa_id', $siswa->id)
+            ->whereHas('penugasan.jadwal', function ($query) use ($siswa, $mapelId, $periode) {
+                $query->where('kelas_id', $siswa->kelas_id)->where('mapel_id', $mapelId);
+                if ($periode) {
+                    $query->where('periode_id', $periode->id);
+                }
+            })
+            ->latest('waktu_pengumpulan')
+            ->get();
+
+        $graded = $items->filter(fn ($submission) => $submission->nilai !== null);
+        $rataRata = $graded->isEmpty()
+            ? null
+            : round($graded->avg(fn ($submission) => (float) $submission->nilai->nilai), 2);
+
+        $formattedItems = $items->map(fn ($submission) => $this->formatNilai($submission))->values();
+
+        $pdf = Pdf::loadView('pdf.nilai-mapel', [
+            'siswa' => $siswa,
+            'mapel' => $mapel,
+            'periode' => $periode,
+            'rataRata' => $rataRata,
+            'items' => $formattedItems,
+        ])->setPaper('a4', 'portrait');
+
+        $filename = 'nilai-' . Str::slug($mapel->nama) . '-' . $siswa->id . '.pdf';
+
+        return $pdf->download($filename);
+    }
+
+    public function nilaiRekapPdf(Request $request)
+    {
+        $siswa = $this->siswa($request);
+        $periode = $this->periodeAktif();
+
+        $jadwalMapelIds = $this->jadwalKelasQuery($siswa)
+            ->whereNotNull('mapel_id')
+            ->distinct()
+            ->pluck('mapel_id');
+
+        $submissions = PengumpulanTugas::with(['penugasan.jadwal.mataPelajaran', 'penugasan.guru', 'nilai.guru'])
+            ->where('siswa_id', $siswa->id)
+            ->whereHas('penugasan.jadwal', function ($query) use ($siswa, $periode) {
+                $query->where('kelas_id', $siswa->kelas_id);
+                if ($periode) {
+                    $query->where('periode_id', $periode->id);
+                }
+            })
+            ->latest('waktu_pengumpulan')
+            ->get();
+
+        $grouped = $submissions->groupBy(fn ($submission) => $submission->penugasan?->jadwal?->mataPelajaran?->id);
+        $mapelList = MataPelajaran::whereIn('id', $jadwalMapelIds)->orderBy('nama')->get();
+
+        $rekapMapel = $mapelList->map(function (MataPelajaran $mataPelajaran) use ($grouped) {
+            $items = $grouped->get($mataPelajaran->id, collect());
+            $graded = $items->filter(fn ($submission) => $submission->nilai !== null);
+            $scores = $graded->map(fn ($submission) => (float) $submission->nilai->nilai);
+
+            return [
+                'mapel' => $mataPelajaran->nama,
+                'kkm' => (int) $mataPelajaran->kkm,
+                'jumlah_dinilai' => $graded->count(),
+                'jumlah_total' => $items->count(),
+                'rata_rata' => $scores->isEmpty() ? null : round($scores->avg(), 2),
+            ];
+        })->values();
+
+        $allAvg = $rekapMapel->pluck('rata_rata')->filter(fn ($v) => $v !== null);
+        $rataKeseluruhan = $allAvg->isEmpty() ? null : round($allAvg->avg(), 2);
+
+        $pdf = Pdf::loadView('pdf.nilai-rekap', [
+            'siswa' => $siswa,
+            'periode' => $periode,
+            'rekapMapel' => $rekapMapel,
+            'rataKeseluruhan' => $rataKeseluruhan,
+        ])->setPaper('a4', 'portrait');
+
+        return $pdf->download('rekap-nilai-siswa-' . $siswa->id . '.pdf');
+    }
+
     private function formatNilai(PengumpulanTugas $submission): array
     {
         $task = $submission->penugasan;
@@ -678,8 +770,6 @@ class SiswaLearningController extends Controller
         $schoolDateForDuplicateCheck = null;
         try {
             $result = DB::transaction(function () use ($siswa, $sesi, $validated, $distance, $radius, &$schoolDateForDuplicateCheck) {
-                // Re-read and lock the session: a teacher may have stopped it or
-                // regenerated its QR after the first validation above.
                 $lockedSession = AbsensiSesi::with('jadwal')
                     ->whereKey($sesi->id)
                     ->lockForUpdate()
@@ -780,8 +870,6 @@ class SiswaLearningController extends Controller
             $today = $result['tanggal'];
             $recordedTime = $result['waktu_absen'];
         } catch (\Illuminate\Database\QueryException $exception) {
-            // The database unique key (siswa_id, jadwal_id, tanggal) is the
-            // final guard against simultaneous duplicate scans.
             $schoolDate = $schoolDateForDuplicateCheck
                 ?? Carbon::now('Asia/Jakarta')->toDateString();
             $existing = AbsensiHarian::where('siswa_id', $siswa->id)
