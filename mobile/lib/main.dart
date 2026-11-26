@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' as cupertino;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -153,6 +154,19 @@ class _MatsanamAppState extends State<MatsanamApp> {
       textTheme: textTheme,
       primaryTextTheme: textTheme,
       scaffoldBackgroundColor: background,
+      splashFactory: InkRipple.splashFactory,
+      highlightColor: colorScheme.primary.withValues(alpha: .06),
+      hoverColor: colorScheme.primary.withValues(alpha: .04),
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
+          TargetPlatform.iOS: cupertino.CupertinoPageTransitionsBuilder(),
+          TargetPlatform.linux: FadeUpwardsPageTransitionsBuilder(),
+          TargetPlatform.macOS: cupertino.CupertinoPageTransitionsBuilder(),
+          TargetPlatform.windows: FadeUpwardsPageTransitionsBuilder(),
+          TargetPlatform.fuchsia: FadeUpwardsPageTransitionsBuilder(),
+        },
+      ),
       appBarTheme: AppBarTheme(
         backgroundColor: surface,
         foregroundColor: dark ? Colors.white : AppColors.textPrimary,
@@ -181,7 +195,7 @@ class _MatsanamAppState extends State<MatsanamApp> {
           textStyle: textTheme.labelLarge?.copyWith(
             fontWeight: FontWeight.w700,
           ),
-        ),
+        ).copyWith(animationDuration: const Duration(milliseconds: 180)),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
@@ -193,7 +207,7 @@ class _MatsanamAppState extends State<MatsanamApp> {
           textStyle: textTheme.labelLarge?.copyWith(
             fontWeight: FontWeight.w700,
           ),
-        ),
+        ).copyWith(animationDuration: const Duration(milliseconds: 180)),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
@@ -205,7 +219,7 @@ class _MatsanamAppState extends State<MatsanamApp> {
           textStyle: textTheme.labelLarge?.copyWith(
             fontWeight: FontWeight.w600,
           ),
-        ),
+        ).copyWith(animationDuration: const Duration(milliseconds: 180)),
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: surface,

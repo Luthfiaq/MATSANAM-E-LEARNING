@@ -288,14 +288,32 @@ class _LoginScreenState extends State<LoginScreen> {
                             hint: 'Masukkan kata sandi',
                             icon: Icons.lock_outline_rounded,
                             suffix: IconButton(
-                              icon: Icon(
-                                _obscure
-                                    ? Icons.visibility_off_outlined
-                                    : Icons.visibility_outlined,
-                                color: colors.onSurfaceVariant,
-                                size: 22,
-                              ),
+                              tooltip: _obscure
+                                  ? 'Tampilkan kata sandi'
+                                  : 'Sembunyikan kata sandi',
+                              splashRadius: 20,
                               onPressed: () => setState(() => _obscure = !_obscure),
+                              icon: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 180),
+                                switchInCurve: Curves.easeOutCubic,
+                                switchOutCurve: Curves.easeInCubic,
+                                transitionBuilder: (child, animation) =>
+                                    FadeTransition(
+                                  opacity: animation,
+                                  child: ScaleTransition(
+                                    scale: Tween<double>(begin: 0.86, end: 1).animate(animation),
+                                    child: child,
+                                  ),
+                                ),
+                                child: Icon(
+                                  _obscure
+                                      ? Icons.visibility_off_outlined
+                                      : Icons.visibility_outlined,
+                                  key: ValueKey<bool>(_obscure),
+                                  color: colors.onSurfaceVariant,
+                                  size: 22,
+                                ),
+                              ),
                             ),
                           ),
                           validator: (value) => (value == null || value.isEmpty)
@@ -392,35 +410,53 @@ class _LoginScreenState extends State<LoginScreen> {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14),
                               ),
+                            ).copyWith(
+                              animationDuration: const Duration(milliseconds: 180),
                             ),
-                            child: _loading
-                                ? SizedBox(
-                                    width: 22,
-                                    height: 22,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.4,
-                                      color: colors.onPrimary,
-                                    ),
-                                  )
-                                : Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        'Masuk Sekarang',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                          color: colors.onPrimary,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Icon(
-                                        Icons.arrow_forward_rounded,
-                                        size: 20,
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 180),
+                              switchInCurve: Curves.easeOutCubic,
+                              switchOutCurve: Curves.easeInCubic,
+                              transitionBuilder: (child, animation) =>
+                                  FadeTransition(
+                                opacity: animation,
+                                child: ScaleTransition(
+                                  scale: Tween<double>(begin: 0.96, end: 1)
+                                      .animate(animation),
+                                  child: child,
+                                ),
+                              ),
+                              child: _loading
+                                  ? SizedBox(
+                                      key: const ValueKey('login-loading'),
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.4,
                                         color: colors.onPrimary,
                                       ),
-                                    ],
-                                  ),
+                                    )
+                                  : Row(
+                                      key: const ValueKey('login-label'),
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          'Masuk Sekarang',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                            color: colors.onPrimary,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Icon(
+                                          Icons.arrow_forward_rounded,
+                                          size: 20,
+                                          color: colors.onPrimary,
+                                        ),
+                                      ],
+                                    ),
+                            ),
                           ),
                         ),
                       ],

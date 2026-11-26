@@ -51,10 +51,34 @@ class SiswaBottomNavigationBar extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(_items[index].$1, size: 23, color: color),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        curve: Curves.easeOutCubic,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: selected
+                              ? theme.colorScheme.primary.withValues(alpha: .10)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: AnimatedScale(
+                          duration: const Duration(milliseconds: 180),
+                          curve: Curves.easeOutCubic,
+                          scale: selected ? 1.04 : 1,
+                          child: Icon(
+                            _items[index].$1,
+                            size: 22,
+                            color: color,
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 3),
-                      Text(
-                        _items[index].$2,
+                      AnimatedDefaultTextStyle(
+                        duration: const Duration(milliseconds: 180),
+                        curve: Curves.easeOutCubic,
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: selected
@@ -62,6 +86,7 @@ class SiswaBottomNavigationBar extends StatelessWidget {
                               : FontWeight.w600,
                           color: color,
                         ),
+                        child: Text(_items[index].$2),
                       ),
                     ],
                   ),

@@ -32,25 +32,50 @@ class GuruBottomNavigation extends StatelessWidget {
         if (index == currentIndex) return;
         Navigator.pushReplacementNamed(context, _routes[index]);
       },
-      items: const [
+      items: [
         BottomNavigationBarItem(
-          icon: Icon(Icons.grid_view_rounded),
+          icon: AnimatedScale(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            scale: currentIndex == 0 ? 1.06 : 1,
+            child: const Icon(Icons.grid_view_rounded),
+          ),
           label: 'Beranda',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.menu_book_rounded),
+          icon: AnimatedScale(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            scale: currentIndex == 1 ? 1.06 : 1,
+            child: const Icon(Icons.menu_book_rounded),
+          ),
           label: 'Materi',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.assignment_outlined),
+          icon: AnimatedScale(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            scale: currentIndex == 2 ? 1.06 : 1,
+            child: const Icon(Icons.assignment_outlined),
+          ),
           label: 'Tugas',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.fact_check_outlined),
+          icon: AnimatedScale(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            scale: currentIndex == 3 ? 1.06 : 1,
+            child: const Icon(Icons.fact_check_outlined),
+          ),
           label: 'Absensi',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.person_outline_rounded),
+          icon: AnimatedScale(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            scale: currentIndex == 4 ? 1.06 : 1,
+            child: const Icon(Icons.person_outline_rounded),
+          ),
           label: 'Profil',
         ),
       ],

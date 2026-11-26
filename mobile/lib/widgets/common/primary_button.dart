@@ -77,7 +77,7 @@ class PrimaryButton extends StatelessWidget {
               borderRadius: BorderRadius.circular(AppDimens.radiusMedium),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          ),
+          ).copyWith(animationDuration: const Duration(milliseconds: 180)),
           child: buttonChild,
         ),
       );
@@ -100,7 +100,7 @@ class PrimaryButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppDimens.radiusMedium),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        ),
+        ).copyWith(animationDuration: const Duration(milliseconds: 180)),
         child: buttonChild,
       ),
     );
