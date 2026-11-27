@@ -8,7 +8,7 @@ import 'utils/app_theme_state.dart';
 import 'utils/constants.dart';
 import 'views/splash_gate.dart';
 import 'views/auth/login_screen.dart';
-import 'views/guru/dashboard_guru_screen.dart';
+import 'views/guru/guru_tab_shell.dart';
 import 'views/guru/absensi/buka_sesi_screen.dart';
 import 'views/guru/absensi/histori_sesi_screen.dart';
 import 'views/guru/absensi/pilih_mapel_kelas_screen.dart';
@@ -27,7 +27,7 @@ import 'views/guru/tugas/edit_tugas_screen.dart';
 import 'views/guru/tugas/pilih_mapel_kelas_tugas_screen.dart';
 import 'views/guru/tugas/tambah_tugas_screen.dart';
 import 'views/guru/tugas/tugas_per_mapel_screen.dart';
-import 'views/siswa/dashboard/dashboard_siswa_page.dart';
+import 'views/siswa/siswa_tab_shell.dart';
 import 'views/siswa/pengaturan/profil_siswa_screen.dart';
 
 Future<void> main() async {
@@ -46,8 +46,16 @@ Future<void> main() async {
       'Sistem' => ThemeMode.system,
       _ => ThemeMode.light,
     };
+    final savedFont = prefs.getString(MatsanamApp.fontPreferenceKey);
+    MatsanamApp.currentFontSelection =
+        MatsanamApp.availableFontSelections.contains(savedFont)
+        ? savedFont!
+        : MatsanamApp.defaultFontSelection;
+    AppThemeState.fontSelection.value = MatsanamApp.currentFontSelection;
   } catch (_) {
     MatsanamApp.currentThemeMode = ThemeMode.light;
+    MatsanamApp.currentFontSelection = MatsanamApp.defaultFontSelection;
+    AppThemeState.fontSelection.value = MatsanamApp.defaultFontSelection;
   }
 
   runApp(const MatsanamApp());
@@ -57,10 +65,25 @@ class MatsanamApp extends StatefulWidget {
   const MatsanamApp({super.key});
 
   static ThemeMode currentThemeMode = ThemeMode.light;
+  static const String defaultFontSelection = 'role_default';
+  static const String fontPreferenceKey = 'matsanam_font_family';
+  static const Set<String> availableFontSelections = {
+    defaultFontSelection,
+    'Inter',
+    'Plus Jakarta Sans',
+    'Poppins',
+    'Roboto',
+  };
+  static String currentFontSelection = defaultFontSelection;
 
   static Future<void> ubahTema(BuildContext context, ThemeMode mode) async {
     final state = context.findAncestorStateOfType<_MatsanamAppState>();
     await state?.ubahTema(mode);
+  }
+
+  static Future<void> ubahFont(BuildContext context, String selection) async {
+    final state = context.findAncestorStateOfType<_MatsanamAppState>();
+    await state?.ubahFont(selection);
   }
 
   @override
@@ -69,12 +92,14 @@ class MatsanamApp extends StatefulWidget {
 
 class _MatsanamAppState extends State<MatsanamApp> {
   ThemeMode _themeMode = MatsanamApp.currentThemeMode;
+  String _fontSelection = MatsanamApp.currentFontSelection;
   String _activeRole = AppThemeState.activeRole.value;
 
   @override
   void initState() {
     super.initState();
     AppThemeState.activeRole.addListener(_handleActiveRoleChanged);
+    AppThemeState.fontSelection.addListener(_handleFontSelectionChanged);
   }
 
   void _handleActiveRoleChanged() {
@@ -83,9 +108,16 @@ class _MatsanamAppState extends State<MatsanamApp> {
     setState(() => _activeRole = nextRole);
   }
 
+  void _handleFontSelectionChanged() {
+    final nextFont = AppThemeState.fontSelection.value;
+    if (!mounted || nextFont == _fontSelection) return;
+    setState(() => _fontSelection = nextFont);
+  }
+
   @override
   void dispose() {
     AppThemeState.activeRole.removeListener(_handleActiveRoleChanged);
+    AppThemeState.fontSelection.removeListener(_handleFontSelectionChanged);
     super.dispose();
   }
 
@@ -104,6 +136,41 @@ class _MatsanamAppState extends State<MatsanamApp> {
     await prefs.setString('siswa_theme', preference);
   }
 
+  Future<void> ubahFont(String selection) async {
+    if (!MatsanamApp.availableFontSelections.contains(selection)) return;
+    MatsanamApp.currentFontSelection = selection;
+    AppThemeState.fontSelection.value = selection;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(MatsanamApp.fontPreferenceKey, selection);
+  }
+
+  ({String family, TextTheme textTheme}) _resolveTypography(
+    TextTheme base,
+  ) {
+    final selection = _fontSelection == MatsanamApp.defaultFontSelection
+        ? (_activeRole == 'siswa' ? 'Plus Jakarta Sans' : 'Inter')
+        : _fontSelection;
+
+    return switch (selection) {
+      'Plus Jakarta Sans' => (
+        family: GoogleFonts.plusJakartaSans().fontFamily!,
+        textTheme: GoogleFonts.plusJakartaSansTextTheme(base),
+      ),
+      'Poppins' => (
+        family: GoogleFonts.poppins().fontFamily!,
+        textTheme: GoogleFonts.poppinsTextTheme(base),
+      ),
+      'Roboto' => (
+        family: GoogleFonts.roboto().fontFamily!,
+        textTheme: GoogleFonts.robotoTextTheme(base),
+      ),
+      _ => (
+        family: GoogleFonts.inter().fontFamily!,
+        textTheme: GoogleFonts.interTextTheme(base),
+      ),
+    };
+  }
+
   ThemeData _theme(Brightness brightness) {
     final dark = brightness == Brightness.dark;
     const primary = Color(0xFF2563EB);
@@ -113,12 +180,9 @@ class _MatsanamAppState extends State<MatsanamApp> {
       useMaterial3: true,
       brightness: brightness,
     ).textTheme;
-    final textTheme = _activeRole == 'siswa'
-        ? GoogleFonts.plusJakartaSansTextTheme(textThemeBase)
-        : GoogleFonts.interTextTheme(textThemeBase);
-    final fontFamily = _activeRole == 'siswa'
-        ? GoogleFonts.plusJakartaSans().fontFamily
-        : GoogleFonts.inter().fontFamily;
+    final typography = _resolveTypography(textThemeBase);
+    final textTheme = typography.textTheme;
+    final fontFamily = typography.family;
     final colorScheme =
         ColorScheme.fromSeed(
           seedColor: primary,
@@ -300,8 +364,8 @@ class _MatsanamAppState extends State<MatsanamApp> {
       home: const SplashGate(),
       routes: {
         '/login': (_) => const LoginScreen(),
-        '/guru/dashboard': (_) => const DashboardGuruScreen(),
-        '/siswa/dashboard': (_) => const DashboardSiswaPage(),
+        '/guru/dashboard': (_) => const GuruTabShell(),
+        '/siswa/dashboard': (_) => const SiswaTabShell(),
         '/siswa/profil': (_) => const ProfilSiswaScreen(),
 
         // Materi Guru

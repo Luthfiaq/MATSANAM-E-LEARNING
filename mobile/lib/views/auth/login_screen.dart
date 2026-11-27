@@ -4,9 +4,9 @@ import '../../services/auth_service.dart';
 import '../../utils/app_theme_state.dart';
 import '../../utils/constants.dart';
 import '../../widgets/common/school_logo.dart';
-import '../siswa/dashboard/dashboard_siswa_page.dart';
+import '../siswa/siswa_tab_shell.dart';
 import 'change_password_screen.dart';
-import '../guru/dashboard_guru_screen.dart';
+import '../guru/guru_tab_shell.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -61,9 +61,9 @@ class _LoginScreenState extends State<LoginScreen> {
         if (user['must_change_password'] == true) {
           tujuan = const ChangePasswordScreen(wajib: true);
         } else if (role == 'guru') {
-          tujuan = const DashboardGuruScreen();
+          tujuan = const GuruTabShell();
         } else if (role == 'siswa') {
-          tujuan = const DashboardSiswaPage();
+          tujuan = const SiswaTabShell();
         } else {
           await _auth.logout();
           setState(

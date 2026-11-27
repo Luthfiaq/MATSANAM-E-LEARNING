@@ -62,6 +62,7 @@
                             type="email"
                             id="email"
                             name="email"
+                            autocomplete="username"
                             value="{{ old('email') }}"
                             required
                             autofocus
@@ -74,14 +75,35 @@
                         <label for="password" class="mb-1 block text-sm font-medium text-gray-700">
                             Password
                         </label>
-                        <input
-                            type="password"
-                            id="password"
-                            name="password"
-                            required
-                            placeholder="••••••••"
-                            class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                        />
+                        <div class="relative">
+                            <input
+                                type="password"
+                                id="password"
+                                name="password"
+                                autocomplete="current-password"
+                                required
+                                placeholder="••••••••"
+                                class="w-full rounded-lg border border-gray-300 px-4 py-2.5 pr-12 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                            />
+                            <button
+                                type="button"
+                                id="togglePassword"
+                                class="admin-password-toggle absolute inset-y-0 right-0 inline-flex items-center justify-center rounded-r-lg px-3 text-gray-400 hover:text-blue-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
+                                aria-label="Tampilkan kata sandi"
+                                aria-controls="password"
+                                aria-pressed="false"
+                            >
+                                <svg id="passwordEyeOpen" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M2.5 12s3.4-7 9.5-7 9.5 7 9.5 7-3.4 7-9.5 7-9.5-7-9.5-7Z" />
+                                    <circle cx="12" cy="12" r="3" />
+                                </svg>
+                                <svg id="passwordEyeClosed" class="hidden" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="m3 3 18 18" />
+                                    <path d="M10.6 5.2A10.8 10.8 0 0 1 12 5c6.1 0 9.5 7 9.5 7a16 16 0 0 1-3.1 3.9M6.2 6.2C3.8 7.8 2.5 12 2.5 12s3.4 7 9.5 7c1.3 0 2.5-.3 3.5-.8" />
+                                    <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="flex items-center justify-between text-sm">
@@ -101,7 +123,7 @@
             </div>
 
             <!-- Info Section -->
-            <div class="admin-login-help mt-6 rounded-xl bg-blue-50 border border-blue-100 p-4">
+            {{-- <div class="admin-login-help mt-6 rounded-xl bg-blue-50 border border-blue-100 p-4">
                 <div class="text-sm text-gray-700">
                     <p class="mb-2 font-semibold flex items-center gap-2">
                         <span aria-hidden="true">ℹ️</span>
@@ -109,7 +131,7 @@
                     </p>
                     <p class="text-xs leading-relaxed">Gunakan akun administrator aktif yang diberikan oleh Tata Usaha. Jaga kerahasiaan email dan kata sandi Anda.</p>
                 </div>
-            </div>
+            </div> --}}
 
             <!-- Footer -->
             <p class="mt-6 text-center text-xs text-gray-500">
@@ -117,5 +139,28 @@
             </p>
         </div>
     </div>
+    <script>
+        (() => {
+            const passwordInput = document.getElementById('password');
+            const toggleButton = document.getElementById('togglePassword');
+            const eyeOpen = document.getElementById('passwordEyeOpen');
+            const eyeClosed = document.getElementById('passwordEyeClosed');
+
+            if (!passwordInput || !toggleButton || !eyeOpen || !eyeClosed) return;
+
+            toggleButton.addEventListener('click', () => {
+                const shouldReveal = passwordInput.type === 'password';
+                passwordInput.type = shouldReveal ? 'text' : 'password';
+                toggleButton.setAttribute('aria-pressed', String(shouldReveal));
+                toggleButton.setAttribute(
+                    'aria-label',
+                    shouldReveal ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'
+                );
+                eyeOpen.classList.toggle('hidden', shouldReveal);
+                eyeClosed.classList.toggle('hidden', !shouldReveal);
+                passwordInput.focus({ preventScroll: true });
+            });
+        })();
+    </script>
 </body>
 </html>

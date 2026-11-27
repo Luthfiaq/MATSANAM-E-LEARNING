@@ -308,34 +308,56 @@ class _TambahMateriScreenState extends State<TambahMateriScreen> {
     );
   }
 
-  @override
+  Map<String, dynamic>? get _selectedSchedule {
+    for (final schedule in _schedules) {
+      if (int.tryParse(schedule['id']?.toString() ?? '') == _selectedJadwalId) {
+        return schedule;
+      }
+    }
+    return null;
+  }
+
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.matsanamPage,
       appBar: AppBar(
-        backgroundColor: context.matsanamSurface,
+        backgroundColor: context.matsanamPage,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          onPressed: () => Navigator.maybePop(context),
-          icon: Icon(Icons.arrow_back_ios_new_rounded),
+          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.arrow_back_rounded),
         ),
-        title: Text('Tambah Materi', style: context.matsanamHeading3),
+        title: Text('Unggah Materi Baru', style: context.matsanamHeading3),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 14),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => Navigator.pushNamed(context, '/pengaturan'),
+              child: Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: const Icon(Icons.person_outline_rounded, color: Colors.white, size: 19),
+              ),
+            ),
+          ),
+        ],
       ),
       body: _isLoadingSchedules
           ? const Center(child: CircularProgressIndicator())
-          : _scheduleError != null && _schedules.isEmpty
+          : _scheduleError != null
           ? Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.event_busy_outlined,
-                      size: 48,
-                      color: context.matsanamTextSecondary,
-                    ),
+                    Icon(Icons.event_busy_rounded, size: 46, color: context.matsanamTextSecondary),
                     const SizedBox(height: 12),
                     Text(
                       _scheduleError!,
@@ -345,112 +367,74 @@ class _TambahMateriScreenState extends State<TambahMateriScreen> {
                     const SizedBox(height: 16),
                     OutlinedButton.icon(
                       onPressed: _loadSchedules,
-                      icon: Icon(Icons.refresh_rounded),
-                      label: Text('Coba Lagi'),
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const Text('Coba Lagi'),
                     ),
                   ],
                 ),
               ),
             )
-          : Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 720),
-                child: Form(
-                  key: _formKey,
+          : Form(
+              key: _formKey,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 720),
                   child: ListView(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                     children: [
+                      _subjectHeader(),
+                      const SizedBox(height: 14),
                       _sectionCard(
-                        title: 'Informasi Materi',
-                        subtitle:
-                            'Tentukan jadwal mengajar dan informasi materi.',
+                        title: 'Judul & Sasaran',
+                        subtitle: 'Tentukan jadwal kelas yang menerima materi ini.',
                         children: [
                           DropdownButtonFormField<int>(
                             value: _selectedJadwalId,
                             isExpanded: true,
-                            decoration: InputDecoration(
+                            decoration: const InputDecoration(
                               labelText: 'Mata Pelajaran & Kelas',
-                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.groups_outlined),
                             ),
-                            items: _schedules
-                                .map((schedule) {
-                                  final id = int.tryParse(
-                                    schedule['id']?.toString() ?? '',
-                                  );
-                                  final mapel =
-                                      schedule['mata_pelajaran']?.toString() ??
-                                      'Mata Pelajaran';
-                                  final kelas = _prettyClass(
-                                    schedule['kelas']?.toString() ?? '',
-                                  );
-                                  return DropdownMenuItem<int>(
-                                    value: id,
-                                    child: Text(
-                                      '$mapel • $kelas',
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  );
-                                })
-                                .where((item) => item.value != null)
-                                .toList(),
+                            items: _schedules.map((schedule) {
+                              final id = int.tryParse(schedule['id']?.toString() ?? '');
+                              final mapel = schedule['mata_pelajaran']?.toString() ?? 'Mata Pelajaran';
+                              final kelas = _prettyClass(schedule['kelas']?.toString() ?? '');
+                              return DropdownMenuItem<int>(
+                                value: id,
+                                child: Text('$mapel • $kelas', overflow: TextOverflow.ellipsis),
+                              );
+                            }).where((item) => item.value != null).toList(),
                             onChanged: _isSaving
                                 ? null
-                                : (value) =>
-                                      setState(() => _selectedJadwalId = value),
-                            validator: (value) =>
-                                value == null ? 'Pilih jadwal mengajar.' : null,
+                                : (value) => setState(() => _selectedJadwalId = value),
+                            validator: (value) => value == null ? 'Pilih jadwal mengajar.' : null,
                           ),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 13),
                           TextFormField(
                             controller: _judulController,
+                            maxLength: 255,
                             textCapitalization: TextCapitalization.sentences,
-                            decoration: InputDecoration(
+                            decoration: const InputDecoration(
                               labelText: 'Judul Materi',
-                              hintText: 'Contoh: Sistem Persamaan Linear',
-                              border: OutlineInputBorder(),
+                              hintText: 'Contoh: Bab 4 - Trigonometri Dasar',
                               prefixIcon: Icon(Icons.menu_book_outlined),
                             ),
-                            validator: (value) =>
-                                value == null || value.trim().isEmpty
+                            validator: (value) => value == null || value.trim().isEmpty
                                 ? 'Judul materi wajib diisi.'
                                 : null,
                           ),
-                          const SizedBox(height: 14),
-                          TextFormField(
-                            controller: _deskripsiController,
-                            maxLines: 3,
-                            textCapitalization: TextCapitalization.sentences,
-                            decoration: InputDecoration(
-                              labelText: 'Deskripsi',
-                              hintText: 'Ringkasan isi materi...',
-                              alignLabelWithHint: true,
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
                         ],
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 12),
                       _sectionCard(
-                        title: 'Jenis Materi',
-                        subtitle: 'Pilih satu jenis sumber materi.',
+                        title: 'Berkas Materi',
+                        subtitle: 'Pilih satu jenis materi dan satu berkas atau tautan.',
                         children: [
                           SegmentedButton<String>(
                             segments: const [
-                              ButtonSegment(
-                                value: 'pdf',
-                                label: Text('PDF'),
-                                icon: Icon(Icons.picture_as_pdf_outlined),
-                              ),
-                              ButtonSegment(
-                                value: 'video',
-                                label: Text('Video'),
-                                icon: Icon(Icons.play_circle_outline),
-                              ),
-                              ButtonSegment(
-                                value: 'link',
-                                label: Text('Link'),
-                                icon: Icon(Icons.link_rounded),
-                              ),
+                              ButtonSegment(value: 'pdf', label: Text('PDF'), icon: Icon(Icons.picture_as_pdf_outlined)),
+                              ButtonSegment(value: 'video', label: Text('Video'), icon: Icon(Icons.play_circle_outline_rounded)),
+                              ButtonSegment(value: 'link', label: Text('Link'), icon: Icon(Icons.link_rounded)),
                             ],
                             selected: {_selectedType},
                             onSelectionChanged: _isSaving
@@ -460,119 +444,238 @@ class _TambahMateriScreenState extends State<TambahMateriScreen> {
                                     _selectedFile = null;
                                   }),
                           ),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 12),
                           if (_needsFile) _filePickerCard() else _linkField(),
                         ],
                       ),
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        height: 50,
-                        child: FilledButton.icon(
-                          onPressed: _isSaving ? null : _submit,
-                          icon: _isSaving
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : Icon(Icons.cloud_upload_outlined),
-                          label: Text(
-                            _isSaving
-                                ? 'Menyimpan...'
-                                : 'Simpan & Terbitkan Materi',
-                            style: TextStyle(fontWeight: FontWeight.w700),
+                      const SizedBox(height: 12),
+                      _sectionCard(
+                        title: 'Petunjuk & Deskripsi',
+                        subtitle: 'Opsional. Berikan ringkasan atau arahan belajar untuk siswa.',
+                        children: [
+                          TextFormField(
+                            controller: _deskripsiController,
+                            maxLines: 4,
+                            minLines: 3,
+                            textCapitalization: TextCapitalization.sentences,
+                            decoration: const InputDecoration(
+                              hintText: 'Tulis petunjuk belajar untuk siswa...',
+                              alignLabelWithHint: true,
+                            ),
                           ),
-                        ),
+                        ],
                       ),
+                      const SizedBox(height: 12),
+                      _publicationInfo(),
                     ],
                   ),
+                ),
+              ),
+            ),
+      bottomNavigationBar: _isLoadingSchedules || _scheduleError != null
+          ? null
+          : SafeArea(
+              top: false,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+                decoration: BoxDecoration(
+                  color: context.matsanamSurface,
+                  border: Border(top: BorderSide(color: context.matsanamBorder)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      height: 48,
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: _isSaving ? null : _submit,
+                        icon: _isSaving
+                            ? const SizedBox(
+                                width: 17,
+                                height: 17,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Icon(Icons.send_rounded, size: 18),
+                        label: Text(
+                          _isSaving ? 'Menyimpan...' : 'Simpan & Publikasikan Materi',
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                        ),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _isSaving ? null : () => Navigator.pop(context),
+                      child: const Text('Batal & Kembali ke Daftar Materi'),
+                    ),
+                  ],
                 ),
               ),
             ),
     );
   }
 
+  Widget _subjectHeader() {
+    final schedule = _selectedSchedule;
+    final subject = schedule?['mata_pelajaran']?.toString() ?? 'Pilih mata pelajaran';
+    final rawClass = schedule?['kelas']?.toString() ?? '';
+    final kelas = rawClass.isEmpty ? 'Belum dipilih' : _prettyClass(rawClass);
+    final academicYear = (widget.initialSchedule['tahun_ajaran'] ?? '')
+        .toString()
+        .trim();
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: context.matsanamSoftPrimary,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primary.withValues(alpha: .10)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(11)),
+            child: const Icon(Icons.menu_book_rounded, color: Colors.white, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('MATERI GURU', style: TextStyle(color: AppColors.primary, fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: .55)),
+                const SizedBox(height: 3),
+                Text(subject, style: TextStyle(color: context.matsanamText, fontSize: 16, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 3),
+                Text(
+                  academicYear.isEmpty ? kelas : '$kelas • T.A. $academicYear',
+                  style: TextStyle(color: context.matsanamTextSecondary, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          if (schedule != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+              decoration: BoxDecoration(color: context.matsanamSoftSuccess, borderRadius: BorderRadius.circular(20)),
+              child: Text('Jadwal dipilih', style: TextStyle(color: context.matsanamSuccess, fontSize: 9, fontWeight: FontWeight.w700)),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _publicationInfo() => Container(
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: context.matsanamSurface,
+      borderRadius: BorderRadius.circular(15),
+      border: Border.all(color: context.matsanamBorder),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(color: context.matsanamSoftSuccess, borderRadius: BorderRadius.circular(10)),
+          child: Icon(Icons.notifications_active_outlined, color: context.matsanamSuccess, size: 19),
+        ),
+        const SizedBox(width: 11),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Publikasi & Notifikasi', style: TextStyle(color: context.matsanamText, fontSize: 13, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 4),
+              Text(
+                'Materi akan tersedia untuk siswa pada jadwal yang dipilih. Notifikasi materi baru dikirim otomatis setelah berhasil disimpan.',
+                style: TextStyle(color: context.matsanamTextSecondary, fontSize: 11, height: 1.4),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+
   Widget _sectionCard({
     required String title,
     required String subtitle,
     required List<Widget> children,
   }) => Container(
-    padding: const EdgeInsets.all(16),
+    padding: const EdgeInsets.all(15),
     decoration: BoxDecoration(
       color: context.matsanamSurface,
       borderRadius: BorderRadius.circular(16),
       border: Border.all(color: context.matsanamBorder),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: .025),
-          blurRadius: 10,
-          offset: const Offset(0, 3),
-        ),
-      ],
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: context.matsanamHeading3),
+        Text(title, style: TextStyle(color: context.matsanamText, fontSize: 14, fontWeight: FontWeight.w800)),
         const SizedBox(height: 4),
-        Text(
-          subtitle,
-          style: TextStyle(color: context.matsanamTextSecondary, fontSize: 12),
-        ),
-        const SizedBox(height: 16),
+        Text(subtitle, style: TextStyle(color: context.matsanamTextSecondary, fontSize: 11, height: 1.35)),
+        const SizedBox(height: 14),
         ...children,
       ],
     ),
   );
 
   Widget _filePickerCard() => InkWell(
-    borderRadius: BorderRadius.circular(13),
+    borderRadius: BorderRadius.circular(12),
     onTap: _isSaving ? null : _pickFile,
     child: Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 19),
       decoration: BoxDecoration(
         color: context.matsanamSoftPrimary,
-        borderRadius: BorderRadius.circular(13),
-        border: Border.all(color: AppColors.primary.withValues(alpha: .25)),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primary.withValues(alpha: .20)),
       ),
       child: Column(
         children: [
-          Icon(
-            _selectedType == 'pdf'
-                ? Icons.picture_as_pdf_outlined
-                : Icons.video_file_outlined,
-            color: AppColors.primary,
-            size: 32,
-          ),
-          const SizedBox(height: 9),
-          Text(
-            _selectedFile?.name ?? 'Pilih file ${_selectedType.toUpperCase()}',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: context.matsanamText,
-              fontWeight: FontWeight.w700,
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(color: context.matsanamSurface, borderRadius: BorderRadius.circular(13)),
+            child: Icon(
+              _selectedType == 'pdf' ? Icons.picture_as_pdf_outlined : Icons.video_file_outlined,
+              color: AppColors.primary,
+              size: 25,
             ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            _selectedFile?.name ?? 'Upload Berkas ke Sini',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: context.matsanamText, fontSize: 13, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 4),
           Text(
-            'PDF atau video • Maksimal 10 MB',
-            style: TextStyle(color: context.matsanamTextSecondary, fontSize: 11),
+            _selectedFile == null
+                ? 'Mendukung ${_selectedType == 'pdf' ? 'PDF' : 'Video MP4, MOV, WEBM'} (Maks. 10 MB)'
+                : '${(_selectedFile!.size / (1024 * 1024)).toStringAsFixed(2)} MB • Ketuk untuk mengganti file',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: context.matsanamTextSecondary, fontSize: 10.5),
           ),
-          if (_selectedFile != null) ...[
-            const SizedBox(height: 7),
-            Text(
-              '${(_selectedFile!.size / (1024 * 1024)).toStringAsFixed(2)} MB',
-              style: TextStyle(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
-              ),
+          const SizedBox(height: 11),
+          OutlinedButton.icon(
+            onPressed: _isSaving ? null : _pickFile,
+            icon: const Icon(Icons.add_circle_outline_rounded, size: 16),
+            label: const Text('Pilih Berkas'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              backgroundColor: context.matsanamSurface,
+              side: BorderSide(color: AppColors.primary.withValues(alpha: .15)),
+              textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
             ),
-          ],
+          ),
         ],
       ),
     ),

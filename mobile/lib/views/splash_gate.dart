@@ -6,9 +6,9 @@ import '../utils/session.dart';
 import '../widgets/common/school_logo.dart';
 import 'auth/login_screen.dart';
 import 'auth/change_password_screen.dart';
-import 'guru/dashboard_guru_screen.dart';
+import 'guru/guru_tab_shell.dart';
 import 'onboarding/onboarding_screen.dart';
-import 'siswa/dashboard/dashboard_siswa_page.dart';
+import 'siswa/siswa_tab_shell.dart';
 
 class SplashGate extends StatefulWidget {
   const SplashGate({super.key});
@@ -53,9 +53,9 @@ class _SplashGateState extends State<SplashGate> {
     if (mustChangePassword) {
       _buka(const ChangePasswordScreen(wajib: true));
     } else if (role == 'guru') {
-      _buka(const DashboardGuruScreen());
+      _buka(const GuruTabShell());
     } else if (role == 'siswa') {
-      _buka(const DashboardSiswaPage());
+      _buka(const SiswaTabShell());
     } else {
       await Session.clearLogin();
       if (mounted) _buka(const LoginScreen());

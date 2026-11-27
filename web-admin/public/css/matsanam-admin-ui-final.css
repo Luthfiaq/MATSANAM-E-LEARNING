@@ -258,3 +258,121 @@ html .overflow-x-auto > table td {
     overscroll-behavior-y: contain;
 }
 #adminMain > :first-child { scroll-margin-top: 1rem; }
+
+
+/* MATSANAM Motion System — restrained, consistent interaction feedback. */
+:root {
+    --matsanam-motion-fast: 150ms;
+    --matsanam-motion-base: 210ms;
+    --matsanam-motion-slow: 280ms;
+    --matsanam-motion-ease: cubic-bezier(.2, .75, .25, 1);
+}
+html { scroll-behavior: smooth; }
+
+/* Shared controls: quick hover/focus feedback and a small tactile press state. */
+#adminSidebar .nav-link,
+#adminSidebar button,
+#adminTopbar button,
+main button,
+main a[class*="bg-"],
+main [role="button"],
+.admin-auth-page button,
+.admin-auth-page a {
+    transition:
+        color var(--matsanam-motion-base) var(--matsanam-motion-ease),
+        background-color var(--matsanam-motion-base) var(--matsanam-motion-ease),
+        border-color var(--matsanam-motion-base) var(--matsanam-motion-ease),
+        box-shadow var(--matsanam-motion-base) var(--matsanam-motion-ease),
+        opacity var(--matsanam-motion-base) var(--matsanam-motion-ease),
+        transform var(--matsanam-motion-fast) var(--matsanam-motion-ease);
+    -webkit-tap-highlight-color: transparent;
+}
+#adminSidebar .nav-link:hover { transform: translateX(2px); }
+#adminSidebar .nav-link:active,
+#adminSidebar button:active,
+#adminTopbar button:active,
+main button:active:not(:disabled),
+main a[class*="bg-"]:active,
+main [role="button"]:active,
+.admin-auth-page button:active:not(:disabled) {
+    transform: translateY(1px) scale(.985);
+}
+main button:focus-visible,
+main a:focus-visible,
+#adminSidebar button:focus-visible,
+#adminSidebar a:focus-visible,
+#adminTopbar button:focus-visible,
+.admin-auth-page button:focus-visible,
+.admin-auth-page a:focus-visible {
+    outline: 3px solid rgba(59, 130, 246, .28);
+    outline-offset: 2px;
+}
+
+/* Form focus and password visibility control. */
+main input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+main select,
+main textarea,
+.admin-auth-page input:not([type="checkbox"]) {
+    transition:
+        color var(--matsanam-motion-base) var(--matsanam-motion-ease),
+        background-color var(--matsanam-motion-base) var(--matsanam-motion-ease),
+        border-color var(--matsanam-motion-base) var(--matsanam-motion-ease),
+        box-shadow var(--matsanam-motion-base) var(--matsanam-motion-ease);
+}
+.admin-password-toggle svg { transition: opacity 150ms ease, transform 180ms var(--matsanam-motion-ease); }
+.admin-password-toggle:active svg { transform: scale(.88); }
+
+/* Soft entrance on route content and dialog surfaces; no large movement. */
+@keyframes matsanam-content-enter {
+    from { opacity: 0; transform: translateY(7px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@keyframes matsanam-dialog-enter {
+    from { opacity: 0; transform: translateY(8px) scale(.99); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes matsanam-backdrop-enter {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+#adminMain > :first-child {
+    animation: matsanam-content-enter 240ms var(--matsanam-motion-ease) both;
+}
+main [role="dialog"],
+main [aria-modal="true"] {
+    animation: matsanam-dialog-enter 190ms var(--matsanam-motion-ease) both;
+}
+.admin-auth-page .max-w-md > .mb-8,
+.admin-auth-page .max-w-md > .rounded-2xl,
+.admin-auth-page .max-w-md > .admin-login-help {
+    animation: matsanam-content-enter 360ms var(--matsanam-motion-ease) both;
+}
+.admin-auth-page .max-w-md > .rounded-2xl { animation-delay: 45ms; }
+.admin-auth-page .max-w-md > .admin-login-help { animation-delay: 90ms; }
+
+/* Sidebar/backdrop and cards use coordinated, non-jarring transitions. */
+#adminSidebar { transition: transform 240ms var(--matsanam-motion-ease), box-shadow 240ms ease; }
+#adminSidebarBackdrop { transition: opacity 220ms ease; }
+html.admin-sidebar-open #adminSidebarBackdrop { animation: matsanam-backdrop-enter 200ms ease both; }
+main .rounded-xl.border,
+main .rounded-2xl.border,
+main .admin-panel {
+    transition: border-color 200ms ease, box-shadow 220ms ease, background-color 220ms ease;
+}
+main table tbody tr { transition: background-color 160ms ease; }
+
+@media (hover: hover) and (pointer: fine) {
+    main button:not(:disabled):hover,
+    main a[class*="bg-"]:hover,
+    main [role="button"]:hover { filter: brightness(1.015); }
+}
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    #adminMain > :first-child,
+    main [role="dialog"],
+    main [aria-modal="true"],
+    .admin-auth-page .max-w-md > .mb-8,
+    .admin-auth-page .max-w-md > .rounded-2xl,
+    .admin-auth-page .max-w-md > .admin-login-help { animation: none !important; }
+    #adminSidebar .nav-link:hover { transform: none; }
+}

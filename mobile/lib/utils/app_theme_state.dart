@@ -6,6 +6,10 @@ class AppThemeState {
 
   static final ValueNotifier<String> activeRole = ValueNotifier<String>('guru');
 
+  /// Shared local font preference for both mobile roles.
+  static final ValueNotifier<String> fontSelection =
+      ValueNotifier<String>('role_default');
+
   static void setActiveRole(String role) {
     final normalized = role.trim().toLowerCase();
     if (normalized == 'guru' || normalized == 'siswa') {

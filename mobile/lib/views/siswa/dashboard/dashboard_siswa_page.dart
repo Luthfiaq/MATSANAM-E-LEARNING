@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../widgets/common/persistent_tab_shell.dart';
+
 import '../../../models/dashboard_model.dart';
 import '../../../services/api_exception.dart';
 import '../../../services/auth_service.dart';
@@ -144,7 +146,12 @@ class _DashboardSiswaPageState extends State<DashboardSiswaPage> {
   }
 
   void _profil() {
-    Navigator.of(context).pushNamed('/siswa/profil');
+    final tabs = PersistentTabScope.maybeOf(context);
+    if (tabs != null) {
+      tabs.onSelect(4);
+    } else {
+      Navigator.of(context).pushNamed('/siswa/profil');
+    }
   }
 
   @override
@@ -615,6 +622,7 @@ class _StatCard extends StatelessWidget {
   final IconData icon;
   final Color color;
   final Color soft;
+
   const _StatCard({
     required this.label,
     required this.value,
@@ -626,71 +634,118 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 12, 10, 12),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final background = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final primaryText = isDark
+        ? const Color(0xFFF8FAFC)
+        : const Color(0xFF0F172A);
+    final secondaryText = isDark
+        ? const Color(0xFFCBD5E1)
+        : const Color(0xFF64748B);
+    final outline = isDark
+        ? const Color(0xFF334155)
+        : const Color(0xFFE2E8F0);
+
+    // Keep the animation, but use a uniform outer border. Flutter does not
+    // allow a non-uniform BorderSide color together with borderRadius.
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      width: double.infinity,
+      height: 116,
       decoration: BoxDecoration(
-        color: colors.surface,
+        color: background,
         borderRadius: BorderRadius.circular(14),
-        border: Border(
-          left: BorderSide(color: color, width: 3.5),
-          top: BorderSide(color: colors.outlineVariant.withValues(alpha: 0.55)),
-          right: BorderSide(color: colors.outlineVariant.withValues(alpha: 0.55)),
-          bottom: BorderSide(color: colors.outlineVariant.withValues(alpha: 0.55)),
-        ),
+        border: Border.all(color: outline, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(
-              alpha: Theme.of(context).brightness == Brightness.dark ? 0.16 : 0.04,
-            ),
+            color: Colors.black.withValues(alpha: isDark ? 0.16 : 0.045),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                  color: colors.onSurfaceVariant,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(13),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Colored accent is a separate widget, not a differently colored
+            // side of the rounded Border. This avoids the paint assertion.
+            SizedBox(
+              width: 4,
+              child: ColoredBox(color: color),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(11, 10, 9, 9),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: secondaryText,
+                              fontSize: 12,
+                              height: 1.1,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Container(
+                          width: 25,
+                          height: 25,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: soft,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(icon, size: 15, color: color),
+                        ),
+                      ],
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          value,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: primaryText,
+                            fontSize: 24,
+                            height: 1,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          caption,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: secondaryText,
+                            fontSize: 10.5,
+                            height: 1.1,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              Container(
-                width: 26,
-                height: 26,
-                decoration: BoxDecoration(
-                  color: soft,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, size: 15, color: color),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 25,
-              fontWeight: FontWeight.w800,
-              color: colors.onSurface,
             ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            caption,
-            style: TextStyle(
-              fontSize: 11.5,
-              color: colors.onSurfaceVariant,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

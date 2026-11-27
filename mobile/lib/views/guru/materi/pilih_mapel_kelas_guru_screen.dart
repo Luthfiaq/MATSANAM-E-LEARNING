@@ -8,6 +8,8 @@ import '../../../config/api_config.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/theme_helpers.dart';
 import '../../../widgets/common/guru_bottom_navigation.dart';
+import '../../../widgets/common/notification_bell_button.dart';
+import '../notifikasi/guru_notifikasi_screen.dart';
 
 class PilihMapelKelasGuruScreen extends StatefulWidget {
   const PilihMapelKelasGuruScreen({super.key});
@@ -24,6 +26,8 @@ class _PilihMapelKelasGuruScreenState extends State<PilihMapelKelasGuruScreen> {
   bool _isLoading = true;
   String _query = '';
   String _selectedClass = 'Semua';
+  String _teacherName = '';
+  String _schoolYear = '';
 
   static const _filters = ['Semua', 'Kelas 7', 'Kelas 8', 'Kelas 9'];
   static const _palette = <Color>[
@@ -116,6 +120,9 @@ class _PilihMapelKelasGuruScreenState extends State<PilihMapelKelasGuruScreen> {
         _materials = materials;
         _isLoading = false;
       });
+      // Dashboard identity is supplementary; the subject list must stay usable
+      // even when this optional summary endpoint is temporarily unavailable.
+      await _loadTeacherSummary(token);
     } catch (error) {
       if (!mounted) return;
       setState(() => _isLoading = false);
@@ -131,6 +138,34 @@ class _PilihMapelKelasGuruScreenState extends State<PilihMapelKelasGuruScreen> {
           ),
         ),
       );
+    }
+  }
+
+
+  Future<void> _loadTeacherSummary(String token) async {
+    try {
+      final response = await http
+          .get(
+            Uri.parse(ApiConfig.guruDashboard),
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(ApiConfig.timeout);
+      if (response.statusCode < 200 || response.statusCode >= 300) return;
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map || decoded['success'] != true || decoded['data'] is! Map) {
+        return;
+      }
+      final data = Map<String, dynamic>.from(decoded['data'] as Map);
+      if (!mounted) return;
+      setState(() {
+        _teacherName = (data['nama_guru'] ?? '').toString().trim();
+        _schoolYear = (data['tahun_ajaran'] ?? '').toString().trim();
+      });
+    } catch (_) {
+      // Keep the generic teacher heading when the optional profile summary fails.
     }
   }
 
@@ -194,12 +229,19 @@ class _PilihMapelKelasGuruScreenState extends State<PilihMapelKelasGuruScreen> {
     }).length;
   }
 
-  int _studentCountFor(List<Map<String, dynamic>> schedules) =>
-      schedules.fold<int>(
-        0,
-        (total, schedule) =>
-            total + ((schedule['jumlah_siswa'] as num?)?.toInt() ?? 0),
-      );
+  int _studentCountFor(List<Map<String, dynamic>> schedules) {
+    // A teacher can teach several subjects to the same class. Count each
+    // class once so the summary does not inflate the student total.
+    final studentsByClass = <String, int>{};
+    for (final schedule in schedules) {
+      final rawClass = (schedule['kelas'] ?? '').toString();
+      if (rawClass.trim().isEmpty) continue;
+      final classKey = _prettyClass(rawClass).toLowerCase();
+      final count = (schedule['jumlah_siswa'] as num?)?.toInt() ?? 0;
+      studentsByClass[classKey] = count;
+    }
+    return studentsByClass.values.fold<int>(0, (total, count) => total + count);
+  }
 
   void _openSchedule(Map<String, dynamic> schedule) {
     Navigator.pushNamed(
@@ -209,6 +251,10 @@ class _PilihMapelKelasGuruScreenState extends State<PilihMapelKelasGuruScreen> {
         'mapel': schedule['mata_pelajaran']?.toString() ?? 'Mata Pelajaran',
         'kelas': _prettyClass(schedule['kelas']?.toString() ?? ''),
         'jadwal_id': schedule['id'],
+        'schedule': {
+          ...schedule,
+          'tahun_ajaran': _schoolYear,
+        },
       },
     ).then((result) {
       if (result == true && mounted) _loadData();
@@ -332,12 +378,36 @@ class _PilihMapelKelasGuruScreenState extends State<PilihMapelKelasGuruScreen> {
           ),
         ),
         actions: [
-          IconButton(
-            tooltip: 'Muat ulang',
-            onPressed: _loadData,
-            icon: Icon(Icons.refresh_rounded, color: _primaryText),
+          NotificationBellButton(
+            onPressed: () async {
+              await Navigator.of(context).push<void>(
+                MaterialPageRoute<void>(
+                  builder: (_) => const GuruNotifikasiScreen(),
+                ),
+              );
+            },
+            tooltip: 'Notifikasi Guru',
           ),
-          const SizedBox(width: 6),
+          Padding(
+            padding: const EdgeInsets.only(right: 14),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => Navigator.pushNamed(context, '/pengaturan'),
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: const Icon(
+                  Icons.person_outline_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
       body: _isLoading
@@ -404,11 +474,11 @@ class _PilihMapelKelasGuruScreenState extends State<PilihMapelKelasGuruScreen> {
   }
 
   Widget _teacherIntro(int students, int materials) => Container(
-    padding: const EdgeInsets.all(15),
+    padding: const EdgeInsets.all(14),
     decoration: BoxDecoration(
       color: _surface,
-      border: Border.all(color: _border),
       borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: _border),
     ),
     child: Row(
       children: [
@@ -419,7 +489,7 @@ class _PilihMapelKelasGuruScreenState extends State<PilihMapelKelasGuruScreen> {
             color: context.matsanamSoftPrimary,
             borderRadius: BorderRadius.circular(13),
           ),
-          child: Icon(
+          child: const Icon(
             Icons.school_outlined,
             color: AppColors.primary,
             size: 25,
@@ -431,35 +501,63 @@ class _PilihMapelKelasGuruScreenState extends State<PilihMapelKelasGuruScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'PENGELOLAAN MATERI GURU',
+                'GURU PENGAMPU',
                 style: TextStyle(
                   color: _secondaryText,
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
-                  letterSpacing: .6,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '${_schedules.length} Jadwal Mengajar',
-                style: TextStyle(
-                  color: _primaryText,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
+                  letterSpacing: .55,
                 ),
               ),
               const SizedBox(height: 3),
               Text(
-                '$students siswa • $materials materi terbit',
-                style: TextStyle(color: _secondaryText, fontSize: 11),
+                _teacherName.isEmpty ? 'Pengelolaan Materi' : _teacherName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: _primaryText,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _schoolYear.isEmpty
+                    ? '${_schedules.length} jadwal mengajar • $materials materi'
+                    : 'T.A. $_schoolYear • $students siswa',
+                style: TextStyle(color: _secondaryText, fontSize: 10.5),
               ),
             ],
           ),
         ),
-        Icon(
-          Icons.verified_user_outlined,
-          color: AppColors.success,
-          size: 22,
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+          decoration: BoxDecoration(
+            color: context.matsanamSoftSuccess,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: const BoxDecoration(
+                  color: AppColors.success,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 5),
+              Text(
+                'Aktif Mengajar',
+                style: TextStyle(
+                  color: AppColors.success,
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     ),
@@ -650,7 +748,7 @@ class _PilihMapelKelasGuruScreenState extends State<PilihMapelKelasGuruScreen> {
                       const SizedBox(width: 7),
                       Expanded(
                         child: Text(
-                          '$materialCount Modul Materi Terbit',
+                          '$materialCount Materi',
                           style: TextStyle(color: _primaryText, fontSize: 11),
                         ),
                       ),

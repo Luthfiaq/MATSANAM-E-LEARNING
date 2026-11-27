@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+
+import '../../../widgets/common/persistent_tab_shell.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -148,7 +150,14 @@ class _NilaiPilihMapelKelasScreenState
         actions: [
           IconButton(
             tooltip: 'Profil Guru',
-            onPressed: () => Navigator.pushNamed(context, '/pengaturan'),
+            onPressed: () {
+              final tabs = PersistentTabScope.maybeOf(context);
+              if (tabs != null) {
+                tabs.onSelect(4);
+              } else {
+                Navigator.pushNamed(context, '/pengaturan');
+              }
+            },
             icon: CircleAvatar(
               radius: 15,
               backgroundColor: AppColors.primary,

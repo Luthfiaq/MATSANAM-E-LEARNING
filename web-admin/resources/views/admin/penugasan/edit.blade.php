@@ -143,29 +143,13 @@
                        class="w-full border rounded-lg px-4 py-2.5">
             </div>
 
-            <div>
-                <label class="block text-sm font-semibold mb-2">
-                    Jam Mulai
-                </label>
-
-                <input type="time"
-                       name="jam_mulai"
-                       value="{{ substr($jadwal->jam_mulai, 0, 5) }}"
-                       required
-                       class="w-full border rounded-lg px-4 py-2.5">
-            </div>
-
-            <div>
-                <label class="block text-sm font-semibold mb-2">
-                    Jam Selesai
-                </label>
-
-                <input type="time"
-                       name="jam_selesai"
-                       value="{{ substr($jadwal->jam_selesai, 0, 5) }}"
-                       required
-                       class="w-full border rounded-lg px-4 py-2.5">
-            </div>
+            @include('admin.penugasan._jam-pelajaran-fields', [
+                'jamPelajaran' => $jamPelajaran,
+                'jamMulaiKe' => $jamMulaiKe,
+                'jamSelesaiKe' => $jamSelesaiKe,
+                'legacyJamMulai' => $legacyJamMulai,
+                'legacyJamSelesai' => $legacyJamSelesai,
+            ])
 
         </div>
 

@@ -60,150 +60,244 @@ class _EditMateriScreenState extends State<EditMateriScreen> {
     return Scaffold(
       backgroundColor: context.matsanamPage,
       appBar: AppBar(
-        backgroundColor: context.matsanamSurface,
+        backgroundColor: context.matsanamPage,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
-        centerTitle: false,
         leading: IconButton(
           onPressed: () => Navigator.pop(context),
-          icon: Icon(Icons.arrow_back_ios_new_rounded),
+          icon: const Icon(Icons.arrow_back_rounded),
         ),
-        title: Text(
-          'Edit Materi',
-          style: TextStyle(
-            color: context.matsanamText,
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
+        title: Text('Edit Materi', style: context.matsanamHeading3),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 14),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => Navigator.pushNamed(context, '/pengaturan'),
+              child: Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(11)),
+                child: const Icon(Icons.person_outline_rounded, color: Colors.white, size: 19),
+              ),
+            ),
           ),
-        ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildFormSectionTitle('Informasi Materi'),
-                    const SizedBox(height: 16),
-                    _buildReadOnlyInfoField(
-                      label: 'Mata Pelajaran',
-                      value: _selectedMapel ?? 'Tidak tersedia',
-                      icon: Icons.menu_book_outlined,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildReadOnlyInfoField(
-                      label: 'Kelas',
-                      value: _selectedKelas ?? 'Tidak tersedia',
-                      icon: Icons.groups_outlined,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildTextField(
-                      controller: _judulController,
-                      label: 'Judul Materi',
-                      hint: 'Contoh: Modul Trigonometri',
-                      validator: (value) =>
-                          value!.isEmpty ? 'Judul tidak boleh kosong' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildTextField(
-                      controller: _deskripsiController,
-                      label: 'Deskripsi',
-                      hint: 'Masukkan deskripsi materi...',
-                      maxLines: 3,
-                    ),
-                    const SizedBox(height: 24),
-                    _buildFormSectionTitle('Tipe Materi'),
-                    const SizedBox(height: 16),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: context.matsanamSurface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: context.matsanamBorder),
-                      ),
-                      child: Column(
+          : Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 720),
+                child: Form(
+                  key: _formKey,
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                    children: [
+                      _editContextHeader(),
+                      const SizedBox(height: 12),
+                      _editSection(
+                        title: 'Judul & Deskripsi',
+                        subtitle: 'Perbarui informasi materi pembelajaran.',
                         children: [
-                          _buildTypeOption(
-                            'pdf',
-                            'File PDF',
-                            Icons.picture_as_pdf,
-                            AppColors.primary,
+                          _buildTextField(
+                            controller: _judulController,
+                            label: 'Judul Materi',
+                            hint: 'Masukkan judul materi...',
+                            validator: (value) => value == null || value.trim().isEmpty
+                                ? 'Judul tidak boleh kosong'
+                                : null,
                           ),
-                          Divider(height: 24),
-                          _buildTypeOption(
-                            'video',
-                            'Video',
-                            Icons.play_circle_outline,
-                            AppColors.accentOrange,
-                          ),
-                          Divider(height: 24),
-                          _buildTypeOption(
-                            'link',
-                            'Link URL',
-                            Icons.language,
-                            AppColors.info,
+                          const SizedBox(height: 10),
+                          _buildTextField(
+                            controller: _deskripsiController,
+                            label: 'Deskripsi Pembelajaran',
+                            hint: 'Tulis petunjuk belajar untuk siswa...',
+                            maxLines: 4,
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 24),
-                    _buildFormSectionTitle('File / Link Saat Ini'),
-                    const SizedBox(height: 16),
-                    if ((widget.materi['file_path']?.toString() ?? '')
-                        .isNotEmpty) ...[
-                      _buildCurrentFile(),
-                    ] else if (widget.materi['link'] != null) ...[
-                      _buildCurrentLink(),
-                    ] else ...[
-                      _buildNoCurrentResource(),
-                    ],
-                    const SizedBox(height: 24),
-                    _buildFormSectionTitle('Ganti File / Link'),
-                    const SizedBox(height: 16),
-                    if (_selectedType == 'pdf') ...[
-                      _buildFileUpload(),
-                    ] else if (_selectedType == 'video') ...[
-                      _buildFileUpload(),
-                    ] else if (_selectedType == 'link') ...[
-                      _buildLinkInput(),
-                    ],
-                    const SizedBox(height: 32),
-                    ElevatedButton(
-                      onPressed: _submitForm,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 2,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      const SizedBox(height: 12),
+                      _editSection(
+                        title: 'Berkas Materi Pembelajaran',
+                        subtitle: 'Materi menggunakan satu berkas atau satu tautan sesuai jenisnya.',
                         children: [
-                          Icon(Icons.check_rounded),
-                          SizedBox(width: 8),
-                          Text(
-                            'Simpan Perubahan',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
+                          _buildFormSectionTitle('Jenis Materi'),
+                          const SizedBox(height: 10),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: context.matsanamPage,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: context.matsanamBorder),
+                            ),
+                            child: Column(
+                              children: [
+                                _buildTypeOption('pdf', 'File PDF', Icons.picture_as_pdf_outlined, AppColors.primary),
+                                Divider(height: 18, color: context.matsanamBorder),
+                                _buildTypeOption('video', 'Video', Icons.play_circle_outline_rounded, AppColors.accentOrange),
+                                Divider(height: 18, color: context.matsanamBorder),
+                                _buildTypeOption('link', 'Link URL', Icons.link_rounded, AppColors.info),
+                              ],
                             ),
                           ),
+                          const SizedBox(height: 16),
+                          _buildFormSectionTitle('File / Link Saat Ini'),
+                          const SizedBox(height: 9),
+                          if ((widget.materi['file_path']?.toString() ?? '').isNotEmpty)
+                            _buildCurrentFile()
+                          else if (widget.materi['link'] != null)
+                            _buildCurrentLink()
+                          else
+                            _buildNoCurrentResource(),
+                          const SizedBox(height: 16),
+                          _buildFormSectionTitle('Ganti File / Link'),
+                          const SizedBox(height: 9),
+                          if (_selectedType == 'pdf' || _selectedType == 'video')
+                            _buildFileUpload()
+                          else
+                            _buildLinkInput(),
                         ],
                       ),
+                      const SizedBox(height: 12),
+                      _editInfoNote(),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+      bottomNavigationBar: _isLoading
+          ? null
+          : SafeArea(
+              top: false,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+                decoration: BoxDecoration(
+                  color: context.matsanamSurface,
+                  border: Border(top: BorderSide(color: context.matsanamBorder)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(46),
+                          foregroundColor: context.matsanamText,
+                          side: BorderSide(color: context.matsanamBorder),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
+                        ),
+                        child: const Text('Batal'),
+                      ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      flex: 2,
+                      child: FilledButton.icon(
+                        onPressed: _isLoading ? null : _submitForm,
+                        icon: const Icon(Icons.check_rounded, size: 18),
+                        label: const Text('Simpan Perubahan'),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size.fromHeight(46),
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          textStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
     );
   }
+
+  Widget _editContextHeader() {
+    final academicYear = (widget.materi['tahun_ajaran'] ?? '').toString().trim();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: context.matsanamSurface,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: context.matsanamBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('MATSANAM GURU', style: TextStyle(color: AppColors.primary, fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: .55)),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                decoration: BoxDecoration(color: context.matsanamSoftSuccess, borderRadius: BorderRadius.circular(20)),
+                child: Text('Terhubung ke Jadwal', style: TextStyle(color: context.matsanamSuccess, fontSize: 9, fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 9),
+          Text(
+            '${_selectedMapel ?? 'Mata Pelajaran'} • ${_selectedKelas ?? 'Kelas'}',
+            style: TextStyle(color: context.matsanamText, fontSize: 14, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            academicYear.isEmpty
+                ? 'Materi tetap terikat pada jadwal kelas ini.'
+                : 'T.A. $academicYear • Materi tetap terikat pada jadwal kelas ini.',
+            style: TextStyle(color: context.matsanamTextSecondary, fontSize: 11),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _editSection({
+    required String title,
+    required String subtitle,
+    required List<Widget> children,
+  }) => Container(
+    padding: const EdgeInsets.all(15),
+    decoration: BoxDecoration(
+      color: context.matsanamSurface,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: context.matsanamBorder),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: TextStyle(color: context.matsanamText, fontSize: 14, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 4),
+        Text(subtitle, style: TextStyle(color: context.matsanamTextSecondary, fontSize: 11, height: 1.35)),
+        const SizedBox(height: 14),
+        ...children,
+      ],
+    ),
+  );
+
+  Widget _editInfoNote() => Container(
+    padding: const EdgeInsets.all(13),
+    decoration: BoxDecoration(
+      color: context.matsanamSoftPrimary,
+      borderRadius: BorderRadius.circular(13),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(Icons.info_outline_rounded, color: AppColors.primary, size: 18),
+        const SizedBox(width: 9),
+        Expanded(
+          child: Text(
+            'Perubahan judul, deskripsi, atau berkas akan memperbarui materi yang sama. Sasaran kelas mengikuti jadwal asal.',
+            style: TextStyle(color: context.matsanamTextSecondary, fontSize: 11, height: 1.4),
+          ),
+        ),
+      ],
+    ),
+  );
 
   Widget _buildFormSectionTitle(String title) {
     return Text(

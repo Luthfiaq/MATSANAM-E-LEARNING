@@ -164,14 +164,24 @@ class _RekapAbsensiScreenState extends State<RekapAbsensiScreen> {
                     onTap: _pickMonth,
                   ),
                   const SizedBox(height: 14),
-                  GridView.count(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: 2,
-                    mainAxisExtent: 88,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                    children: [
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      const crossAxisCount = 2;
+                      const crossAxisSpacing = 10.0;
+                      const mainAxisSpacing = 10.0;
+                      const itemHeight = 88.0;
+                      final itemWidth =
+                          (constraints.maxWidth - crossAxisSpacing) /
+                          crossAxisCount;
+
+                      return GridView.count(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisCount: crossAxisCount,
+                        childAspectRatio: itemWidth / itemHeight,
+                        crossAxisSpacing: crossAxisSpacing,
+                        mainAxisSpacing: mainAxisSpacing,
+                        children: [
                       _SummaryCard(
                         label: 'Hadir',
                         value: summary['hadir'] ?? 0,
@@ -196,7 +206,9 @@ class _RekapAbsensiScreenState extends State<RekapAbsensiScreen> {
                         color: context.matsanamError,
                         icon: Icons.cancel_outlined,
                       ),
-                    ],
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 20),
                   Text(

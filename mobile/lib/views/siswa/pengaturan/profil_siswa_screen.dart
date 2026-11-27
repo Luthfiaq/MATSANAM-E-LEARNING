@@ -5,6 +5,7 @@ import '../../../services/auth_service.dart';
 import '../../../services/notification_service.dart';
 import '../../../widgets/common/notification_bell_button.dart';
 import '../../../widgets/common/siswa_bottom_navigation.dart';
+import '../../../widgets/common/font_family_setting.dart';
 import '../../auth/change_password_screen.dart';
 import '../dashboard/dashboard_siswa_page.dart';
 import '../materi/siswa_materi_screen.dart';
@@ -127,6 +128,21 @@ class _ProfilSiswaScreenState extends State<ProfilSiswaScreen> {
             : ThemeMode.light,
       );
     }
+  }
+
+  Future<void> _changeFont(String font) async {
+    await MatsanamApp.ubahFont(context, font);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          font == MatsanamApp.defaultFontSelection
+              ? 'Font default sesuai peran berhasil diterapkan.'
+              : 'Font $font berhasil diterapkan untuk Guru dan Siswa.',
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   void _info(String title, Map<String, String> values) {
@@ -355,6 +371,12 @@ class _ProfilSiswaScreenState extends State<ProfilSiswaScreen> {
                           secondary: Icon(item.$2, color: blue),
                         ),
                     ],
+                  ),
+                ),
+                _heading(Icons.text_fields_rounded, 'Tipografi Aplikasi'),
+                _panel(
+                  FontFamilySetting(
+                    onChanged: _changeFont,
                   ),
                 ),
                 _heading(Icons.verified_user_outlined, 'Keamanan & Akun'),

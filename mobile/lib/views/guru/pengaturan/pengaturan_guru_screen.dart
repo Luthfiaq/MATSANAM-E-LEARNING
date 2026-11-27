@@ -8,6 +8,7 @@ import '../../auth/login_screen.dart';
 import '../../auth/change_password_screen.dart';
 import '../../../main.dart';
 import '../../../widgets/common/guru_bottom_navigation.dart';
+import '../../../widgets/common/font_family_setting.dart';
 import '../../../widgets/common/notification_bell_button.dart';
 import '../notifikasi/guru_notifikasi_screen.dart';
 
@@ -44,9 +45,11 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
       final prefs = await SharedPreferences.getInstance();
       final savedTheme = prefs.getString('siswa_theme') ?? 'Terang';
       if (!mounted) return;
-      if (['Terang', 'Gelap', 'Sistem'].contains(savedTheme)) {
-        setState(() => selectedTheme = savedTheme);
-      }
+      setState(() {
+        if (['Terang', 'Gelap', 'Sistem'].contains(savedTheme)) {
+          selectedTheme = savedTheme;
+        }
+      });
     } catch (_) {
       // Keep Light Mode as the safe default if local preferences are unavailable.
     }
@@ -193,6 +196,16 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
     await MatsanamApp.ubahTema(context, mode);
     if (!mounted) return;
     _showMessage('Tema $theme berhasil diterapkan.');
+  }
+
+  Future<void> _changeFont(String font) async {
+    await MatsanamApp.ubahFont(context, font);
+    if (!mounted) return;
+    _showMessage(
+      font == MatsanamApp.defaultFontSelection
+          ? 'Font default sesuai peran berhasil diterapkan.'
+          : 'Font $font berhasil diterapkan untuk Guru dan Siswa.',
+    );
   }
 
   // Ganti kata sandi memakai form dan endpoint autentikasi yang sama
@@ -654,6 +667,14 @@ class _PengaturanGuruScreenState extends State<PengaturanGuruScreen> {
                       value: 'Sistem',
                     ),
                   ],
+                ),
+              ),
+
+              _sectionTitle('Tipografi Aplikasi'),
+
+              _card(
+                child: FontFamilySetting(
+                  onChanged: _changeFont,
                 ),
               ),
 

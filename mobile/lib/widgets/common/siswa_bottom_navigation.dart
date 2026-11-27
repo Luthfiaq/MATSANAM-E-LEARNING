@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'persistent_tab_shell.dart';
+
 class SiswaBottomNavigationBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -21,6 +23,7 @@ class SiswaBottomNavigationBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final persistentTabs = PersistentTabScope.maybeOf(context);
     return Container(
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
@@ -47,7 +50,13 @@ class SiswaBottomNavigationBar extends StatelessWidget {
                   : theme.colorScheme.onSurface.withValues(alpha: .6);
               return Expanded(
                 child: InkWell(
-                  onTap: () => onTap(index),
+                  onTap: () {
+                    if (persistentTabs != null) {
+                      persistentTabs.onSelect(index);
+                    } else {
+                      onTap(index);
+                    }
+                  },
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [

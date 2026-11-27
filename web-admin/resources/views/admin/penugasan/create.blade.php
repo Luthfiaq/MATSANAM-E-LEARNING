@@ -144,41 +144,13 @@
                 @enderror
             </div>
 
-            <!-- Jam Mulai -->
-            <div>
-                <label for="jam_mulai" class="block text-sm font-medium text-gray-700 mb-2">
-                    Jam Mulai <span class="text-red-500">*</span>
-                </label>
-                <input 
-                    type="time" 
-                    id="jam_mulai" 
-                    name="jam_mulai" 
-                    value="{{ old('jam_mulai', '07:30') }}"
-                    required
-                    class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                />
-                @error('jam_mulai')
-                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                @enderror
-            </div>
-
-            <!-- Jam Selesai -->
-            <div>
-                <label for="jam_selesai" class="block text-sm font-medium text-gray-700 mb-2">
-                    Jam Selesai <span class="text-red-500">*</span>
-                </label>
-                <input 
-                    type="time" 
-                    id="jam_selesai" 
-                    name="jam_selesai" 
-                    value="{{ old('jam_selesai', '09:00') }}"
-                    required
-                    class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                />
-                @error('jam_selesai')
-                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                @enderror
-            </div>
+            @include('admin.penugasan._jam-pelajaran-fields', [
+                'jamPelajaran' => $jamPelajaran,
+                'jamMulaiKe' => null,
+                'jamSelesaiKe' => null,
+                'legacyJamMulai' => null,
+                'legacyJamSelesai' => null,
+            ])
         </div>
 
         <!-- Action Buttons -->

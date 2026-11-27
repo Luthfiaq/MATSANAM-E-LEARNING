@@ -67,7 +67,7 @@ class SiswaLearningController extends Controller
 
     private function penugasanDalamKelas(Siswa $siswa, int $id): Penugasan
     {
-        return Penugasan::with(['jadwal.mataPelajaran', 'jadwal.guru', 'guru'])
+        return Penugasan::with(['jadwal.mataPelajaran', 'jadwal.guru', 'jadwal.kelas', 'jadwal.periode', 'guru'])
             ->whereKey($id)
             ->whereHas('jadwal', function ($query) use ($siswa) {
                 $query->where('kelas_id', $siswa->kelas_id);
@@ -194,7 +194,7 @@ class SiswaLearningController extends Controller
         ]);
 
         $items = Penugasan::with([
-            'jadwal.mataPelajaran', 'jadwal.guru', 'guru', 'files',
+            'jadwal.mataPelajaran', 'jadwal.guru', 'jadwal.kelas', 'jadwal.periode', 'guru', 'files',
             'pengumpulan' => fn ($query) => $query->where('siswa_id', $siswa->id)->with(['nilai', 'files']),
         ])
             ->whereHas('jadwal', function ($jadwal) use ($siswa, $validated) {
@@ -539,6 +539,9 @@ class SiswaLearningController extends Controller
             'mapel_id' => $jadwal?->mapel_id,
             'guru' => $tugas->guru?->nama_lengkap ?? $jadwal?->guru?->nama_lengkap,
             'kelas' => $jadwal?->kelas?->nama_kelas,
+            'semester' => $jadwal?->periode?->semester,
+            'tahun_ajaran' => $jadwal?->periode?->tahun_ajaran,
+            'periode' => $jadwal?->periode?->nama,
             'kkm' => (int) ($jadwal?->mataPelajaran?->kkm ?? 0),
             'status' => $status,
             'ada_lampiran' => !empty($taskAttachments),

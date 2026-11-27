@@ -109,14 +109,14 @@ class _StatusPengumpulanScreenState extends State<StatusPengumpulanScreen> {
   Widget build(BuildContext context) {
     if (_loading) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Status Pengumpulan')),
+        appBar: _resultAppBar(context, 'Status Pengumpulan'),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     if (_error != null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Status Pengumpulan')),
+        appBar: _resultAppBar(context, 'Status Pengumpulan'),
         body: _LoadError(message: _error!, onRetry: _load),
       );
     }
@@ -140,15 +140,10 @@ class _StatusPengumpulanScreenState extends State<StatusPengumpulanScreen> {
     final submissionFiles = _submissionFiles(submission);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Status Pengumpulan'),
-        actions: [
-          IconButton(
-            tooltip: 'Muat ulang status',
-            onPressed: _load,
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
+      appBar: _resultAppBar(
+        context,
+        'Status Pengumpulan',
+        onRefresh: _load,
       ),
       body: RefreshIndicator(
         onRefresh: _load,
@@ -159,6 +154,7 @@ class _StatusPengumpulanScreenState extends State<StatusPengumpulanScreen> {
             const SizedBox(height: 14),
             _SectionCard(
               title: 'Proses Pengumpulan',
+              icon: Icons.timeline_rounded,
               trailing: _StageBadge(stage: stage),
               child: Column(
                 children: [
@@ -213,6 +209,7 @@ class _StatusPengumpulanScreenState extends State<StatusPengumpulanScreen> {
             const SizedBox(height: 14),
             _SectionCard(
               title: 'Informasi Pengumpulan',
+              icon: Icons.assignment_outlined,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -249,7 +246,7 @@ class _StatusPengumpulanScreenState extends State<StatusPengumpulanScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: context.matsanamPage,
+                        color: context.matsanamSoftPrimary,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(submission['jawaban'].toString()),
@@ -324,33 +321,116 @@ class _StatusPengumpulanScreenState extends State<StatusPengumpulanScreen> {
             const SizedBox(height: 14),
             _SectionCard(
               title: 'Hasil Penilaian',
-              trailing: _StatusBadge(
-                label: isGraded
-                    ? 'Sudah Dinilai'
-                    : hasSubmission
-                    ? 'Menunggu Penilaian'
-                    : 'Belum Ada Pengumpulan',
-                color: isGraded
-                    ? context.matsanamSuccess
-                    : hasSubmission
-                    ? context.matsanamPrimary
-                    : context.matsanamTextMuted,
-              ),
+              icon: Icons.emoji_events_outlined,
               child: isGraded
                   ? Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          '${_number(grade['nilai']).toStringAsFixed(0)} / ${_number(_data['bobot'], fallback: 100).toStringAsFixed(0)}',
-                          style: TextStyle(
-                            fontSize: 30,
-                            fontWeight: FontWeight.w900,
-                            color: context.matsanamPrimary,
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: context.matsanamSoftPrimary,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: context.matsanamPrimary.withValues(alpha: .12),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'NILAI AKHIR',
+                                style: TextStyle(
+                                  color: context.matsanamPrimary,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: .8,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      _number(grade['nilai']).toStringAsFixed(0),
+                                      style: TextStyle(
+                                        color: context.matsanamPrimary,
+                                        fontSize: 36,
+                                        height: 1,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    '/ ${_number(_data['bobot'], fallback: 100).toStringAsFixed(0)}',
+                                    style: TextStyle(
+                                      color: context.matsanamTextSecondary,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (_number(_data['kkm']) > 0) ...[
+                                const SizedBox(height: 12),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'KKM Mata Pelajaran',
+                                      style: TextStyle(
+                                        color: context.matsanamTextSecondary,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    Text(
+                                      '${_number(_data['kkm']).toStringAsFixed(0)}',
+                                      style: TextStyle(
+                                        color: context.matsanamPrimary,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Feedback Guru: ${_text(grade['catatan'], fallback: 'Belum ada catatan dari Guru.')}',
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surface,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: context.matsanamBorder),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(
+                                Icons.chat_bubble_outline_rounded,
+                                size: 18,
+                                color: context.matsanamPrimary,
+                              ),
+                              const SizedBox(width: 9),
+                              Expanded(
+                                child: Text(
+                                  _text(
+                                    grade['catatan'],
+                                    fallback: 'Belum ada catatan dari Guru.',
+                                  ),
+                                  style: TextStyle(
+                                    color: context.matsanamText,
+                                    height: 1.45,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 12),
                         SizedBox(
@@ -366,6 +446,17 @@ class _StatusPengumpulanScreenState extends State<StatusPengumpulanScreen> {
                             ),
                             icon: const Icon(Icons.assessment_outlined),
                             label: const Text('Lihat Detail Hasil Penilaian'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: context.matsanamPrimary,
+                              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                              minimumSize: const Size.fromHeight(48),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              textStyle: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -408,6 +499,37 @@ class _StatusPengumpulanScreenState extends State<StatusPengumpulanScreen> {
   }
 }
 
+PreferredSizeWidget _resultAppBar(
+  BuildContext context,
+  String title, {
+  VoidCallback? onRefresh,
+}) => AppBar(
+  backgroundColor: Theme.of(context).colorScheme.surface,
+  surfaceTintColor: Colors.transparent,
+  elevation: 0,
+  foregroundColor: context.matsanamText,
+  title: Text(
+    title,
+    style: TextStyle(
+      color: context.matsanamText,
+      fontSize: 17,
+      fontWeight: FontWeight.w800,
+    ),
+  ),
+  actions: [
+    if (onRefresh != null)
+      IconButton(
+        tooltip: 'Muat ulang status',
+        onPressed: onRefresh,
+        icon: Icon(Icons.refresh_rounded, color: context.matsanamPrimary),
+      ),
+  ],
+  bottom: PreferredSize(
+    preferredSize: const Size.fromHeight(1),
+    child: Container(height: 1, color: context.matsanamBorder),
+  ),
+);
+
 class _TaskSummaryCard extends StatelessWidget {
   final Map<String, dynamic> data;
   final String status;
@@ -418,11 +540,18 @@ class _TaskSummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final tone = _statusColor(status);
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: context.matsanamBorder),
+        boxShadow: [
+          BoxShadow(
+            color: context.matsanamPrimary.withValues(alpha: .06),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -430,32 +559,90 @@ class _TaskSummaryCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text(
-                  '${data['mapel'] ?? '-'} • ${data['kelas'] ?? '-'}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: context.matsanamTextSecondary,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: context.matsanamSoftPrimary,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.menu_book_rounded, size: 14, color: context.matsanamPrimary),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          '${data['mapel'] ?? '-'} • ${data['kelas'] ?? '-'}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: context.matsanamPrimary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
+              const SizedBox(width: 8),
               _StatusBadge(label: _statusLabel(status), color: tone),
             ],
           ),
           const SizedBox(height: 14),
           Text(
             _text(data['judul']),
-            style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900),
+            style: TextStyle(
+              color: context.matsanamText,
+              fontSize: 21,
+              height: 1.2,
+              fontWeight: FontWeight.w800,
+            ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Guru pengampu: ${_text(data['guru'])}',
-            style: TextStyle(color: context.matsanamTextSecondary),
+          const SizedBox(height: 7),
+          Row(
+            children: [
+              Icon(Icons.person_outline_rounded, size: 16, color: context.matsanamPrimary),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Guru pengampu: ${_text(data['guru'])}',
+                  style: TextStyle(
+                    color: context.matsanamTextSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
           ),
-          const Divider(height: 24),
-          _InfoRow(label: 'Skor maksimal', value: '${data['bobot'] ?? 100}'),
-          _InfoRow(
-            label: 'KKM mata pelajaran',
-            value: _number(data['kkm']) > 0 ? '${data['kkm']}' : 'Belum diatur',
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+            decoration: BoxDecoration(
+              color: context.matsanamSoftPrimary,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _SummaryMetric(
+                    label: 'Skor maksimal',
+                    value: '${data['bobot'] ?? 100}',
+                    icon: Icons.stars_rounded,
+                  ),
+                ),
+                Container(width: 1, height: 34, color: context.matsanamPrimary.withValues(alpha: .18)),
+                Expanded(
+                  child: _SummaryMetric(
+                    label: 'KKM mapel',
+                    value: _number(data['kkm']) > 0 ? '${data['kkm']}' : 'Belum diatur',
+                    icon: Icons.flag_outlined,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -463,12 +650,55 @@ class _TaskSummaryCard extends StatelessWidget {
   }
 }
 
+class _SummaryMetric extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+
+  const _SummaryMetric({required this.label, required this.value, required this.icon});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 8),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 13, color: context.matsanamPrimary),
+            const SizedBox(width: 5),
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: context.matsanamTextSecondary, fontSize: 10.5, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(color: context.matsanamText, fontSize: 14, fontWeight: FontWeight.w800),
+        ),
+      ],
+    ),
+  );
+}
+
 class _SectionCard extends StatelessWidget {
   final String title;
   final Widget child;
   final Widget? trailing;
+  final IconData icon;
 
-  const _SectionCard({required this.title, required this.child, this.trailing});
+  const _SectionCard({
+    required this.title,
+    required this.child,
+    this.trailing,
+    this.icon = Icons.info_outline_rounded,
+  });
 
   @override
   Widget build(BuildContext context) => Container(
@@ -476,20 +706,38 @@ class _SectionCard extends StatelessWidget {
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
       color: Theme.of(context).colorScheme.surface,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(20),
       border: Border.all(color: context.matsanamBorder),
+      boxShadow: [
+        BoxShadow(
+          color: context.matsanamPrimary.withValues(alpha: .035),
+          blurRadius: 12,
+          offset: const Offset(0, 3),
+        ),
+      ],
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: context.matsanamSoftPrimary,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, size: 17, color: context.matsanamPrimary),
+            ),
+            const SizedBox(width: 10),
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
+                style: TextStyle(
+                  color: context.matsanamText,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ),

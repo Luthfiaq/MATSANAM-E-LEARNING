@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../utils/session.dart';
 import '../../utils/constants.dart';
-import '../guru/dashboard_guru_screen.dart';
+import '../guru/guru_tab_shell.dart';
 import 'login_screen.dart';
-import '../siswa/dashboard/dashboard_siswa_page.dart';
+import '../siswa/siswa_tab_shell.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   final bool wajib;
@@ -55,9 +55,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
       final Widget destination;
       if (role == 'guru') {
-        destination = const DashboardGuruScreen();
+        destination = const GuruTabShell();
       } else if (role == 'siswa') {
-        destination = const DashboardSiswaPage();
+        destination = const SiswaTabShell();
       } else {
         // Do not guess the account role and accidentally route to the wrong
         // dashboard if the local session data is incomplete.

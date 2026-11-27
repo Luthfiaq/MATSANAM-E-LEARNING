@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'persistent_tab_shell.dart';
+
 /// Navigasi utama area Guru. Hanya dipakai pada halaman menu tingkat pertama;
 /// halaman detail (misalnya Buka Sesi, Daftar Tugas, Koreksi Nilai) tidak
 /// memasang widget ini sehingga ruang layar tetap lega.
@@ -19,6 +21,7 @@ class GuruBottomNavigation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final persistentTabs = PersistentTabScope.maybeOf(context);
     return BottomNavigationBar(
       currentIndex: currentIndex,
       type: BottomNavigationBarType.fixed,
@@ -30,6 +33,10 @@ class GuruBottomNavigation extends StatelessWidget {
       elevation: 8,
       onTap: (index) {
         if (index == currentIndex) return;
+        if (persistentTabs != null) {
+          persistentTabs.onSelect(index);
+          return;
+        }
         Navigator.pushReplacementNamed(context, _routes[index]);
       },
       items: [
